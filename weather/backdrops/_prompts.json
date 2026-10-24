@@ -1,0 +1,110 @@
+{
+ "params": {
+  "workflow": "z-image-turbo.json (loaded in ComfyUI)",
+  "unet": "z_image_turbo_bf16.safetensors",
+  "text_encoder": "qwen_3_4b.safetensors (lumina2)",
+  "vae": "ae.safetensors",
+  "model_sampling": "ModelSamplingAuraFlow shift 3.0",
+  "sampler": "res_multistep",
+  "scheduler": "simple",
+  "steps": 8,
+  "cfg": 1.0,
+  "denoise": 1.0,
+  "latent": "EmptySD3LatentImage 1024x768 (4:3)",
+  "post": "converted to 8-bit grayscale (L), WebP quality 90",
+  "seeds": {
+   "clear-day": 1001,
+   "clear-night": 1002,
+   "mainly-clear-day": 1003,
+   "mainly-clear-night": 1004,
+   "partly-cloudy-day": 1005,
+   "partly-cloudy-night": 1006,
+   "overcast": 1007,
+   "fog": 1008,
+   "drizzle": 1009,
+   "freezing-rain": 1010,
+   "rain": 1011,
+   "snow": 1012,
+   "showers-day": 1013,
+   "showers-night": 1014,
+   "snow-showers-day": 1015,
+   "snow-showers-night": 1016,
+   "thunder": 1017,
+   "thunder-hail": 1018
+  }
+ },
+ "prompts": [
+  {
+   "name": "clear-day",
+   "prompt": "Hyperrealistic black and white photograph taken from street level in Manhattan, camera almost touching the pavement and tilted steeply upward. Two sheer walls of glass and limestone skyscrapers converge toward a perfectly clean, cloudless sky high in the frame. Hard midday sun rakes the building edges, specular glints streak the glass, facades fall into deep geometric shadow, distant towers dissolve into pale haze. Wide-angle 24mm lens, strong converging verticals, crisp architectural detail, fine monochrome grain, high contrast, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "clear-night",
+   "prompt": "Hyperrealistic black and white night photograph from street level in Manhattan, looking steeply up between two illuminated skyscrapers. A crisp full moon and a scatter of faint stars sit in a completely cloudless, deep black sky. Hundreds of lit office windows form bright rectangular grids on the towers, a soft moon glow rims the rooftops, and a thin haze veils the distant buildings. Long exposure, 35mm lens, deep blacks, luminous highlights, fine grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "mainly-clear-day",
+   "prompt": "Hyperrealistic black and white photograph looking steeply up between New York skyscrapers from street level. The sky is mostly open and bright, with only two or three thin wisps of cloud low in the frame. Strong sunlight burns the upper floors while crisp shadows cut across the lower facades. Wide-angle 24mm lens, dramatic converging vertical lines, glass and stone textures, fine film grain, punchy contrast, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "mainly-clear-night",
+   "prompt": "Hyperrealistic black and white night photograph from street level between Manhattan skyscrapers. A bright moon hangs in an almost clear, deep black sky, a few thin clouds drifting across it and softly catching the moonlight, a handful of stars visible. Lit office windows dot the towers, rooftops carry a faint silver rim light, and the whole scene sits in smooth tonal gradients. 35mm lens, long exposure, deep blacks, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "partly-cloudy-day",
+   "prompt": "Hyperrealistic black and white photograph looking steeply up between New York skyscrapers from street level. About half the sky is stacked with well-defined cumulus clouds, bright silver edges and dark billowing undersides, the rest clean open sky. Sunlight breaks through in patches, lighting some upper floors while others fall into soft shade. Rich midtones, strong perspective lines, crisp texture on glass and stone, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "partly-cloudy-night",
+   "prompt": "Hyperrealistic black and white night photograph from street level between illuminated Manhattan skyscrapers. Large clouds drift across a dark sky and partially cover a bright moon, whose glow traces luminous silver edges along the cloud shapes. Patches of open sky show a few faint stars, lit windows pattern the towers, the whole scene is atmospheric and moody with deep blacks and soft highlights. 35mm lens, long exposure, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "overcast",
+   "prompt": "Hyperrealistic black and white photograph looking steeply up between Manhattan high-rises. A flat, heavy, uniform blanket of gray cloud fills the sky with no sun and no breaks. Light is soft and shadowless, giving glass and concrete a muted, matte look, a few interior office lights faintly visible. Subtle low-contrast tonal gradients, fine film grain, no color, calm and oppressive atmosphere, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "fog",
+   "prompt": "Hyperrealistic black and white photograph from street level in Manhattan as the skyscrapers disappear into thick fog. Lower buildings stay clearly readable while the upper floors fade into white mist and the sky is barely distinguishable. Fine frost crystals cling to a lamppost and railing in the foreground, hinting at rime fog layered atmospheric depth, soft glowing window lights, ghostly silhouettes receding down the avenue, very low contrast with smooth gradients, fine grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "drizzle",
+   "prompt": "Hyperrealistic black and white photograph looking up from a damp New York street. A very fine, barely visible mist of drizzle hangs in the air, softening every building edge. The sky is pale, textured gray with no sun, pavement and facades are slightly damp with a subtle sheen, tiny droplets bead on the lens edge, soft reflections of lights smear across the wet ground. Quiet, gentle, low-contrast mood, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "freezing-rain",
+   "prompt": "Hyperrealistic black and white photograph looking up from a New York street coated in ice. Glazed ice covers lampposts, street signs, tree branches and railings in the foreground, long icicles hang from fire escapes and ledges, thin rain streaks cut across dark skyscraper facades, the sky is cold heavy gray. Glassy reflective surfaces, sharp icy highlights, treacherous stillness, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "rain",
+   "prompt": "Hyperrealistic black and white photograph looking up from a soaked Manhattan street. Steady dense rain streaks cross the entire frame against dark skyscraper facades, the sky a heavy uniform dark gray with no breaks. Pavement shows rippling puddles with reflected building lights, raindrops splash in the foreground, windows glow dimly. Cinematic, moody, strong sense of continuous rainfall, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "snow",
+   "prompt": "Hyperrealistic black and white photograph looking up through steady falling snow between New York skyscrapers. Large soft snowflakes drift in the foreground, some sharp and some blurred, fine grains of snow in the distance, thick snow caps window ledges, setbacks and a street lamp in the foreground. The sky is a bright hazy flat white-gray. Quiet, cold, serene mood with soft diffused light, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "showers-day",
+   "prompt": "Hyperrealistic black and white photograph looking up between New York skyscrapers during a passing rain shower in daylight. A dark heavy cloud dumps a curtain of rain on one side of the frame while a bright break in the clouds spills sunlight onto facades on the other side. Wet glistening surfaces, strong contrast between the lit and rainy areas, visible light shafts, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "showers-night",
+   "prompt": "Hyperrealistic black and white night photograph looking up between illuminated Manhattan skyscrapers during a rain shower. Heavy rain streaks are lit by the glow of office windows and streetlights, a gap in the clouds reveals a faint moonlit patch of sky, wet reflective surfaces mirror the light. Deep blacks, glowing highlights, dramatic and intermittent mood, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "snow-showers-day",
+   "prompt": "Hyperrealistic black and white photograph looking up between New York skyscrapers during a snow shower in daylight. A dense burst of snowfall pours from a dark cloud on one side of the frame while a bright patch of sky breaks through on the other. Snowflakes of varying sizes catch the light, a fresh dusting lies on ledges and rooftops. Strong contrast between the heavy snow and the bright gap, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "snow-showers-night",
+   "prompt": "Hyperrealistic black and white night photograph looking up between illuminated Manhattan skyscrapers during a snow shower. Thick snowflakes glow white in the light of office windows and streetlights, falling in heavy bursts, a break in the clouds shows a faint moonlit sky. Fresh snow on ledges and a lamp in the foreground, deep blacks, soft glowing highlights, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "thunder",
+   "prompt": "Hyperrealistic black and white photograph looking steeply up between dense Manhattan skyscrapers during a violent thunderstorm. Churning dark storm clouds fill the sky and a bright forked lightning bolt rips down the gap between two towers, stark white highlights breaking across the facades. Heavy diagonal rain, deep blacks, glowing windows, epic high-drama atmosphere, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  },
+  {
+   "name": "thunder-hail",
+   "prompt": "Hyperrealistic black and white photograph looking steeply up between Manhattan skyscrapers during a severe thunderstorm with hail. Dark turbulent storm clouds fill the sky, lightning flashes between two towers, visible hailstones fall at an angle and bounce off pavement and car roofs in the foreground, scattered ice pellets lie on the ground, heavy rain streaks the air. Stark white highlights, deep blacks, violent intense atmosphere, fine film grain, no color, 4:3 landscape composition, no people, no text."
+  }
+ ]
+}
