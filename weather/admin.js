@@ -204,6 +204,12 @@
     bind('animation.tweenDuration', 'c_tweenDuration');
 
     /* look */
+    bind('backdrop.enabled', 'c_backdropOn');
+    bind('backdrop.dayNight', 'c_backdropDayNight');
+    bind('backdrop.opacity', 'c_backdropOpacity');
+    bind('backdrop.blur', 'c_backdropBlur');
+    bind('backdrop.panSeconds', 'c_backdropPan');
+    bind('backdrop.tint', 'c_backdropTint');
     bind('header.text', 'c_headerText');
     bind('header.color', 'c_headerColor');
     bind('header.gradient.0.color', 'c_headerGradA');

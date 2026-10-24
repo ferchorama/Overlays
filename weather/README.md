@@ -58,6 +58,7 @@ that background.
 | `../shared/combobox.js` | The city-picker search dropdown (`/shared/combobox.js`, served by the hub). |
 | `../shared/datasync.js` | The Data-tab **Update now** control and its guards (`/shared/datasync.js`). |
 | `vendor/gsap.min.js` | Local GSAP so the widget works offline (CDN is the fallback). |
+| `backdrops/` | 18 black-and-white 4:3 plates, one per WMO group (plus day/night where the icon set differs); the scrolling backdrop reads them. |
 | `.skills/` | The 15 SKILL.md documents this build applied (reference only). |
 
 ---
@@ -239,6 +240,24 @@ used to live before the one-palette rule removed it.)
 Accessibility: labelled icon SVGs, a visually-hidden `aria-live` summary of each
 update, `prefers-reduced-motion` support (entrance becomes instant, ambient loop
 stops), `forced-colors` fallbacks, and `data-testid` / `data-state` hooks.
+
+### Scrolling backdrop
+
+`backdrops/` holds 18 generated 1024×768 black-and-white plates named after the
+overlay's WMO groups (`clear-day.webp`, `partly-cloudy-night.webp`,
+`overcast.webp`, …). The first enabled city's condition picks the plate; the five
+groups whose icon differs day/night (clear, mainly clear, partly cloudy, showers,
+snow showers) get the `-day`/`-night` variant. A missing file falls back to
+`overcast.webp`.
+
+The panel drops its flat tint and the plate becomes the surface: two layers
+crossfade when the condition changes and drift sideways with
+`background-position: 0% → 100%` (ping-pong; `prefers-reduced-motion` disables
+the drift). The scrim keeps the ink legible over the image.
+
+Look tab → **Scrolling backdrop**: enable, day/night variants, opacity, blur, pan
+seconds, scrim tint (`rgba`). The same values live in `config.js` under
+`backdrop`. Set `enabled: false` for the old plain glass slab.
 
 
 ### Type sizes (measured at 460x1080, two cities)

@@ -260,6 +260,63 @@
     } catch (e) { /* ignore */ }
   }
 
+  /* ------------------------------------------------------------- backdrop --
+     The 4:3 black-and-white plates are wider than the portrait stage, so they
+     drift sideways behind the glass. Two stacked layers crossfade when the
+     condition changes; a scrim keeps the ink legible. Files live in
+     backdrops/<group>[-day|-night].webp. */
+  var BACKDROP_VARIANTS = { 'clear': 1, 'mainly-clear': 1, 'partly-cloudy': 1, 'showers': 1, 'snow-showers': 1 };
+  var BACKDROP_GROUPS = ['clear', 'mainly-clear', 'partly-cloudy', 'overcast', 'fog', 'drizzle',
+    'rain', 'freezing-rain', 'snow', 'showers', 'snow-showers', 'thunder', 'thunder-hail'];
+
+  function backdropFile(group, isDay, dayNight) {
+    if (BACKDROP_GROUPS.indexOf(group) === -1) group = 'overcast';
+    var variant = dayNight !== false && BACKDROP_VARIANTS[group];
+    return 'backdrops/' + group + (variant ? (isDay ? '-day' : '-night') : '') + '.webp';
+  }
+
+  function Backdrop(panel, cfg) {
+    this.panel = panel;
+    this.cfg = cfg.backdrop || {};
+    this.root = el('div', 'wx-backdrop', panel);
+    this.layers = [el('div', 'wx-backdrop__layer', this.root), el('div', 'wx-backdrop__layer', this.root)];
+    this.scrim = el('div', 'wx-backdrop__scrim', this.root);
+    this.root.hidden = true;
+    this.index = 0;
+    this.key = '';
+    this.seq = 0;
+    var b = this.cfg;
+    this.root.style.setProperty('--bd-op', b.opacity == null ? '.55' : b.opacity);
+    this.root.style.setProperty('--bd-blur', (b.blur || 0) + 'px');
+    this.root.style.setProperty('--bd-pan', (b.panSeconds || 120) + 's');
+    this.root.style.setProperty('--bd-tint', b.tint || 'transparent');
+  }
+
+  Backdrop.prototype.commit = function (file) {
+    var next = this.layers[this.index ^ 1];
+    var prev = this.layers[this.index];
+    next.style.backgroundImage = 'url("' + file + '")';
+    next.classList.add('is-on');
+    prev.classList.remove('is-on');
+    this.index ^= 1;
+    this.key = file;
+    this.root.hidden = false;
+    this.panel.classList.add('has-backdrop');
+  };
+
+  Backdrop.prototype.show = function (group, isDay) {
+    var self = this;
+    var file = backdropFile(group, isDay, this.cfg.dayNight);
+    if (file === this.key) return;
+    var token = ++this.seq;
+    var fallback = function () { return 'backdrops/overcast.webp'; };
+    if (typeof Image !== 'function') { this.commit(file); return; }
+    var probe = new Image();
+    probe.onload = function () { if (token === self.seq) self.commit(file); };
+    probe.onerror = function () { if (token === self.seq) self.commit(fallback()); };
+    probe.src = file;
+  };
+
   /* ----------------------------------------------------------------- panel */
   function Panel(config) {
     this.cfg = config;
@@ -324,6 +381,8 @@
     var g = p.glass || {};
     var panel = el('div', 'panel', this.stage);
     this.panel = panel;
+    var bdCfg = cfg.backdrop || {};
+    this.backdrop = (bdCfg.enabled !== false) ? new Backdrop(panel, cfg) : null;
     panel.classList.toggle('no-ambient', !cfg.animation.ambient);
     panel.style.setProperty('--panel-x', p.x + 'px');
     panel.style.setProperty('--panel-w', p.width + 'px');
@@ -677,6 +736,17 @@
       self.fitStatValues();
       self.fitHero();
     });
+
+    /* the first live city drives the backdrop plate and its day/night variant */
+    if (this.backdrop) {
+      var primary = null;
+      for (var bi = 0; bi < states.length; bi++) {
+        if (states[bi] && !states[bi].error) { primary = states[bi]; break; }
+      }
+      if (primary) {
+        this.backdrop.show(window.WX.describeCode(primary.code).group, primary.isDay);
+      }
+    }
 
     /* footer */
     var f = cfg.footer;

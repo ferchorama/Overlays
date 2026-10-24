@@ -33,6 +33,60 @@ html, body {
   contain: layout style;
 }
 
+/* ---------------------------------------------------- scrolling backdrop */
+/* The plate sits inside the panel behind the reading layer: panel background
+   goes transparent, the plate carries the colour, the scrim carries the
+   contrast. z-index:-1 paints it above the panel background and below content. */
+.panel.has-backdrop { background: transparent; }
+
+/* the plate is the surface: the opaque card/band gradients would hide it, so
+   when it is on they step aside and the scrim supplies the tint */
+.panel.has-backdrop .band,
+.panel.has-backdrop .card,
+.panel.has-backdrop .card__city,
+.panel.has-backdrop .card__details { background: transparent !important; }
+
+.wx-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.wx-backdrop[hidden] { display: none; }
+
+.wx-backdrop__layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+  filter: blur(var(--bd-blur, 0px));
+  animation: wx-backdrop-pan var(--bd-pan, 120s) ease-in-out infinite alternate;
+  will-change: background-position, opacity;
+}
+
+.wx-backdrop__layer.is-on { opacity: var(--bd-op, .55); }
+
+@keyframes wx-backdrop-pan {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+
+.wx-backdrop__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--bd-tint, rgba(235, 246, 255, .72));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-backdrop__layer { animation: none; }
+}
+
 /* ------------------------------------------------------------ glass slab */
 .panel {
   position: absolute;

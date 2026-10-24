@@ -84,13 +84,15 @@ window.WX_DARK_PALETTE = {
       { offset: 100, color: 'rgba(255,255,255,0)' }
     ],
     color: '#a8a8a8'
-  }
+  },
+  /* the B&W plates stay readable behind light ink with a dark scrim */
+  backdrop: { tint: 'rgba(14,14,14,0.60)' }
 };
 
 window.WX_DEFAULT_CONFIG = {
   /* 'light' | 'dark' — see WX_DARK_PALETTE above */
   theme: 'light',
-  meta: { name: 'Vertical Weather Widget', version: '3.2.5' },
+  meta: { name: 'Vertical Weather Widget', version: '3.2.7' },
 
   /* ---------------- Stage = the widget (portrait 1080p) ---------------- */
   stage: {
@@ -102,6 +104,21 @@ window.WX_DEFAULT_CONFIG = {
     fit: 'contain',
     alignX: 'left',
     background: 'transparent'
+  },
+
+  /* ------------- Scrolling backdrop (black-and-white plates) -------------
+     The 4:3 plates in backdrops/ drift sideways under the reading layer with a
+     scrim on top, so the ink keeps its contrast over any frame. dayNight picks
+     the -day/-night variant where one exists (clear, mainly clear, partly
+     cloudy, showers, snow showers). Set enabled:false for the old transparent
+     look; the panel falls back to its glass tint. */
+  backdrop: {
+    enabled: true,
+    opacity: 0.9,          // 0..1 strength of the plate under the scrim
+    blur: 0,                // px blur on the plate itself
+    panSeconds: 120,        // one left→right sweep, then back (ping-pong)
+    dayNight: true,
+    tint: 'rgba(235,246,255,0.62)'   // light-theme scrim; WX_DARK_PALETTE overrides
   },
 
   /* ---------------- Panel shell (the sky-glass slab) ---------------- */

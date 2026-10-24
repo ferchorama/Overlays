@@ -10,7 +10,7 @@ app. This entry describes the current working tree (nothing is tagged yet).
 
 | App | Version | Saved configs found in the wild |
 |---|---|---|
-| Vertical Weather | **3.2.5** | 3.1.7 |
+| Vertical Weather | **3.2.7** | 3.1.7 |
 | Digital Assets Market | **1.1.8** | 1.0.13 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.1.4** | — |
@@ -60,7 +60,7 @@ All older saved configs migrate automatically on load.
 
 ---
 
-### Vertical Weather — 3.2.5
+### Vertical Weather — 3.2.7
 
 **Changed**
 - **Data:** no periodic provider fetch. One hub read per load; the last good
@@ -75,10 +75,21 @@ All older saved configs migrate automatically on load.
 - `?theme=` overrides now resolve into the config the engine sees, so a light
   override on a dark saved config no longer leaves mismatched palettes.
 
+**Added**
+- **Scrolling backdrop**: the panel can sit on one of 18 generated
+  black-and-white 4:3 plates in `weather/backdrops/` — one per WMO group, with
+  day/night variants for the five groups whose icon set differs. Two layers
+  crossfade when the condition changes and pan slowly sideways; a scrim keeps the
+  ink legible. Controls: Look tab → **Scrolling backdrop** (enable, day/night,
+  opacity, blur, pan seconds, tint) or `backdrop` in `config.js`;
+  `enabled:false` restores the plain glass slab.
+- The plate is only shown once it has loaded (no transparent slab while opening)
+  and a missing file falls back to `overcast.webp`.
+
 **Removed**
 - The weather-driven sky backdrop experiment (`backdrop.js`, its per-card scene
-  CSS, the admin “Weather scene” controls and its tests). The widget is again the
-  plain glass slab; no photo, image source, licence or attribution is involved.
+  CSS, the admin “Weather scene” controls and its tests). Superseded by the plate
+  backdrop above; no photo, image source, licence or attribution is involved.
 
 **Fixed**
 - Migration keeps a saved `0`, `false` or `''` instead of turning it into `{}`.

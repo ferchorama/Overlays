@@ -277,6 +277,23 @@ setTimeout(() => {
       !!panelNode && panelNode.style['--wx-sun'] === iconCfg.sun &&
       panelNode.style['--wx-fog'] === iconCfg.fog,
       panelNode ? panelNode.style['--wx-sun'] + ' / ' + panelNode.style['--wx-fog'] : 'no panel');
+    /* ------------------------------------------------------- scrolling plate
+       The black-and-white plate lives inside the panel behind the reading
+       layer: the panel drops its flat glass tint, the active layer points at
+       the condition/day variant, and the scrim comes from config. */
+    var bdRoot = panelNode && (panelNode.children || []).filter(function (n) { return n.className === 'wx-backdrop'; })[0];
+    var bdLayers = bdRoot ? (bdRoot.children || []).filter(function (n) { return n.className === 'wx-backdrop__layer'; }) : [];
+    var bdShown = bdLayers.filter(function (n) { return n.classList.contains('is-on'); })[0];
+    var bdCfg = global.WX.getConfig().backdrop || {};
+    check('backdrop plate mounted', !!bdRoot && bdLayers.length === 2, bdLayers.length + ' layers');
+    check('backdrop shows the partly-cloudy day plate',
+      !!bdShown && String(bdShown.style.backgroundImage).indexOf('partly-cloudy-day.webp') !== -1,
+      bdShown ? bdShown.style.backgroundImage : 'none');
+    check('backdrop makes the panel background transparent',
+      !!panelNode && panelNode.classList.contains('has-backdrop'), panelNode ? panelNode.className : 'no panel');
+    check('backdrop scrim comes from config',
+      !!bdRoot && bdRoot.style['--bd-tint'] === bdCfg.tint && bdRoot.style['--bd-pan'] === (bdCfg.panSeconds || 120) + 's',
+      bdRoot ? bdRoot.style['--bd-tint'] + ' / ' + bdRoot.style['--bd-pan'] : 'no plate');
     /* entrance choreography regression: one start, and never a delay() applied
        to a timeline that is already running (that re-begins it) */
     check('entrance started exactly once', tlPlays() === 1, 'play() calls=' + tlPlays());

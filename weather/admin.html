@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vertical Weather — Control</title>
-  <link rel="stylesheet" href="admin.css?v=3.2.5" />
+  <link rel="stylesheet" href="admin.css?v=3.2.7" />
 <script>
   /* The hub is the single source of truth for the theme: same origin, same
      localStorage key, so switching it there switches every panel. Resolved
@@ -51,10 +51,10 @@
           <option value="0.75">75%</option>
           <option value="1">100%</option>
         </select>
-        <a id="linkOut" class="mini" href="index.html?v=3.2.5" target="_blank">open overlay &#8599;</a>
+        <a id="linkOut" class="mini" href="index.html?v=3.2.7" target="_blank">open overlay &#8599;</a>
       </div>
       <div class="preview__stage" id="previewStage">
-        <iframe id="preview" src="index.html?preview=1&v=3.2.5" title="preview"></iframe>
+        <iframe id="preview" src="index.html?preview=1&v=3.2.7" title="preview"></iframe>
       </div>
       <div class="msg" id="dataMsg"></div>
       <p class="hint">
@@ -178,6 +178,19 @@
           </select>
         </div>
         <p class="hint">Dark is a curated palette layered over the colours below, so those stay your light design. A single browser source can also force it by adding <b>?theme=dark</b> to its URL.</p>
+
+        <label class="section-label">Scrolling backdrop</label>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_backdropOn" /> enabled</label>
+          <label class="check"><input type="checkbox" id="c_backdropDayNight" /> day/night variants</label>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Opacity 0–1</label><input id="c_backdropOpacity" type="number" min="0" max="1" step="0.05" /></div>
+          <div class="field"><label>Blur (px)</label><input id="c_backdropBlur" type="number" min="0" max="40" /></div>
+          <div class="field"><label>Pan seconds</label><input id="c_backdropPan" type="number" min="10" max="600" /></div>
+        </div>
+        <div class="field"><label>Scrim tint (rgba)</label><input id="c_backdropTint" type="text" /></div>
+        <p class="hint">The 4:3 plates in <b>backdrops/</b> drift sideways behind the reading layer; the scrim keeps the ink legible over bright skies.</p>
 
         <label class="section-label">Header</label>
         <div class="row2">
@@ -446,10 +459,10 @@
     </section>
   </main>
 
-  <script src="../shared/combobox.js?v=3.2.5"></script>
-  <script src="../shared/datasync.js?v=3.2.5"></script>
-  <script src="config.js?v=3.2.5"></script>
-  <script src="config-merge.js?v=3.2.5"></script>
-  <script src="admin.js?v=3.2.5"></script>
+  <script src="../shared/combobox.js?v=3.2.7"></script>
+  <script src="../shared/datasync.js?v=3.2.7"></script>
+  <script src="config.js?v=3.2.7"></script>
+  <script src="config-merge.js?v=3.2.7"></script>
+  <script src="admin.js?v=3.2.7"></script>
 </body>
 </html>
