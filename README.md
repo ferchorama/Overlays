@@ -259,8 +259,11 @@ line from Command Prompt (Windows 10 and newer ship `curl.exe`; otherwise save i
 from the GitHub page):
 
 ```
-curl.exe -L -o update.bat https://raw.githubusercontent.com/ferchorama/Overlays/main/update.bat
+curl.exe -fL -o update.bat https://raw.githubusercontent.com/ferchorama/Overlays/main/update.bat
 ```
+
+The repository is public, so the other machine needs no GitHub account and no
+sign-in: clone, pull and the branch-zip fallback all work as-is.
 
 What it does depends on what it finds:
 
