@@ -96,6 +96,3 @@ one as a zip, and `git checkout <tag>` puts the folder on that state.
   `set PORT=9000`.
 - **A panel says "local only"** — open it from the hub URL, not from disk.
 - **A source shows old content** — hard-reload the source in OBS.
-
-Everything else — data flow, provider proxies, settings internals, tests, layout,
-packaging and rollback commands — is in [REFERENCE.md](REFERENCE.md).
