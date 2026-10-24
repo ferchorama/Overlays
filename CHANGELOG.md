@@ -184,6 +184,14 @@ All older saved configs migrate automatically on load.
   persistence across updates, and the removal of the photo/backdrop work.
 - New root `README.md` documents the hub, the Update-now flow, the settings
   contract, the layout and packaging.
+- `update.bat` — puts the files on a Windows machine and keeps them current:
+  `git clone` on the first run, `git fetch` + `git merge --ff-only` after that,
+  and an in-place `git init`/checkout when the folder came from a zip. Installs
+  Git itself (winget, chocolatey, official installer) and falls back to a branch
+  zip when it cannot (`--zip` forces that path, no Git or admin needed). Saved
+  settings are copied aside and restored on every path, `state.json` is never
+  touched, and a conflicting local edit is stashed, reported and kept rather
+  than dropped.
 
 ### Breaking / operational notes
 

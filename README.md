@@ -209,6 +209,8 @@ server.js              the whole backend: routing, config store, command API,
                        Polymarket and asset-search proxies, hub page injection
 index.html             hub page template (server injects window.__STUDIO__)
 start.bat / .command   launchers: Node check, port check, start, open hub
+update.bat             install or update this folder from GitHub (clone, pull,
+                       in-place attach of a zip copy, no-Git --zip fallback)
 tests/                 hub, proxy, data-endpoint and Update-control tests
 tools/package.js       builds the Windows zip (run it on macOS/Linux; see below)
 
@@ -247,6 +249,51 @@ node tools/package.js                  # clean archive
 node tools/package.js --with-skills    # include the .skills reference trees
 node tools/package.js --out D:\x.zip   # choose the output path
 ```
+
+## Getting it onto another Windows machine (`update.bat`)
+
+`update.bat` installs the suite on a Windows machine and keeps it current. Put it
+in the folder that should hold the overlays (`D:\OBS\Overlays`, say) and
+double-click it. A machine that does not have the file yet can fetch it in one
+line from Command Prompt (Windows 10 and newer ship `curl.exe`; otherwise save it
+from the GitHub page):
+
+```
+curl.exe -L -o update.bat https://raw.githubusercontent.com/ferchorama/Overlays/main/update.bat
+```
+
+What it does depends on what it finds:
+
+| Folder state | Action |
+|---|---|
+| empty, or only `update.bat` | `git clone` the repository into it |
+| a clone | `git fetch` + `git merge --ff-only origin/main` |
+| files but no `.git` (a zip copy) | `git init`, fetch and check out, so it becomes a clone in place |
+| Git is missing | installs Git with winget, then chocolatey, then the official installer |
+| none of that is possible | downloads the branch zip instead — no Git, no admin |
+
+`update.bat [folder]` targets another folder, `--zip` skips Git entirely, and
+`--start` runs `start.bat` when the update is done.
+
+Two things are protected on every path: `config.json` (the operator's saved
+settings) is copied aside and put back after the files are replaced, and
+`state.json` is never touched. If a pull is blocked by local edits — a panel
+saved settings — those edits are stashed and restored. A genuine conflict is
+reported, the settings are put back on disk, and the stash is kept rather than
+dropped, so nothing can be lost.
+
+The script re-runs itself from `%TEMP%` before it touches the folder: a git
+checkout cannot corrupt the batch file cmd.exe is reading. It never force-pushes
+and never rewrites a commit, so updating can only move forward.
+
+The alternative — and why this is not the default — is to re-download a zip of
+the branch on every update, which needs no Git at all but transfers the whole
+repository each time and carries no history. `--zip` does exactly that when Git
+is impossible; the normal path is incremental and keeps the history that makes
+`git revert` and old versions possible.
+
+Publishing is ordinary git — `git add -A`, `git commit -m "..."`, `git push`.
+No helper wraps that; `update.bat` exists only for the *other* machines.
 
 ## Undo / rollback
 
