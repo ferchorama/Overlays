@@ -1,0 +1,641 @@
+/* ============================================================================
+   Prediction Markets — overlay styling
+   ----------------------------------------------------------------------------
+   A 1920x1080 design stage that is scaled to whatever the OBS browser source is.
+   The look follows the reference board (rollup-prediction-markets.vercel.app):
+   a near-black graphite canvas, a serif headline, one hero market on the left and
+   a ranked list on the right, a hairline footer with a capture-window bar.
+
+   Every colour comes in as a custom property set by script.js from the config, so
+   the same stylesheet renders any palette without being edited. Fallbacks match
+   the shipped "graphite" palette so the file still looks right on its own.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* OBS browser sources want transparency; the stage paints its own background */
+  background: transparent;
+  color: var(--ink, #f4f4f6);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------- stage */
+#stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--stage-w, 1920px);
+  height: var(--stage-h, 1080px);
+  overflow: hidden;
+  background: var(--stage-bg, #0f1013);
+  transform-origin: top left;
+  visibility: hidden;          /* revealed once the entrance is armed */
+}
+#stage.is-ready { visibility: visible; }
+
+/* Optional washed-out image band behind the header */
+.skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--banner-h, 200px);
+  background-image: var(--banner-src, none);
+  background-position: center -60px;
+  background-size: var(--stage-w, 1920px) auto;
+  background-repeat: no-repeat;
+  opacity: var(--banner-op, 0.2);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(#000, transparent);
+  mask-image: linear-gradient(#000, transparent);
+}
+.skyline.is-mono { filter: grayscale(1) contrast(1.1); }
+
+/* The safe area: everything lives inside this inset */
+.board {
+  position: absolute;
+  inset: var(--safe, 54px) var(--safe-x, 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------ header */
+.board__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 116px;
+  flex: none;
+  border-bottom: 1px solid var(--line, #2a2d33);
+  padding-bottom: 22px;
+}
+.board__header.is-bare { border-bottom: 0; }
+
+.brand { display: flex; align-items: center; min-width: 0; }
+.brand__logo { height: var(--logo-h, 80px); width: auto; display: block; }
+/* If the logo file cannot be loaded the alt text is not enough at this size —
+   the operator sees a broken glyph, which is the honest signal that the path
+   is wrong. Kept as an <img> rather than a CSS background for that reason. */
+
+.brand__rule {
+  width: 1px;
+  height: 72px;
+  background: var(--line-2, #3a3e46);
+  margin: 0 48px;
+  flex: none;
+}
+
+.kicker {
+  font-size: var(--kick-size, 17px);
+  letter-spacing: var(--kick-track, 0.32em);
+  text-transform: uppercase;
+  color: var(--kick-color, #9a9fa9);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.kicker.is-plain { text-transform: none; }
+
+.headline {
+  font-family: var(--title-font, 'Playfair Display', Georgia, serif);
+  font-size: var(--title-size, 58px);
+  font-weight: var(--title-weight, 600);
+  letter-spacing: var(--title-track, 0);
+  color: var(--title-color, #f4f4f6);
+  line-height: 1;
+  margin: 0;
+}
+.headline.is-upper { text-transform: uppercase; }
+
+/* the "Top markets / by 7-day volume" block, pushed to the right */
+.header-right {
+  margin-left: auto;
+  text-align: var(--right-align, right);
+  font-size: var(--right-size, 19px);
+  letter-spacing: var(--right-track, 0.28em);
+  text-transform: uppercase;
+  color: var(--right-color, #c9ccd3);
+  font-weight: 600;
+  line-height: 1.7;
+  flex: none;
+  padding-left: 24px;
+}
+.header-right span { display: block; color: var(--right-sub, #7d828c); font-weight: 500; }
+.header-right.is-plain { text-transform: none; }
+
+/* -------------------------------------------------------------------- main */
+.board__main {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--hero-w, 1040px) 1fr;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* --------------------------------------------------------------- the hero */
+.hero {
+  padding: var(--hero-pad-top, 40px) var(--hero-pad-right, 64px) 0 0;
+  border-right: 1px solid var(--line, #2a2d33);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* binds the absolutely-positioned hidden-measurement clone used by
+     fitHeroContent(), which must be laid out at the same width as the real hero */
+  position: relative;
+  /* Opening a market releases the column: the gutter closes and the dividing rule
+     fades out instead of vanishing, so the board visibly "opens up" rather than
+     snapping to a new width. */
+  transition: padding-right .42s cubic-bezier(.16, 1, .3, 1), border-right-color .42s linear;
+}
+
+/* The hero body takes the free space so the block is laid out against the column
+   rather than bunched at the top when the graphic is withheld. */
+.hero__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+/* Children keep their natural size: if flex compressed them, fitHeroContent()
+   could never see an overflow to correct. */
+.hero__body > * { flex: none; }
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 18px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--dim, #9a9fa9);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.eyebrow b { color: var(--ink, #f4f4f6); font-weight: 600; font-variant-numeric: tabular-nums; }
+.eyebrow i { width: 40px; height: 1px; background: var(--line-2, #4a4f58); flex: none; }
+
+.hero__topic {
+  font-family: var(--title-font, 'Playfair Display', Georgia, serif);
+  font-weight: 500;
+  font-size: var(--hero-topic-size, 52px);
+  line-height: 1.14;
+  margin: 20px 0 0;
+  color: var(--ink, #f4f4f6);
+  display: -webkit-box;
+  -webkit-line-clamp: var(--hero-topic-lines, 2);
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* figures: the big probability on the left, small key/values beside it */
+/* The figures row: the big probability, then the key/values beside it.
+   Nothing in here may shrink — a squeezed flex item is what turned the stat
+   labels into three wrapped lines — so the number is auto-shrunk by script.js
+   to make the row fit instead, and the stats never wrap. */
+.figs { display: flex; align-items: flex-end; margin-top: 26px; gap: 44px; }
+.hero.is-bare .hero__topic { margin-top: 28px; }
+.figs > * { flex: none; }
+.figs .lbl { margin-bottom: 10px; white-space: nowrap; }
+.figs__prob { flex: none; }
+
+.lbl {
+  font-size: 16px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--dim, #7d828c);
+  font-weight: 500;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.huge {
+  font-size: var(--prob-size, 176px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 0.9;
+  color: #fff;
+}
+.huge small { font-size: 0.5em; margin-left: 0.06em; opacity: 0.7; font-weight: 500; }
+
+/* Two or three stats sit on one row; four switch to a 2x2 grid (side--grid) so
+   they stack instead of running off the hero column. */
+.side { padding-bottom: 12px; }
+.side--row { display: flex; gap: 48px; }
+.side--grid { display: grid; grid-template-columns: repeat(var(--stat-cols, 2), minmax(0, auto)); gap: 22px 52px; }
+.kv { min-width: 0; }
+.kv .lbl { margin-bottom: 10px; }
+.kv .v {
+  font-size: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  color: var(--ink, #f4f4f6);
+  white-space: nowrap;
+}
+.kv .v small { font-size: 20px; color: var(--dim, #7d828c); font-weight: 500; }
+
+/* up / down / flat colouring — shared by the hero and the list */
+.up { color: var(--up, #4cc38a) !important; }
+.down { color: var(--down, #e5605e) !important; }
+.flat { color: var(--flat, #9a9fa9) !important; }
+.f-up { color: var(--up, #4cc38a) !important; background-color: rgba(76, 195, 138, 0.1); }
+.f-down { color: var(--down, #e5605e) !important; background-color: rgba(229, 96, 94, 0.1); }
+
+/* --------------------------------------------------------- 7-day probability
+   Geometry mirrors the reference board: the series fills the width, and 70px are
+   reserved on the right for the percentage labels that sit beside the gridlines.
+   Only the height is pinned; the width follows the hero column, so translate the
+   coordinate system rather than stretching the stroke. */
+.chart { margin-top: auto; padding-bottom: 36px; }
+.chart .lbl { margin-bottom: 20px; }
+.chart svg {
+  display: block;
+  width: 100%;
+  height: var(--chart-h, 64px);
+  overflow: visible;
+}
+.chart .area { fill: rgba(232, 233, 236, 0.07); stroke: none; }
+.chart .line {
+  fill: none;
+  stroke: var(--ink-soft, #e8e9ec);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+/* The reference gridlines sit at #2c2f36 — brighter than this board's panel
+   borders, because a gridline that cannot be seen is just noise in the DOM. */
+.chart .grid-line { stroke: #4a4f58; stroke-width: 1; }
+.chart .grid-base { stroke: #4a4f58; stroke-width: 1; }
+.chart .axis-lbl {
+  fill: #7d828c;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.chart .ring { fill: none; stroke: var(--ink-soft, #e8e9ec); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ring 2.4s ease-out infinite; }
+.chart .dot { fill: #fff; }
+
+/* The travelling glow — one short dash of a second path with the line's own
+   geometry, swept along it by script.js (the same animation the Digital Assets
+   board runs on its 7-day column). Colour, dash length, stroke width and the
+   bloom come from config; nothing here may set the dash pattern, because the
+   script computes it from the line's own length. */
+.chart .glow {
+  fill: none;
+  /* width comes from the script as a custom property so the detail view can flare
+     it for a moment; a CSS declaration beats the presentation attribute, which is
+     why the attribute alone would not animate cleanly (GSAP rounds it to integers) */
+  stroke-width: calc(var(--glow-w, 3.4px) * var(--glow-boost, 1));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* Shown when there is no history at all — the reference is explicit here too */
+.chart .nodata {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--nodata-h, 64px);
+  border: 1px dashed var(--line-soft, #2c2f36);
+  color: var(--dimmer, #5d626b);
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+@keyframes ring {
+  0%   { transform: scale(0.5); opacity: 0.8; }
+  to   { transform: scale(1.6); opacity: 0; }
+}
+
+/* Shown when there is nothing to render at all (no enabled markets) */
+.empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.empty h2 { font-family: var(--title-font, 'Playfair Display', Georgia, serif); font-weight: 500; font-size: 64px; margin: 0; }
+.empty p { margin-top: 16px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim, #7d828c); }
+
+/* --------------------------------------------------------------- the list */
+.list {
+  padding: var(--list-pad-top, 20px) 0 0 var(--list-pad-left, 48px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--row-cols, 44px 1fr auto);
+  align-items: center;
+  gap: 20px;
+  height: var(--row-h, 124px);
+  border-bottom: 1px solid var(--line-soft, #22252b);
+  flex: none;
+}
+.row:last-child { border-bottom: none; }
+
+/* Clickable rows. The board is designed for OBS, where nothing is clickable, but
+   the same page is often open in a normal browser to drive the show — so the
+   affordance is explicit and the hover is a tint, never a layout shift. */
+.row.is-clickable { cursor: pointer; }
+.row.is-clickable:hover { background: rgba(255, 255, 255, 0.045); }
+.row.is-clickable:active { background: rgba(255, 255, 255, 0.08); }
+.row.is-clickable:focus-visible { outline: 2px solid var(--ink-soft, #e8e9ec); outline-offset: -2px; }
+
+.row__rank {
+  font-size: 19px;
+  color: var(--dimmer, #5d626b);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.row__topic {
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--ink-mid, #b9bdc5);
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-width: 0;
+}
+.row__thumb {
+  width: var(--thumb, 44px);
+  height: var(--thumb, 44px);
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--line-soft, #22252b);
+  flex: none;
+}
+.row__right { text-align: right; padding-left: 12px; }
+.row__pct {
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink, #f4f4f6);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.row__mv {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+  padding-right: 6px;
+  white-space: nowrap;
+}
+.row__mv em { color: var(--dimmer, #5d626b); font-weight: 500; letter-spacing: 0.12em; font-style: normal; }
+
+/* the hero's own row in the list is highlighted, like the reference */
+.row.is-on { box-shadow: inset 3px 0 0 var(--ink-soft, #e8e9ec); background: #16181c; }
+.row.is-on .row__rank { padding-left: 14px; }
+.row.is-on .row__rank,
+.row.is-on .row__topic { color: var(--ink, #f4f4f6); }
+
+/* --------------------------------------------------------------- detail view
+   A row opened from the list gives its market the WHOLE board: the hero takes
+   both columns and the list steps aside. Nothing is re-laid-out by script — the
+   same hero content simply gets the room, and the fit functions start the
+   headline and the number from a larger size to match it. */
+.board.is-detail .board__main { grid-template-columns: minmax(0, 1fr); }
+/* the rule fades instead of vanishing: border-width would collapse in one frame,
+   a transparent colour animates */
+.board.is-detail .hero { padding-right: 0; border-right-color: transparent; }
+/* the list is still in the DOM so its highlight survives; it is only out of the
+   way, and aria-hidden carries that to assistive tech */
+.board.is-detail .list { display: none; }
+/* the figures row spans the full width: the number keeps the left edge, the
+   key/values sit against the right one */
+.board.is-detail .figs { justify-content: space-between; gap: 64px; }
+.board.is-detail .hero__topic { -webkit-line-clamp: 3; }
+/* the 7-day graphic gets the taller frame the extra width earns it */
+.board.is-detail .chart svg { height: calc(var(--chart-h, 64px) * 1.55); }
+.board.is-detail .chart .nodata { height: calc(var(--nodata-h, 64px) * 1.55); }
+
+/* The accent hairline that draws itself across the hero as a market opens full
+   width. It is absolutely positioned, so it costs no layout, and script.js fades
+   it back out — it is an arrival, never a permanent rule on air. */
+.sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  pointer-events: none;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg,
+    var(--sweep-c, #7fe6ff) 0%,
+    var(--sweep-c, #7fe6ff) 55%,
+    transparent 100%);
+}
+
+/* --------------------------------------------------------- back to the list
+   Only present in the detail view. It is a click target in a normal browser and
+   nothing at all in OBS, and it is kept quiet enough to sit on air without
+   competing with the market it belongs to. */
+.backrow { flex: none; display: none; justify-content: flex-end; padding-bottom: 22px; }
+.board.is-detail .backrow { display: flex; }
+
+.back {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-mid, #b9bdc5);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line, #2a2d33);
+  border-radius: 999px;
+  padding: 12px 22px;
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
+}
+.back:hover { background: rgba(255, 255, 255, 0.11); color: var(--ink, #f4f4f6); border-color: var(--line-2, #3a3e46); }
+.back:active { background: rgba(255, 255, 255, 0.16); }
+.back:focus-visible { outline: 2px solid var(--ink-soft, #e8e9ec); outline-offset: 3px; }
+
+/* ------------------------------------------------------------------ footer */
+.board__footer {
+  flex: none;
+  height: 58px;
+  border-top: 1px solid var(--line, #2a2d33);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.ftxt {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--foot-size, 16px);
+  letter-spacing: var(--foot-track, 0.24em);
+  text-transform: uppercase;
+  color: var(--foot-color, #7d828c);
+  font-weight: 500;
+}
+.ftxt.is-plain { text-transform: none; }
+.ftxt .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-color, #4cc38a);
+  margin-right: 14px;
+  vertical-align: 2px;
+  animation: blip 1.6s ease-out infinite;
+}
+@keyframes blip {
+  0%   { box-shadow: 0 0 0 0 rgba(76, 195, 138, 0.6); }
+  to   { box-shadow: 0 0 0 10px rgba(76, 195, 138, 0); }
+}
+
+/* --------------------------------------------------------- headline groups
+   The Polymarket layout: one column per category, each a stack of headlines.
+   Deliberately NOT the hero + ranked list — with three categories of equal
+   weight there is no hero, and promoting one headline would be an editorial
+   claim the feed itself does not make.
+
+   Every piece of text in here uses --dim or brighter, never --dimmer: measured
+   on the graphite stage, --dimmer is 3.10:1 and misses AA for text this size.
+   The existing .row__mv em has that problem; there is no reason to copy it. */
+.groups {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 26px;
+}
+
+.groups__stamp {
+  flex: none;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim, #7d828c);
+  margin-bottom: 22px;
+}
+.groups__stamp.is-empty { letter-spacing: 0.12em; text-transform: none; font-size: 16px; }
+
+.groups__grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--group-cols, 3), minmax(0, 1fr));
+  gap: 0 48px;
+}
+.groups__none { padding: 22px 0; font-size: 16px; color: var(--dim, #7d828c); }
+
+/* The rule between columns is a border on every column but the last, so hiding
+   a category can never leave a stray rule behind on the right-hand edge. */
+.group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding-right: 24px;
+  border-right: 1px solid var(--line-soft, #22252b);
+}
+.group:last-child { border-right: 0; padding-right: 0; }
+
+.group__head {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line, #2a2d33);
+}
+.group__label {
+  font-family: var(--title-font, 'Playfair Display', Georgia, serif);
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1;
+  margin: 0;
+  color: var(--ink, #f4f4f6);
+}
+.group__meta {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim, #7d828c);
+  white-space: nowrap;
+}
+
+.group__rows { display: flex; flex-direction: column; min-height: 0; }
+.group__none { padding: 22px 0; font-size: 15px; color: var(--dim, #7d828c); }
+
+/* One headline. The probability is the loudest thing in the row because it is
+   the number the market is about; the move and the volume sit beside it. */
+.grow { padding: 17px 0; border-bottom: 1px solid var(--line-soft, #22252b); }
+.grow:last-child { border-bottom: 0; }
+.grow__topic {
+  font-size: 21px;
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--ink-mid, #b9bdc5);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.grow__figs {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+}
+.grow__pct {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink, #f4f4f6);
+}
+.grow__mv {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim, #7d828c);
+  white-space: nowrap;
+  text-align: right;
+}
+.grow__mv em { color: var(--dim, #7d828c); font-weight: 500; font-style: normal; letter-spacing: 0.06em; }
+
+/* ------------------------------------------------------------------ guides */
+/* Debug only: shows the safe area and column split, never on air */
+.debug .board { outline: 1px dashed rgba(255, 255, 255, 0.25); outline-offset: -1px; }
+.debug .hero { outline: 1px dashed rgba(255, 255, 255, 0.12); }
+
+/* Entrance states. GSAP animates from these; when GSAP is unavailable the
+   class-based fallback below still reveals the board. */
+.no-gsap .fade { opacity: 1 !important; transform: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chart .ring, .ftxt .dot { animation: none; }
+}

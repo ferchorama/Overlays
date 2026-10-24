@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Vertical Weather Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="style.css?v=3.1.8" />
+</head>
+<body>
+  <!-- Screen-reader text alternative for the graphics: announced politely on
+       every refresh (the panel itself is visual-only). -->
+  <p id="wx-live" class="sr-only" role="status" aria-live="polite"></p>
+  <div id="stage" data-state="loading"></div>
+
+  <script src="vendor/gsap.min.js?v=3.1.8"></script>
+  <script>
+    if (!window.gsap) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');
+    }
+  </script>
+  <script src="icons.js?v=3.1.8"></script>
+  <script src="config.js?v=3.1.8"></script>
+  <script src="config-merge.js?v=3.1.8"></script>
+  <script src="script.js?v=3.1.8"></script>
+</body>
+</html>

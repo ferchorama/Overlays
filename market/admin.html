@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Digital Assets Market — Control</title>
+  <link rel="stylesheet" href="fonts/fonts.css?v=1.0.13" data-cm-fonts="1" />
+  <link rel="stylesheet" href="admin.css?v=1.0.13" />
+<script>
+  /* The hub is the single source of truth for the theme: same origin, same
+     localStorage key, so switching it there switches every panel. Resolved
+     before the body paints, otherwise a dark machine flashes light first. */
+  (function () {
+    var t = 'light';
+    try {
+      var s = localStorage.getItem('obs-overlays-theme');
+      if (s === 'dark' || s === 'light') t = s;
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+    } catch (e) { /* private mode */ }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <strong>Digital Assets Market</strong>
+      <span class="muted">control</span>
+      <span class="muted version">v<span id="appVersion">1.0.0</span></span>
+    </div>
+    <div class="topbar__actions">
+        <button type="button" id="btnTheme" class="btn" title="Switch theme" aria-label="Switch theme">Theme</button>
+        <span class="sep"></span>
+      <button id="btnIn" class="btn btn--on">&#9654; Play entrance</button>
+      <button id="btnHide" class="btn">Hide</button>
+      <span class="sep"></span>
+      <button id="btnReset" class="btn btn--danger">Reset to defaults</button>
+      <span class="status" id="status">ready</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ------------------------------------------------------------ preview -->
+    <section class="preview">
+      <div class="preview__bar">
+        <button id="btnPrev" class="mini" title="previous category (postMessage)">&#8249; Prev</button>
+        <button id="btnNext" class="mini" title="next category (postMessage)">Next &#8250;</button>
+        <span class="grow"></span>
+        <label class="mini"><input type="checkbox" id="optGuides" /> guides</label>
+        <select id="selZoom" class="mini-select">
+          <option value="fit">Fit</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+        </select>
+        <a id="linkOut" class="mini" href="index.html?v=1.0.13" target="_blank">open overlay &#8599;</a>
+      </div>
+      <div class="preview__stage" id="previewStage">
+        <iframe id="preview" src="index.html?preview=1&v=1.0.13" title="preview"></iframe>
+      </div>
+      <div class="msg" id="dataMsg"></div>
+      <p class="hint">
+        In OBS add a <strong>Browser source</strong> → <code id="obsUrl">index.html</code>
+        (1920&times;1080, transparent, &ldquo;shutdown when not visible&rdquo; off). Serve this folder over
+        HTTP and open <code>admin.html</code> from the same origin so edits reach OBS live.
+      </p>
+    </section>
+
+    <!-- ------------------------------------------------------------- editor -->
+    <section class="editor">
+      <nav class="tabs">
+        <button class="tab is-active" data-tab="content">Content</button>
+        <button class="tab" data-tab="categories">Categories</button>
+        <button class="tab" data-tab="columns">Columns</button>
+        <button class="tab" data-tab="layout">Layout</button>
+        <button class="tab" data-tab="fonts">Type</button>
+        <button class="tab" data-tab="look">Colour</button>
+        <button class="tab" data-tab="anim">Motion</button>
+        <button class="tab" data-tab="data">Data</button>
+        <button class="tab" data-tab="advanced">Advanced</button>
+      </nav>
+
+      <!-- ========================================================== CONTENT -->
+      <div class="panel-body is-active" data-panel="content">
+        <label class="section-label">Title</label>
+        <div class="row2">
+          <div class="field"><label>Title text</label><input id="c_headerText" type="text" /></div>
+          <label class="check"><input type="checkbox" id="c_headerVisible" /> show the title</label>
+        </div>
+
+        <label class="section-label">Column header labels <span class="muted">(order, widths &amp; on/off live in Columns)</span></label>
+        <div class="row3">
+          <div class="field"><label>Rank</label><input id="c_lbl_rank" type="text" /></div>
+          <div class="field"><label>Asset</label><input id="c_lbl_asset" type="text" /></div>
+          <div class="field"><label>Trend (7d)</label><input id="c_lbl_sparkline" type="text" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Price</label><input id="c_lbl_price" type="text" /></div>
+          <div class="field"><label>24h change</label><input id="c_lbl_change24h" type="text" /></div>
+          <div class="field"><label>7d change</label><input id="c_lbl_change7d" type="text" /></div>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_footerOn" /> show the footer status line</label>
+          <label class="check"><input type="checkbox" id="c_columnsVisible" /> show column headers</label>
+          <div class="field"><label>Max rows per category</label><input id="c_maxRows" type="number" min="1" max="60" /></div>
+        </div>
+
+        <hr />
+        <label class="section-label">Category labels <span class="muted">(full editor in the Categories tab)</span></label>
+        <div id="categoryLabels" class="cats cats--labels"></div>
+        <div class="row2">
+          <button id="btnGoCategories" class="btn btn--ghost">Edit categories &rarr;</button>
+          <button id="btnAddCategory" class="btn btn--ghost">+ Add category</button>
+        </div>
+      </div>
+
+      <!-- ======================================================= CATEGORIES -->
+      <div class="panel-body" data-panel="categories">
+        <label class="section-label">Categories <span class="muted">(one tab each — a label plus CoinGecko coin ids)</span></label>
+        <div id="categoryList" class="cats"></div>
+        <div class="row2">
+          <button id="btnAddCategory2" class="btn btn--ghost">+ Add category</button>
+          <button id="btnSortCoins" class="btn btn--ghost">Trim blank ids</button>
+        </div>
+        <p class="hint">
+          <code>coins</code> holds <strong>CoinGecko ids</strong> (e.g. <code>bitcoin</code>,
+          <code>avalanche-2</code>, <code>the-open-network</code>) — comma or newline separated.
+          Names, tickers and logos all come back from the API, so there is no name mapping to keep.
+        </p>
+      </div>
+
+      <!-- =========================================================== LAYOUT -->
+      <div class="panel-body" data-panel="layout">
+        <p class="hint">
+          Everything that sets a <strong>size or a position</strong>. Type is in
+          <strong>Type</strong>, colour is in <strong>Colour</strong>.
+        </p>
+
+        <label class="section-label">Panel</label>
+        <div class="row3">
+          <div class="field"><label>Panel width (px)</label><input id="c_panelW" type="number" min="200" max="1920" /></div>
+          <div class="field"><label>Radius (px)</label><input id="c_panelRadius" type="number" min="0" max="120" /></div>
+          <div class="field"><label>Border width (px)</label><input id="c_panelBorderW" type="number" min="0" max="20" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Padding X (px)</label><input id="c_panelPadX" type="number" min="0" max="120" /></div>
+          <div class="field"><label>Padding top (px)</label><input id="c_panelPadTop" type="number" min="0" max="120" /></div>
+          <div class="field"><label>Padding bottom (px)</label><input id="c_panelPadBottom" type="number" min="0" max="120" /></div>
+        </div>
+        <p class="hint">
+          Narrowing the panel leaves more stage visible either side. The <code>asset</code>
+          column absorbs the leftover width, so the trend chart grows or shrinks with it.
+        </p>
+
+        <label class="section-label">Title</label>
+        <div class="row3">
+          <div class="field"><label>Align</label>
+            <select id="c_titleAlign">
+              <option value="left">left</option>
+              <option value="center">center</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+          <div class="field"><label>Rule width (px)</label><input id="c_titleRuleW" type="number" min="0" max="10" /></div>
+          <div class="field"><label>Padding bottom (px)</label><input id="c_titlePadBottom" type="number" min="0" max="120" /></div>
+        </div>
+
+        <label class="section-label">Category tabs</label>
+        <div class="row3">
+          <div class="field"><label>Align</label>
+            <select id="c_tabsAlign">
+              <option value="left">left</option>
+              <option value="center">center</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+          <div class="field"><label>Gap (px)</label><input id="c_tabsGap" type="number" min="0" max="60" /></div>
+          <div class="field"><label>Height (px)</label><input id="c_tabsH" type="number" min="12" max="90" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Padding X (px)</label><input id="c_tabsPadX" type="number" min="0" max="60" /></div>
+          <div class="field"><label>Radius (px)</label><input id="c_tabsRadius" type="number" min="0" max="999" /></div>
+          <div class="field"><label>Margin top (px)</label><input id="c_tabsMarginTop" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Margin bottom (px)</label><input id="c_tabsMarginBottom" type="number" /></div>
+        </div>
+
+        <label class="section-label">Rows</label>
+        <div class="row3">
+          <div class="field"><label>Row height (px)</label><input id="c_rowH" type="number" min="16" max="160" /></div>
+          <div class="field"><label>Row gap (px)</label><input id="c_rowGap" type="number" min="0" max="40" /></div>
+          <div class="field"><label>Row radius (px)</label><input id="c_rowRadius" type="number" min="0" max="60" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Row padding X (px)</label><input id="c_rowPadX" type="number" min="0" max="60" /></div>
+          <div class="field"><label>Divider width (px)</label><input id="c_divW" type="number" min="0" max="8" /></div>
+        </div>
+
+        <label class="section-label">Asset cell</label>
+        <div class="row3">
+          <div class="field"><label>Logo size (px)</label><input id="c_logoSize" type="number" min="8" max="96" /></div>
+          <div class="field"><label>Logo shape</label>
+            <select id="c_logoRadius">
+              <option value="circle">circle</option>
+              <option value="rounded">rounded</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Asset pair gap (px)</label><input id="c_assetGap" type="number" min="0" max="40" /></div>
+          <div class="field"><label>Asset column width (px)</label><span class="hint">in the Columns tab</span></div>
+        </div>
+
+        <label class="section-label">Sparkline (7d trend)</label>
+        <div class="row3">
+          <div class="field"><label>Width (px)</label><input id="c_sparkW" type="number" min="20" max="400" /></div>
+          <div class="field"><label>Height (px)</label><input id="c_sparkHeight" type="number" min="8" max="80" /></div>
+          <div class="field"><label>Stroke width (px)</label><input id="c_sparkStrokeW" type="number" min="0.2" max="8" step="0.1" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Endpoint radius (px)</label><input id="c_sparkEndR" type="number" min="0" max="10" step="0.1" /></div>
+          <div class="field"><label>Column header height (px)</label><input id="c_colsH" type="number" min="10" max="120" /></div>
+        </div>
+      </div>
+
+      <!-- =========================================================== COLOUR -->
+      <div class="panel-body" data-panel="look">
+        <p class="hint">Colour and surface only. Sizes are in <strong>Layout</strong>, type in <strong>Type</strong>.</p>
+
+        <label class="section-label">Panel surface</label>
+        <div class="row2">
+          <div class="field"><label>Background</label>
+            <div class="pair">
+              <input id="c_panelBg" type="color" />
+              <input id="c_panelBgA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Border colour</label>
+            <div class="pair">
+              <input id="c_panelBorderC" type="color" />
+              <input id="c_panelBorderCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Opacity</label><input id="c_panelOpacity" type="number" min="0" max="1" step="0.01" /></div>
+          <div class="field"><label>Glass blur (px)</label><input id="c_glassBlur" type="number" min="0" max="80" /></div>
+          <div class="field"><label>Glass saturate (%)</label><input id="c_glassSat" type="number" min="0" max="300" /></div>
+        </div>
+        <div class="field"><label>Inner highlight (CSS)</label><input id="c_glassInner" type="text" /></div>
+        <div class="field"><label>Sheen (CSS gradient)</label><textarea id="c_glassSheen" rows="2" spellcheck="false"></textarea></div>
+        <div class="field"><label>Drop shadow (CSS)</label><input id="c_panelShadow" type="text" /></div>
+
+        <label class="section-label">Title</label>
+        <div class="row2">
+          <div class="field"><label>Colour</label>
+            <div class="pair">
+              <input id="c_titleColor" type="color" />
+              <input id="c_titleColorA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Rule colour</label>
+            <div class="pair">
+              <input id="c_titleRuleC" type="color" />
+              <input id="c_titleRuleCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="c_titleRule" /> hairline rule</label>
+        <div class="field"><label>Title text-shadow (CSS)</label><input id="c_titleShadow" type="text" /></div>
+
+        <label class="section-label">Category tabs</label>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_tabsVisible" /> show tabs</label>
+          <div class="field"><label>Position</label>
+            <select id="c_tabsPos">
+              <option value="below-title">below title</option>
+              <option value="above-title">above title</option>
+              <option value="hidden">hidden</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Label colour</label>
+            <div class="pair">
+              <input id="c_tabsColor" type="color" />
+              <input id="c_tabsColorA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Active label</label>
+            <div class="pair">
+              <input id="c_tabsActiveColor" type="color" />
+              <input id="c_tabsActiveColorA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Pill colour</label>
+            <div class="pair">
+              <input id="c_tabsBg" type="color" />
+              <input id="c_tabsBgA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Active pill</label>
+            <div class="pair">
+              <input id="c_tabsActiveBg" type="color" />
+              <input id="c_tabsActiveBgA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Border colour</label>
+            <div class="pair">
+              <input id="c_tabsBorderC" type="color" />
+              <input id="c_tabsBorderCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Active border</label>
+            <div class="pair">
+              <input id="c_tabsActiveBorderC" type="color" />
+              <input id="c_tabsActiveBorderCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+
+        <label class="section-label">Rows</label>
+        <div class="row3">
+          <div class="field"><label>Divider colour</label>
+            <div class="pair">
+              <input id="c_divColor" type="color" />
+              <input id="c_divColorA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Zebra tint</label>
+            <div class="pair">
+              <input id="c_zebraColor" type="color" />
+              <input id="c_zebraColorA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Tick flash</label>
+            <div class="pair">
+              <input id="c_tickFlash" type="color" />
+              <input id="c_tickFlashA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_divOn" /> row dividers</label>
+          <label class="check"><input type="checkbox" id="c_zebra" /> zebra striping</label>
+        </div>
+
+        <label class="section-label">Logo</label>
+        <label class="check"><input type="checkbox" id="c_logoShow" /> show logos</label>
+        <div class="row2">
+          <div class="field"><label>Fallback background</label>
+            <div class="pair">
+              <input id="c_logoFallbackBg" type="color" />
+              <input id="c_logoFallbackBgA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Fallback glyph</label>
+            <div class="pair">
+              <input id="c_logoFallbackC" type="color" />
+              <input id="c_logoFallbackCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+
+        <label class="section-label">Text &amp; column colours</label>
+        <div class="row3">
+          <div class="field"><label>Asset name</label>
+            <div class="pair">
+              <input id="c_assetNameC" type="color" />
+              <input id="c_assetNameCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Ticker</label>
+            <div class="pair">
+              <input id="c_assetTickerC" type="color" />
+              <input id="c_assetTickerCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Price</label>
+            <div class="pair">
+              <input id="c_priceC" type="color" />
+              <input id="c_priceCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Column headers</label>
+            <div class="pair">
+              <input id="c_colsColor" type="color" />
+              <input id="c_colsColorA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Header rule</label>
+            <div class="pair">
+              <input id="c_colsRuleC" type="color" />
+              <input id="c_colsRuleCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="c_colsRule" /> rule under headers</label>
+
+        <label class="section-label">Sparkline colour</label>
+        <div class="row2">
+          <div class="field"><label>Stroke colour</label>
+            <div class="pair">
+              <input id="c_sparkStrokeC" type="color" />
+              <input id="c_sparkStrokeCA" type="number" min="0" max="1" step="0.01" title="alpha (0–1)" />
+            </div>
+          </div>
+          <div class="field"><label>Fill</label>
+            <label class="check"><input type="checkbox" id="c_sparkFill" /> area fill under the line</label>
+          </div>
+        </div>
+
+        <label class="section-label">Palette <span class="muted">(direction colours)</span></label>
+        <div class="row3">
+          <div class="field"><label>Up / gain</label><input id="c_colUp" type="color" /></div>
+          <div class="field"><label>Down / loss</label><input id="c_colDown" type="color" /></div>
+          <div class="field"><label>Flat</label><input id="c_colFlat" type="color" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Rank numerals</label><input id="c_colRank" type="color" /></div>
+          <div class="field"><label>Trend up</label><input id="c_colSparkUp" type="color" /></div>
+          <div class="field"><label>Trend down</label><input id="c_colSparkDown" type="color" /></div>
+        </div>
+      </div>
+
+      <!-- ========================================================== COLUMNS -->
+      <div class="panel-body" data-panel="columns">
+        <label class="section-label">Columns <span class="muted">(top to bottom = left to right on the board)</span></label>
+        <div id="columnList" class="cols"></div>
+        <div id="columnAdd" class="addrow"></div>
+        <p class="hint">
+          <code>asset</code> absorbs the leftover width; <code>sparkline</code> is the 7-day trend.
+          Hiding a column removes it from <code>columns.order</code>.
+          Sizes are in <strong>Layout</strong>, header type in <strong>Type</strong>.
+        </p>
+        <label class="section-label">Visibility</label>
+        <label class="check"><input type="checkbox" id="c_sparkLine" /> show the sparkline column</label>
+        <label class="check"><input type="checkbox" id="c_sparkColourLine" /> colour the whole trend line</label>
+      </div>
+
+      <!-- ============================================================= TYPE -->
+      <div class="panel-body" data-panel="fonts">
+        <p class="hint">Every type control lives here — sizes, weights and letter-spacing are not duplicated elsewhere.</p>
+
+        <label class="section-label">Typeface</label>
+        <p class="hint">Every face ships in this folder, so the Windows OBS machine never downloads a font. Segoe UI is the one already installed on Windows. The choice sets the title, tabs, names and numbers together.</p>
+        <div id="fontPicker" class="font-picker" role="listbox" aria-label="Typeface"></div>
+
+        <label class="section-label">Sizes (px)</label>
+        <div class="row3">
+          <div class="field"><label>Title</label><input id="c_f_titleSize" type="number" min="8" max="160" /></div>
+          <div class="field"><label>Tabs</label><input id="c_f_tabsSize" type="number" min="8" max="40" /></div>
+          <div class="field"><label>Column headers</label><input id="c_f_colsSize" type="number" min="8" max="40" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Asset name</label><input id="c_f_assetNameSize" type="number" min="8" max="80" /></div>
+          <div class="field"><label>Ticker</label><input id="c_f_assetTickerSize" type="number" min="8" max="40" /></div>
+          <div class="field"><label>Price</label><input id="c_f_priceSize" type="number" min="8" max="80" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Change</label><input id="c_f_changeSize" type="number" min="8" max="80" /></div>
+          <div class="field"><label>Rank</label><input id="c_f_rankSize" type="number" min="8" max="40" /></div>
+          <span></span>
+        </div>
+        <p class="hint">
+          Raising a size does not overflow a column: the window stays inside its cell and
+          long text is clipped with an ellipsis. If a number looks tight, widen the panel in
+          <strong>Layout</strong>.
+        </p>
+
+        <label class="section-label">Weights</label>
+        <div class="row3">
+          <div class="field"><label>Title</label><input id="c_f_titleWeight" type="number" step="100" min="100" max="900" /></div>
+          <div class="field"><label>Tabs</label><input id="c_f_tabsWeight" type="number" step="100" min="100" max="900" /></div>
+          <div class="field"><label>Column headers</label><input id="c_f_colsWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Asset name</label><input id="c_f_assetNameWeight" type="number" step="100" min="100" max="900" /></div>
+          <div class="field"><label>Ticker</label><input id="c_f_assetTickerWeight" type="number" step="100" min="100" max="900" /></div>
+          <div class="field"><label>Price</label><input id="c_f_priceWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Change</label><input id="c_f_changeWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+
+        <label class="section-label">Letter spacing &amp; clipping</label>
+        <div class="row2">
+          <div class="field"><label>Title tracking (px)</label><input id="c_titleTracking" type="number" step="0.1" /></div>
+          <div class="field"><label>Tabs tracking (px)</label><input id="c_tabsTracking" type="number" step="0.1" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Header tracking (px)</label><input id="c_colsTracking" type="number" step="0.1" /></div>
+          <div class="field"><label>Ticker tracking (px)</label><input id="c_assetTickerTrack" type="number" step="0.1" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Asset name max characters</label><input id="c_assetNameMax" type="number" min="4" max="60" /></div>
+        </div>
+
+        <label class="section-label">Capitals</label>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_titleUpper" /> title uppercase</label>
+          <label class="check"><input type="checkbox" id="c_titleAutoShrink" /> shrink long titles</label>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_tabsUpper2" /> tabs uppercase</label>
+          <label class="check"><input type="checkbox" id="c_colsUpper2" /> headers uppercase</label>
+        </div>
+
+        <label class="section-label">Price format</label>
+        <div class="row3">
+          <div class="field"><label>Format</label>
+            <select id="c_priceFormat">
+              <option value="plain">plain — $83,968.00</option>
+              <option value="compact">compact — $83.9K</option>
+            </select>
+          </div>
+          <div class="field"><label>Prefix</label><input id="c_pricePrefix" type="text" /></div>
+          <div class="field"><label>Decimals (≥ $1)</label><input id="c_priceDecimals" type="number" min="0" max="8" /></div>
+        </div>
+        <div class="field"><label>Decimals below $1</label><input id="c_priceSmallDec" type="number" min="0" max="10" /></div>
+
+        <label class="section-label">Change format</label>
+        <div class="row3">
+          <label class="check"><input type="checkbox" id="c_changeSign" /> show +/− sign</label>
+          <label class="check"><input type="checkbox" id="c_changeArrow" /> show ▲ / ▼ arrow</label>
+          <div class="field"><label>Decimals</label><input id="c_changeDecimals" type="number" min="0" max="6" /></div>
+        </div>
+      </div>
+
+      <!-- ======================================================== ANIMATION -->
+      <div class="panel-body" data-panel="anim">
+        <label class="section-label">Playback</label>
+        <div class="row3">
+          <label class="check"><input type="checkbox" id="c_autoPlay" /> auto-play entrance</label>
+          <div class="field"><label>Entrance delay (s)</label><input id="c_autoPlayDelay" type="number" step="0.05" min="0" max="10" /></div>
+          <label class="check"><input type="checkbox" id="c_tweenValues" /> tween price changes</label>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Tween duration (s)</label><input id="c_tweenDuration" type="number" step="0.05" min="0" max="5" /></div>
+          <div class="field"><label>Tick flash duration (ms)</label><input id="c_tickFlashMs" type="number" min="0" max="5000" step="50" /></div>
+          <div class="field"><label>Tween ease</label><input id="c_tweenEase" type="text" /></div>
+          <label class="check"><input type="checkbox" id="c_flashOnTick" /> flash a row on a tick</label>
+        </div>
+
+        <label class="section-label">Entrance</label>
+        <div class="row3">
+          <div class="field"><label>Title duration (s)</label><input id="c_headerDuration" type="number" step="0.05" min="0" max="6" /></div>
+          <div class="field"><label>Title travel (px)</label><input id="c_headerFrom" type="number" min="0" max="200" /></div>
+          <div class="field"><label>Title ease</label><input id="c_headerEase" type="text" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Tabs duration (s)</label><input id="c_tabsDuration" type="number" step="0.05" min="0" max="6" /></div>
+          <div class="field"><label>Rows duration (s)</label><input id="c_rowDuration" type="number" step="0.05" min="0" max="6" /></div>
+          <div class="field"><label>Rows ease</label><input id="c_rowEase" type="text" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Row stagger (s)</label><input id="c_rowStagger" type="number" step="0.01" min="0" max="2" /></div>
+          <div class="field"><label>Row start (s)</label><input id="c_rowStart" type="number" step="0.02" min="0" max="6" /></div>
+          <div class="field"><label>Row travel (px)</label><input id="c_rowFrom" type="number" min="0" max="200" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Sparkline draw (s)</label><input id="c_sparkDraw" type="number" step="0.05" min="0" max="6" /></div>
+          <label class="check"><input type="checkbox" id="c_fadeRows" /> fade rows in</label>
+          <span></span>
+        </div>
+
+        <label class="section-label">Trend line glow</label>
+        <div class="row3">
+          <label class="check"><input type="checkbox" id="c_glowOn" /> travelling glow on the trend line</label>
+          <div class="field"><label>Colour</label><input id="c_glowColor" type="color" /></div>
+          <div class="field"><label>Dash length (units)</label><input id="c_glowLen" type="number" min="4" max="200" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Dash width (px)</label><input id="c_glowWidth" type="number" step="0.1" min="1" max="12" /></div>
+          <div class="field"><label>Glow blur (px)</label><input id="c_glowHalo" type="number" min="0" max="30" /></div>
+          <div class="field"><label>Brightness</label><input id="c_glowOpacity" type="number" step="0.05" min="0" max="1" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Travel time (s)</label><input id="c_glowDur" type="number" step="0.05" min="0.3" max="10" /></div>
+          <div class="field"><label>Rest between passes (s)</label><input id="c_glowRest" type="number" step="0.1" min="0" max="30" /></div>
+          <div class="field"><label>Per-row offset (s)</label><input id="c_glowStagger" type="number" step="0.05" min="0" max="5" /></div>
+        </div>
+        <p class="hint">
+          A short dash runs the length of each trend line, then rests for
+          <em>rest</em> seconds and repeats. One pass every
+          <strong>travel + rest</strong> seconds, offset row by row.
+        </p>
+
+        <label class="section-label">Tab switching</label>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_tabSwitch" /> animate category changes</label>
+          <div class="field"><label>Indicator slide (s)</label><input id="c_pillDuration" type="number" step="0.05" min="0" max="3" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Old content out (s)</label><input id="c_tabOutDuration" type="number" step="0.05" min="0" max="3" /></div>
+          <div class="field"><label>New content in (s)</label><input id="c_tabSwitchDuration" type="number" step="0.05" min="0" max="3" /></div>
+          <div class="field"><label>New row stagger (s)</label><input id="c_tabSwitchStagger" type="number" step="0.01" min="0" max="2" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Indicator ease</label><input id="c_tabEase" type="text" /></div>
+          <div class="field"><label>Content in ease</label><input id="c_tabInEase" type="text" /></div>
+          <span></span>
+        </div>
+        <p class="hint">
+          Entrance only — in OBS you hide the browser source instead of animating out.
+          Eases use GSAP syntax: <code>power3.out</code>, <code>back.out(1.4)</code>, <code>expo.out</code>…
+        </p>
+      </div>
+
+      <!-- ============================================================= DATA -->
+      <div class="panel-body" data-panel="data">
+        <label class="section-label">Refresh</label>
+        <div class="row2">
+          <div class="field"><label>Refresh every (seconds)</label><input id="c_refresh" type="number" min="15" max="3600" /></div>
+          <div class="field"><label>Currency</label>
+            <select id="c_currency">
+              <option value="usd">USD — $</option>
+              <option value="eur">EUR — €</option>
+              <option value="gbp">GBP — £</option>
+              <option value="jpy">JPY — ¥</option>
+              <option value="aud">AUD</option>
+              <option value="cad">CAD</option>
+              <option value="chf">CHF</option>
+              <option value="cny">CNY</option>
+              <option value="inr">INR</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_sparkData" /> request 7d sparkline data</label>
+          <button id="btnRefresh" class="btn btn--ghost">&#8635; Refresh data</button>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Request timeout (ms)</label><input id="c_timeout" type="number" min="1000" max="60000" step="500" /></div>
+          <div class="field"><label>Retry after failure (s)</label><input id="c_retry" type="number" min="5" max="600" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Mark stale after (s)</label><input id="c_stale" type="number" min="0" max="7200" /></div>
+          <div class="field"><label>Cache key</label><input id="c_cacheKey" type="text" /></div>
+        </div>
+        <label class="check"><input type="checkbox" id="c_useCache" /> fall back to the last good data</label>
+        <p class="hint">
+          Data: <strong>CoinGecko</strong> through the overlay's own cached proxy (<code>api/market</code>),
+          then direct, then the last good response in localStorage — ten OBS sources cost one upstream call.
+          Prices and changes are sent <em>live</em> over <code>?type=cm:config</code>; the endpoints themselves
+          are build-owned and stay in <code>config.js</code>.
+        </p>
+      </div>
+
+      <!-- ========================================================= ADVANCED -->
+      <div class="panel-body" data-panel="advanced">
+        <label class="section-label">Stage / canvas</label>
+        <div class="row3">
+          <div class="field"><label>Width (px)</label><input id="c_stageW" type="number" min="320" max="7680" /></div>
+          <div class="field"><label>Height (px)</label><input id="c_stageH" type="number" min="240" max="4320" /></div>
+          <div class="field"><label>Fit</label>
+            <select id="c_stageFit">
+              <option value="contain">contain</option>
+              <option value="cover">cover</option>
+              <option value="width">width</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Align X</label>
+            <select id="c_stageAlignX">
+              <option value="left">left</option>
+              <option value="center">center</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+          <div class="field"><label>Align Y</label>
+            <select id="c_stageAlignY">
+              <option value="top">top</option>
+              <option value="middle">middle</option>
+              <option value="bottom">bottom</option>
+            </select>
+          </div>
+          <div class="field"><label>Stage background</label><input id="c_stageBg" type="text" /></div>
+        </div>
+
+        <hr />
+        <label class="section-label">Raw JSON <span class="muted">(advanced — edit + Apply)</span></label>
+        <textarea id="rawJson" rows="16" spellcheck="false"></textarea>
+        <div class="row2">
+          <button id="btnApplyRaw" class="btn btn--primary">Apply JSON</button>
+          <button id="btnCopyRaw" class="btn">Copy</button>
+        </div>
+        <hr />
+        <label class="section-label">Stream Deck / HTTP</label>
+        <p class="hint">
+          <code>api/command?action=in</code> · <code>?action=hide</code> · <code>?action=refresh</code> ·
+          <code>?action=next</code> · <code>?action=prev</code><br />
+          Config is stored at <code>api/config</code> (GET on boot, POST on save), always relative to this page.
+        </p>
+        <div class="msg" id="versionMsg"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js?v=1.0.13"></script>
+  <script src="config-merge.js?v=1.0.13"></script>
+  <script src="admin.js?v=1.0.13"></script>
+</body>
+</html>

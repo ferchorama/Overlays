@@ -1,0 +1,601 @@
+/* ============================================================================
+   Prediction Markets — admin / control panel styling
+   ========================================================================== */
+/* ============================================================================
+   Theme — matched to The Rollup overlays hub.
+   The hub is the single source of truth: this panel reads the same
+   `obs-overlays-theme` key from localStorage, so switching the hub switches
+   every control panel with it. There is no separate preference to keep in sync.
+   ========================================================================== */
+:root {
+  /* Tells the browser which palette to use for NATIVE controls. Without it the
+     date field's calendar glyph is drawn with the light palette — pure black —
+     on this panel's dark input background, which makes it invisible. */
+  color-scheme: light;
+  --bg:         #e9f1f7;
+  --bg-2:       #f7fbfd;
+  --bg-3:       #ffffff;
+  --bg-4:       #ffffff;
+  --bg-tabs:    #f0f7fb;
+  --bg-city:    #f7fbfd;
+  --thead-bg:   #eff6fa;
+  --row-hover:  #f1f8fc;
+  --btn-hover:  #eef6fb;
+  --line:       rgba(12, 34, 51, 0.13);
+  --line-soft:  rgba(12, 34, 51, 0.07);
+  --line-hover: rgba(12, 34, 51, 0.30);
+  --txt:        #0c2233;
+  --muted:      #4f6a7d;
+  --accent:     #2b6b93;
+  --accent-2:   #1d5578;
+  --accent-2-hover: #14425e;
+  --accent-soft: rgba(43, 107, 147, 0.07);
+  --focus:      rgba(43, 107, 147, 0.30);
+  --on-accent:  #ffffff;
+  --danger:     #a33a22;
+  --danger-bg:  rgba(163, 58, 34, 0.09);
+  --danger-line: rgba(163, 58, 34, 0.34);
+  --on:         #1f7a4d;
+  --on-bg:      rgba(31, 122, 77, 0.09);
+  --on-line:    rgba(31, 122, 77, 0.34);
+  --warn:       #7a5200;
+  --code-bg:    rgba(12, 34, 51, 0.05);
+  --code-surface: #f4f9fc;
+  --checker-a:  rgba(12, 34, 51, 0.055);
+  --checker-b:  rgba(12, 34, 51, 0.02);
+  --guide-a:    rgba(43, 107, 147, 0.16);
+  --guide-b:    rgba(163, 58, 34, 0.42);
+  --shadow:     0 1px 0 rgba(255,255,255,0.85) inset, 0 18px 40px -22px rgba(10,44,72,0.42);
+  --shadow-sm:  0 1px 0 rgba(255,255,255,0.7) inset, 0 6px 18px -12px rgba(10,44,72,0.38);
+}
+/* Neutral greys — r = g = b, same as the hub's dark theme. */
+:root[data-theme="dark"] {
+  color-scheme: dark;      /* native glyphs (calendar, spinners) drawn light */
+  --bg:         #151515;
+  --bg-2:       #1c1c1c;
+  --bg-3:       #232323;
+  --bg-4:       #232323;
+  --bg-tabs:    #191919;
+  --bg-city:    #1c1c1c;
+  --thead-bg:   #1f1f1f;
+  --row-hover:  #2a2a2a;
+  --btn-hover:  #2b2b2b;
+  --line:       rgba(255, 255, 255, 0.13);
+  --line-soft:  rgba(255, 255, 255, 0.07);
+  --line-hover: rgba(255, 255, 255, 0.30);
+  --txt:        #e6e6e6;
+  --muted:      #9e9e9e;
+  --accent:     #c8c8c8;
+  --accent-2:   #e8e8e8;
+  --accent-2-hover: #ffffff;
+  --accent-soft: rgba(255, 255, 255, 0.05);
+  --focus:      rgba(255, 255, 255, 0.26);
+  --on-accent:  #141414;
+  --danger:     #e8a08e;
+  --danger-bg:  rgba(255, 255, 255, 0.06);
+  --danger-line: rgba(255, 255, 255, 0.20);
+  --on:         #7fc79b;
+  --on-bg:      rgba(255, 255, 255, 0.06);
+  --on-line:    rgba(255, 255, 255, 0.20);
+  --warn:       #e2d3a4;
+  --code-bg:    rgba(255, 255, 255, 0.06);
+  --code-surface: #191919;
+  --checker-a:  rgba(255, 255, 255, 0.045);
+  --checker-b:  rgba(255, 255, 255, 0.015);
+  --guide-a:    rgba(255, 255, 255, 0.10);
+  --guide-b:    rgba(255, 255, 255, 0.22);
+  --shadow:     0 1px 0 rgba(255,255,255,0.06) inset, 0 18px 40px -22px rgba(0,0,0,0.85);
+  --shadow-sm:  0 1px 0 rgba(255,255,255,0.05) inset, 0 6px 18px -12px rgba(0,0,0,0.8);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--txt);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* The white band the tabs stick beneath. Its height depends on the platform's
+   font metrics, so it is measured rather than assumed — see admin.js. */
+:root { --topbar-h: 55px; }
+
+/* ------------------------------------------------------------------ topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: var(--bg-2);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 9px; font-size: 15px; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--on); box-shadow: 0 0 12px var(--on); }
+.muted { color: var(--muted); font-weight: 400; }
+.tiny { font-size: 11.5px; }
+.topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.grow { flex: 1; }
+
+/* ----------------------------------------------------------------- buttons
+   Every button carries the same box so a row of them lines up with the inputs
+   beside it, and every one of the four states (rest, hover, press, focus) is
+   visible — the hover used to repaint the button its own colour, which read as
+   a dead control. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  background: var(--bg-3);
+  color: var(--txt);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .16s, border-color .16s, color .16s, box-shadow .16s, transform .06s;
+}
+.btn:hover { background: var(--btn-hover); border-color: var(--line-hover); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 0; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--focus); }
+.btn[disabled] { opacity: .5; cursor: default; transform: none; }
+.btn--primary { background: var(--accent-2); border-color: var(--accent-2); color: var(--on-accent); }
+.btn--primary:hover { background: var(--accent-2-hover); border-color: var(--accent-2-hover); }
+.btn--on { background: var(--on-bg); border-color: var(--on-line); color: var(--on); }
+.btn--danger { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
+.btn--ghost { background: transparent; }
+.btn--ghost:hover { background: var(--btn-hover); }
+/* Reads as "add a row here" rather than as a second primary action. */
+.btn--add { background: transparent; border-style: dashed; color: var(--muted); font-weight: 600; }
+.btn--add:hover { background: transparent; color: var(--txt); border-color: var(--line-hover); }
+.btnrow { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+/* ------------------------------------------------------------------ layout */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(380px, 0.85fr) minmax(520px, 1.15fr);
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+@media (max-width: 1240px) {
+  /* minmax(0, 1fr) rather than 1fr: a bare `1fr` track has an automatic
+     minimum of min-content, so the wide markets table would push the whole
+     page sideways instead of scrolling inside its own box. */
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  /* Stacked, a sticky preview would sit on top of the form it previews. */
+  .preview { position: static; }
+}
+
+/* ----------------------------------------------------------------- preview */
+.preview {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  position: sticky;
+  top: 68px;
+}
+.preview__bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+.mini, .mini-select {
+  background: var(--bg-3);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-decoration: none;
+}
+.mini-select { cursor: pointer; }
+.preview__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background:
+    linear-gradient(45deg, var(--checker-a) 25%, transparent 25%) 0 0/24px 24px,
+    linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%) 0 0/24px 24px,
+    linear-gradient(45deg, transparent 75%, var(--checker-a) 75%) 0 0/24px 24px,
+    linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%) 0 0/24px 24px,
+    var(--bg-3);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.preview__stage.guides::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--guide-a) 1px, transparent 1px) 0 0/100% 10%,
+    linear-gradient(90deg, var(--guide-a) 1px, transparent 1px) 0 0/10% 100%,
+    linear-gradient(var(--guide-b) 1px, transparent 1px) 0 50%/100% 100%,
+    linear-gradient(90deg, var(--guide-b) 1px, transparent 1px) 50% 0/100% 100%;
+  pointer-events: none;
+}
+#preview { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+.hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 9px 0 0; }
+.hint code, .panel-body code, .group__note code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 11.5px; }
+
+/* ------------------------------------------------------------------ editor
+   No `overflow: hidden` here: it would make the tab strip's sticky
+   positioning resolve against a box that never scrolls, so the tabs would
+   silently never stick. The tab strip carries the top corner radius instead. */
+.editor { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; }
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-tabs);
+  border-radius: 13px 13px 0 0;
+  flex-wrap: wrap;
+  /* The panel is ~1900px tall, so the sections must stay reachable while
+     scrolling a long list. admin.js measures the real topbar and overwrites
+     this; the value here is only what applies before that runs. */
+  position: sticky;
+  top: var(--topbar-h, 55px);
+  z-index: 6;
+}
+.tab {
+  background: transparent; border: 1px solid transparent; border-bottom: 0;
+  color: var(--muted); margin-bottom: -1px;
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  padding: 10px 12px; border-radius: 8px 8px 0 0; cursor: pointer;
+  transition: color .16s, background .16s;
+}
+.tab:hover { color: var(--txt); background: rgba(127, 127, 127, 0.09); }
+.tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--focus); }
+.tab.is-active {
+  color: var(--txt);
+  background: var(--bg-2);
+  border-color: var(--line);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.panel-body { display: none; padding: 16px; }
+.panel-body.is-active { display: block; }
+
+/* ------------------------------------------------------------------ groups
+   Grouping is done with a rule and spacing, not with a card per section — a
+   dozen identical rounded boxes is exactly the templated look this panel is
+   trying not to have. The rule encodes a real boundary: it separates settings
+   that belong to different parts of the board. */
+.group { margin: 0 0 20px; }
+.group:last-child { margin-bottom: 2px; }
+.group__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 7px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.group__title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--txt);
+}
+.group__note { margin: 0; font-size: 12px; color: var(--muted); }
+.group__meta { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.group__foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+
+/* ------------------------------------------------------------------ fields */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.field > label { font-size: 12px; color: var(--muted); }
+.field--wide { margin-top: 10px; }
+/* Bottom-aligning the columns puts every input on one line even when one of
+   the two labels wraps — the ragged rows came from top alignment. */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: end; }
+.row2 > *, .row3 > * { min-width: 0; }
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+  width: 100%;
+  background: var(--bg-4);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 34px;
+  font: 13px/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  transition: border-color .16s, box-shadow .16s, background .16s;
+}
+/* :hover is wrapped in :where() so it contributes no specificity — otherwise
+   `input[type="text"]:hover` outranks `input:focus` and the focus border never
+   appears while the pointer happens to rest on the field. */
+:where(input[type="text"], input[type="number"], input[type="date"], select, textarea):hover { border-color: var(--line-hover); }
+textarea { height: auto; padding: 8px 10px; line-height: 1.55; }
+textarea { font-family: ui-monospace, SFMono-Regular, Menlo, 'Cascadia Mono', Consolas, 'Courier New', monospace; font-size: 12px; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--focus); }
+input[type="color"] { width: 100%; height: 34px; padding: 2px; background: var(--bg-4); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+input[type="color"]:hover { border-color: var(--line-hover); }
+input[type="checkbox"] { accent-color: var(--accent-2); width: 15px; height: 15px; margin: 0; flex: none; }
+
+/* Checkboxes get the same 34px box as the inputs beside them, so a row of
+   settings stops looking like it was assembled from three different kits. */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-4);
+  font-size: 12.5px;
+  color: var(--txt);
+  cursor: pointer;
+  transition: border-color .16s, background .16s, box-shadow .16s;
+}
+.check:hover { border-color: var(--line-hover); }
+.check:has(input:checked) { border-color: var(--accent-2); background: var(--accent-soft); }
+.check:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--focus); }
+.check > * { font-size: 12.5px; color: var(--txt); }
+/* In a form grid a stretched toggle looks like an empty text field. Sized to
+   its label it reads as the on/off control that it is. */
+.row2 > .check, .row3 > .check { justify-self: start; }
+.inlinefield { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.inlinefield select { width: auto; min-width: 148px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+
+/* ------------------------------------------------------ markets (the board)
+   The list the operator types by hand: one row per market, every field inline.
+   The grid is the mirror of the overlay's row, so the reading order on screen
+   is the reading order of the board. */
+.markets {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-4);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  /* grip · topic · asset · prob · volume · change · category · ends · live · fetch · del
+     VOLUME is 84px because a 7-digit dollar volume was being clipped by 8px in
+     a 70px column — the last digit was invisible in the panel that writes the
+     board, which is the one number an operator most needs to be able to read. */
+  --mk-cols: 16px minmax(120px, 1fr) 80px 50px 84px 50px 84px 100px 30px 26px 26px;
+}
+
+/* ------------------------------------------------------------- column labels
+   Inputs alone carry only placeholders, which vanish as soon as a field has a
+   value — so the columns were unlabelled exactly when the row was full. This
+   strip and the rows share one grid template and one horizontal padding, so
+   the labels line up with their columns by construction. */
+.markethead {
+  display: grid;
+  grid-template-columns: var(--mk-cols);
+  gap: 6px;
+  align-items: center;
+  background: var(--thead-bg);
+  padding: 8px 10px;
+  user-select: none;
+}
+.markethead .mh {
+  font-size: 10px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+/* The three narrow columns centre their glyph labels. */
+.markethead .mh:nth-child(9),
+.markethead .mh:nth-child(10),
+.markethead .mh:nth-child(11) { text-align: center; }
+.markethead .mh--icon { display: flex; align-items: center; justify-content: center; }
+
+/* Rows are separated by a hairline inside one surface rather than each being
+   its own bordered, rounded box: eight rounded rectangles read as eight
+   unrelated widgets, a ruled table reads as one list. */
+.market {
+  display: grid;
+  /* The row and its header both read this, so a column can never drift out of
+     alignment with its label. Order matches renderMarkets():
+     grip · topic · asset · prob · volume · change · category · ends · live · fetch · del */
+  grid-template-columns: var(--mk-cols);
+  gap: 6px;
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  padding: 5px 10px;
+  transition: background .12s, box-shadow .12s;
+}
+.market:hover { background: var(--row-hover); }
+/* Which of eleven columns has the caret is otherwise guesswork. */
+.market:focus-within { background: var(--row-hover); box-shadow: inset 2px 0 0 var(--accent-2); }
+.market.is-off { opacity: .45; }
+.market.is-off:hover { opacity: .7; }
+.market.dragging { background: var(--row-hover); box-shadow: inset 0 0 0 2px var(--accent-2); }
+.market .grip { cursor: grab; color: var(--muted); text-align: center; font-size: 13px; user-select: none; }
+.market .grip:hover { color: var(--txt); }
+.market input[type="text"],
+.market input[type="number"],
+.market input[type="date"] {
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+  height: 26px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.market input[type="text"].mk-topic { font-size: 13px; font-weight: 600; font-variant-numeric: normal; }
+.market input:focus { background: var(--bg-3); border-radius: 6px; box-shadow: inset 0 0 0 1px var(--accent-2); }
+.market input.mk-num { text-align: right; }
+.market input.mk-date { font-size: 11.5px; color: var(--muted); }
+.market input[type="checkbox"] { cursor: pointer; }
+.market .ic {
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--bg-3); color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color .16s, border-color .16s, background .16s, box-shadow .16s;
+}
+.market .ic:hover { color: var(--txt); border-color: var(--line-hover); background: var(--btn-hover); }
+.market .ic:focus-visible { outline: 0; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--focus); }
+.market .ic.del:hover { color: var(--danger); border-color: var(--danger-line); }
+.market .ic.fetch[disabled] { opacity: .35; cursor: default; }
+.market .ic.fetch[disabled]:hover { color: var(--muted); border-color: var(--line); background: var(--bg-3); }
+.market .ic svg { display: block; }
+
+/* the paste helper: the fast path for loading a whole board before a show */
+.paste { display: flex; flex-direction: column; gap: 7px; }
+.paste textarea { min-height: 78px; }
+.paste__foot { display: flex; align-items: center; gap: 8px; }
+
+/* ----------------------------------------------------------- stage colours */
+.swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+/* A bare colour input shows no value at all, so "which blue is this?" was
+   unanswerable without opening the OS picker. */
+.swatch__line { display: flex; align-items: center; gap: 8px; }
+.swatch__line input[type="color"] { flex: 1 1 auto; min-width: 0; }
+.hexval {
+  flex: none;
+  min-width: 60px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, 'Consolas', monospace;
+  font-size: 11px;
+  letter-spacing: .02em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------- presets */
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.preset {
+  display: flex; flex-direction: column; align-items: stretch; gap: 9px;
+  background: var(--bg-3); border: 1px solid var(--line); color: var(--txt);
+  border-radius: 10px; padding: 10px; cursor: pointer; text-align: left;
+  transition: border-color .16s, background .16s, box-shadow .16s;
+}
+.preset:hover { border-color: var(--line-hover); background: var(--btn-hover); }
+.preset:focus-visible { outline: 0; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--focus); }
+.preset__name { font-size: 12.5px; font-weight: 600; }
+.swatch { width: 100%; height: 22px; border-radius: 6px; border: 1px solid var(--line-soft); }
+
+/* a monospace surface, so a wall of JSON reads as code and not as prose */
+#rawJson { background: var(--code-surface); font-size: 11.5px; min-height: 240px; }
+
+#status.ok { color: var(--on); }
+#status.err { color: var(--danger); }
+#status.warn { color: var(--warn); }
+
+/* ------------------------------------------------------- fetch / review panel
+   Fetched values are shown before they touch the board. The panel autosaves on
+   every edit, so writing a fetch straight into the config would push it to the
+   live OBS source immediately — this step is what keeps a bad lookup off air. */
+.fetchpanel {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 10px;
+  background: var(--bg-3);
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+.fetchpanel__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.fetchpanel__rows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.fetchrow {
+  display: grid;
+  grid-template-columns: 16px 96px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fetchrow:last-child { border-bottom: 0; }
+.fetchrow .fl { color: var(--muted); }
+.fetchrow .fv { font-variant-numeric: tabular-nums; }
+.fetchrow .fw { font-variant-numeric: tabular-nums; color: var(--on); font-weight: 600; }
+.fetchrow .fo { font-variant-numeric: tabular-nums; color: var(--muted); text-decoration: line-through; }
+
+/* ------------------------------------------------------------- narrow view
+   The markets table needs ~640px to stay readable. Below that it scrolls
+   sideways rather than crushing eleven columns into each other. */
+.markets { scrollbar-width: thin; }
+.markets::-webkit-scrollbar { height: 9px; }
+.markets::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+.markets::-webkit-scrollbar-thumb:hover { background: var(--line-hover); }
+
+/* ---------------------------------------------------- polymarket headlines
+   One block per on-air category: its tag binding, how many headlines it renders
+   and the fetched list to choose from. The blocks are the operator's only view
+   of what was actually pulled, so the fetched number, probability and 24h volume
+   are all printed next to the checkbox that puts a headline on air. */
+.polyactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0 2px;
+}
+.polytick { font-size: 12px; font-variant-numeric: tabular-nums; }
+.polytick.err, #polyBoardStatus.err, .polycat__status.err { color: var(--danger); }
+
+/* The source select changes what the whole board renders, so its block is
+   lifted off the page the same way the fetch-review panel is. */
+.group--source {
+  border-left: 3px solid var(--accent-2);
+  padding-left: 10px;
+}
+
+.polycat {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-3);
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+.polycat__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.polycat__name { font-size: 13px; color: var(--txt); }
+.polycat__status { margin-left: auto; font-size: 12px; color: var(--muted); text-align: right; }
+
+.polyrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.polyrow .polylbl { font-size: 12px; color: var(--muted); min-width: 48px; }
+.poly-tag { flex: 1 1 auto; min-width: 0; }
+.poly-tagid { flex: 0 1 120px; }
+.poly-slug { flex: 1 1 140px; min-width: 0; }
+.poly-count { flex: 0 0 96px; }
+.polycat .hint { margin: 0 0 8px; }
+
+.polyitems { border-top: 1px solid var(--line-soft); padding-top: 6px; }
+.polyitem {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.polyitem:hover { background: var(--row-hover); }
+.polyitem__title { color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.polyitem__meta { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.polyitem input[type="checkbox"] { cursor: pointer; }
+
+@media (max-width: 900px) {
+  .markets { overflow-x: auto; }
+  .markethead, .market { min-width: 750px; }
+  .tabs { position: static; }
+  .swatches, .presets { grid-template-columns: 1fr; }
+  .row3 { grid-template-columns: 1fr; }
+  .panel-body { padding: 14px; }
+}
+@media (max-width: 620px) {
+  .row2 { grid-template-columns: 1fr; }
+  .layout { padding: 12px; }
+  .group__head { flex-wrap: wrap; }
+  .group__meta { margin-left: 0; width: 100%; }
+  .polycat__status { margin-left: 0; width: 100%; text-align: left; }
+  .polyitem { grid-template-columns: 16px 1fr; }
+  .polyitem__meta { grid-column: 2; }
+}

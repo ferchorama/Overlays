@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>measure — digital assets market</title></head>
+<body>
+<!--
+  Rendered-type measurement harness for the market board.
+  Loads the real overlay in a same-origin iframe and reports the COMPUTED font
+  family and size of every text element, so a token that fails to resolve — and
+  therefore silently drops a text run to the browser's default serif — shows up
+  as a measurement instead of a vibe. Chrome's --dump-dom cannot read computed
+  styles, so this page folds the results into its own DOM for it to capture.
+
+  Usage:
+    chrome --headless=new --virtual-time-budget=12000 --dump-dom \
+      "http://localhost:8790/market/tests/measure.html"
+-->
+<pre id="out">measuring…</pre>
+<iframe id="f" src="/market/index.html?nosync=1" style="width:1920px;height:1080px;border:0"></iframe>
+<script>
+/* Forward any overlay query params to the iframe so the real boot path is what
+   gets measured. `nosync=1` is the default here: the harness wants a settled
+   board, not a poll. */
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var extra = qs.toString();
+  document.getElementById('f').src = '/market/index.html?nosync=1' + (extra ? '&' + extra : '');
+})();
+
+function ready(cb) {
+  var f = document.getElementById('f');
+  f.addEventListener('load', function () { setTimeout(cb, 3000); });
+}
+
+ready(function () {
+  var doc = document.getElementById('f').contentDocument;
+  var win = document.getElementById('f').contentWindow;
+  var lines = [];
+
+  /* The default serif is what a broken font token looks like, so name it. */
+  var GENERIC = /^(serif|times new roman|times|georgia|-webkit-serif|ui-serif)$/i;
+
+  function px(v) { return Math.round(parseFloat(v) * 10) / 10; }
+
+  function report(label, node) {
+    if (!node) { lines.push(label.padEnd(14) + ' (not found)'); return; }
+    var cs = win.getComputedStyle(node);
+    var family = cs.fontFamily || '';
+    var generic = GENERIC.test(family.replace(/["']/g, '').trim());
+    lines.push([
+      label.padEnd(14),
+      'size=' + String(px(cs.fontSize)).padStart(6),
+      generic ? 'GENERIC-SERIF!' : 'ok            ',
+      'family=' + family.split(',')[0].trim().slice(0, 22).padEnd(22),
+      JSON.stringify((node.textContent || '').trim().slice(0, 30))
+    ].join(' '));
+  }
+
+  report('title', doc.querySelector('.board-title'));
+  report('tab', doc.querySelector('.tab'));
+  report('column', doc.querySelector('.col'));
+  report('rank', doc.querySelector('.cell-rank'));
+  report('asset-name', doc.querySelector('.asset-name'));
+  report('ticker', doc.querySelector('.asset-ticker'));
+  report('price', doc.querySelector('.cell-price'));
+  report('change', doc.querySelector('.cell-change'));
+  report('board-note', doc.querySelector('.board-note'));
+
+  var panel = doc.querySelector('.panel');
+  lines.push('panel --cols-font=' + (panel ? panel.style.getPropertyValue('--cols-font').split(',')[0] : '?'));
+  lines.push('panel --board-font=' + (panel ? panel.style.getPropertyValue('--board-font').split(',')[0] : '?'));
+  lines.push('rows=' + doc.querySelectorAll('.row').length +
+             ' categories=' + doc.querySelectorAll('.tab').length +
+             ' stage=' + (doc.getElementById('stage') || {}).dataset?.state);
+
+  /* ------------------------------------------------------------- geometry
+     The blocks in flow order, the gap between each pair, and whether anything
+     sits on a hairline. A rule that lands on the next block's own top edge reads
+     as a line cutting through it — which is how the tab strip broke (the title's
+     rule at margin-top 0, flush against 44px pills rounded at 999px). */
+  function box(sel) {
+    var n = doc.querySelector(sel);
+    if (!n) return null;
+    var b = n.getBoundingClientRect();
+    return { top: Math.round(b.top * 10) / 10, bottom: Math.round(b.bottom * 10) / 10 };
+  }
+  function rulePx(sel) {
+    var n = doc.querySelector(sel);
+    if (!n) return 0;
+    var cs = win.getComputedStyle(n);
+    return cs.borderBottomStyle === 'none' ? 0 : parseFloat(cs.borderBottomWidth) || 0;
+  }
+
+  var FLOW = [
+    ['board-title', '.board-title', 0],
+    /* the pills are 44px tall and rounded at 999px, so this one must never sit
+       on the hairline above it — that is the bug this line exists to catch */
+    ['tabs', '.tabs', 8],
+    ['cols', '.cols', 0],
+    /* a table header's rule sits ON the first row by design; 0 is correct here */
+    ['rows', '.rows', 0],
+    ['board-note', '.board-note', 0]
+  ];
+  lines.push('');
+  lines.push('--- flow (minGap is the design expectation, not a suggestion) ---');
+  var prev = null;
+  FLOW.forEach(function (pair) {
+    var b = box(pair[1]);
+    if (!b) { lines.push(pair[0].padEnd(13) + '(missing)'); return; }
+    var gap = prev ? Math.round((b.top - prev.box.bottom) * 10) / 10 : null;
+    var rule = prev ? rulePx(prev.sel) : 0;
+    var flag = '';
+    if (gap != null && rule > 0) {
+      if (gap < 0) flag = 'OVERLAPS-' + prev.name + '-RULE';
+      else if (gap < pair[2]) flag = 'TOO-TIGHT (needs >= ' + pair[2] + 'px)';
+      else flag = 'ok (needs >= ' + pair[2] + 'px)';
+    }
+    lines.push(pair[0].padEnd(13) + 'top=' + String(b.top).padStart(8) + ' h=' +
+      String(Math.round((b.bottom - b.top) * 10) / 10).padStart(7) +
+      (gap != null ? '  gap=' + String(gap).padStart(6) + '  ' + flag : ''));
+    prev = { name: pair[0], sel: pair[1], box: b };
+  });
+
+  /* --------------------------------------------------- the active tab marker */
+  var tabs = [].slice.call(doc.querySelectorAll('.tab'));
+  var active = tabs.filter(function (t) { return t.classList.contains('is-active'); });
+  var pill = doc.querySelector('.tab-pill');
+  var total = 0;
+  tabs.forEach(function (t) { total += t.getBoundingClientRect().width; });
+  lines.push('');
+  lines.push('--- tab strip ---');
+  lines.push('tabs=' + tabs.length + '  active=' + active.length +
+    (active.length ? ' (' + JSON.stringify(active[0].textContent) + ', aria-pressed=' +
+      active[0].getAttribute('aria-pressed') + ')' : '  NO ACTIVE TAB'));
+  lines.push('active count must be exactly 1  -> ' + (active.length === 1 ? 'ok' : 'FAIL'));
+  lines.push('pill width=' + (pill ? pill.style.width || '(unset)' : '(no pill)') +
+    '  strip width=' + Math.round(total * 10) / 10 + '  panel inner=' + (panel ? panel.clientWidth : '?') +
+    ((panel && total > panel.clientWidth) ? '  OVERFLOWS' : '  fits'));
+
+  /* ----------------------------------------------------- panel placement
+     The panel is sized by its rows and centred in the stage, so --panel-y has to
+     agree with the panel's OWN rendered height. If layout() runs before the rows
+     exist it centres an empty panel and the board sits low with its last row off
+     the bottom — which is exactly what happened: correct on a first load (the
+     ResizeObserver's initial callback accidentally fixed it), then wrong from the
+     first config poll onwards. */
+  var cfgm = (win.CM && win.CM.getConfig) ? win.CM.getConfig() : null;
+  if (cfgm && panel) {
+    var stageH = cfgm.stage.height;
+    var alignY = cfgm.stage.alignY || 'middle';
+    var panelH = panel.offsetHeight;
+    var expected = alignY === 'middle' ? Math.round((stageH - panelH) / 2)
+      : alignY === 'bottom' ? stageH - panelH : 0;
+    var actual = Math.round(parseFloat(panel.style.getPropertyValue('--panel-y')) || 0);
+    var drift = Math.abs(actual - expected);
+    var bottom = panel.offsetTop + panelH;
+    lines.push('');
+    lines.push('--- panel placement ---');
+    lines.push('panel height=' + panelH + '  stage height=' + stageH + '  alignY=' + alignY);
+    lines.push('--panel-y=' + actual + '  expected=' + expected + '  drift=' + drift + 'px  ' +
+      (drift <= 2 ? 'ok' : 'MISPLACED — measured before the rows existed'));
+    lines.push('panel bottom = ' + bottom + ' / ' + stageH + '  ' +
+      (bottom > stageH + 1 ? 'OVERFLOWS THE STAGE' : 'inside the stage'));
+  }
+
+  document.getElementById('out').textContent = lines.join('\n');
+});
+</script>
+</body>
+</html>

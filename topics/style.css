@@ -1,0 +1,219 @@
+/* ============================================================================
+   Talking Points Panel — overlay stylesheet
+   All colours / fonts / sizes arrive as CSS custom properties from script.js
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Stage is a fixed 1920x1080 (configurable) design surface, scaled to fit
+   whatever size the browser source is. */
+#stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--stage-w, 1920px);
+  height: var(--stage-h, 1080px);
+  transform-origin: top left;
+  transform: translate3d(0, 0, 0) scale(var(--stage-scale, 1));
+  background: var(--stage-bg, transparent);
+  contain: layout style;
+}
+
+/* ---------------------------------------------------------------- panel -- */
+/* OBS note: backdrop-filter only has the page itself to blur, so the glass is
+   built from its own translucent tint + sheen. Lower the tint alpha to let more
+   of the video through. */
+.panel {
+  position: absolute;
+  left: var(--panel-x, 38px);
+  top: var(--panel-y, 178px);
+  width: var(--panel-w, 538px);
+  opacity: var(--panel-opacity, 1);
+  border-radius: var(--panel-radius, 34px);
+  background: var(--panel-bg, rgba(216, 242, 255, .88));
+  -webkit-backdrop-filter: blur(var(--panel-blur, 36px)) saturate(var(--panel-sat, 175%));
+  backdrop-filter: blur(var(--panel-blur, 36px)) saturate(var(--panel-sat, 175%));
+  border: var(--panel-border-w, 1px) solid var(--panel-border-c, rgba(212, 240, 255, .85));
+  box-shadow: var(--panel-shadow, none), var(--panel-glow, inset 0 1px 0 rgba(255, 255, 255, .92));
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+
+/* diagonal specular sheen — the same glass highlight the weather slab carries */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--panel-sheen, none);
+  pointer-events: none;
+  z-index: 40;
+  border-radius: inherit;
+}
+
+/* thin accent edge down the left side */
+.panel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 2px;
+  background: var(--accent-c, #0a84ff);
+  opacity: .55;
+  filter: blur(.4px);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 45;
+}
+
+.panel__outline {
+  position: absolute;
+  inset: 0;
+  border: var(--panel-border-w, 1px) solid var(--panel-border-c, rgba(212, 240, 255, .85));
+  border-radius: var(--panel-radius, 0px);
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* ----------------------------------------------------------------- bands -- */
+.band {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  z-index: 2;
+}
+
+.band__gloss {
+  position: absolute;
+  inset: 0;
+  background: var(--gloss-gradient);
+  pointer-events: none;
+}
+
+.band--header {
+  height: var(--header-h, 65px);
+  background: var(--header-bg, rgba(74, 190, 255, .96));
+  align-items: flex-end;
+}
+
+.band--subtitle {
+  height: var(--subtitle-h, 111px);
+  background: var(--subtitle-bg, rgba(158, 224, 255, .94));
+}
+
+.band__text {
+  position: relative;
+  width: 100%;
+  z-index: 3;
+  font-family: var(--header-font, 'Montserrat', sans-serif);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+.band--header .band__text {
+  font-weight: var(--header-weight, 700);
+  font-size: var(--header-size, 40px);
+  color: var(--header-color, #06294f);
+  letter-spacing: var(--header-tracking, 0em);
+  line-height: var(--header-lh, 1.05);
+  text-align: var(--header-align, center);
+  text-shadow: var(--header-shadow, none);
+  padding: var(--header-pad-y, 0) var(--header-pad-x, 12px);
+}
+
+.band--subtitle {
+  align-items: center;
+}
+.band--subtitle .band__text {
+  font-family: var(--subtitle-font, 'Montserrat', sans-serif);
+  font-weight: var(--subtitle-weight, 600);
+  font-size: var(--subtitle-size, 40px);
+  color: var(--subtitle-color, #0a3a72);
+  letter-spacing: var(--subtitle-tracking, 0em);
+  line-height: var(--subtitle-lh, 1.1);
+  text-align: var(--subtitle-align, center);
+  text-shadow: var(--subtitle-shadow, none);
+  padding: var(--subtitle-pad-y, 0) var(--subtitle-pad-x, 12px);
+}
+
+/* valign helpers */
+.valign-top    { align-items: flex-start !important; }
+.valign-middle { align-items: center !important; }
+.valign-bottom { align-items: flex-end !important; }
+
+/* ------------------------------------------------------------------ rows -- */
+.rows {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rows-gap, 0px);
+}
+
+.row {
+  position: relative;
+  height: var(--row-h, 105px);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--row-bg);
+  box-shadow: var(--row-shadow, none);
+  will-change: transform, opacity;
+}
+
+.row__gloss {
+  position: absolute;
+  inset: 0;
+  background: var(--gloss-gradient);
+  pointer-events: none;
+}
+
+.row__text {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding: 0 var(--row-pad-x, 14px);
+  font-family: var(--row-font, 'Proxima Nova', sans-serif);
+  font-weight: var(--row-weight, 600);
+  font-size: var(--row-size, 40px);
+  color: var(--row-color, #0b2a5b);
+  letter-spacing: var(--row-tracking, 0em);
+  line-height: var(--row-lh, 1.12);
+  text-align: var(--row-align, center);
+  text-shadow: var(--row-text-shadow, none);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+.row__sep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--row-sep-h, 1px);
+  background: var(--row-sep-c, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* --------------------------------------------------------------- utility -- */
+.hidden { display: none !important; }
+
+/* debug bounding boxes (admin toggle) */
+.debug .panel,
+.debug .band,
+.debug .row { outline: 1px dashed rgba(0, 200, 255, 0.8); }

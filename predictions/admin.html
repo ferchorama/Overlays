@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prediction Markets — Control</title>
+  <link rel="stylesheet" href="admin.css?v=1.3.0" />
+<script>
+  /* The hub is the single source of truth for the theme: same origin, same
+     localStorage key, so switching it there switches every panel. Resolved
+     before the body paints, otherwise a dark machine flashes light first. */
+  (function () {
+    var t = 'light';
+    try {
+      var s = localStorage.getItem('obs-overlays-theme');
+      if (s === 'dark' || s === 'light') t = s;
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+    } catch (e) { /* private mode */ }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <strong>Prediction Markets</strong>
+      <span class="muted">control</span>
+    </div>
+    <div class="topbar__actions">
+        <button type="button" id="btnTheme" class="btn" title="Switch theme" aria-label="Switch theme">Theme</button>
+        <span class="sep"></span>
+      <button id="btnIn" class="btn btn--on">&#9654; Play entrance</button>
+      <button id="btnOut" class="btn">Hide</button>
+      <span class="sep"></span>
+      <button id="btnReset" class="btn btn--danger">Reset to defaults</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ------------------------------------------------------------ preview -->
+    <section class="preview">
+      <div class="preview__bar">
+        <span class="muted" id="status">ready</span>
+        <span class="grow"></span>
+        <label class="mini"><input type="checkbox" id="optGrid" /> guides</label>
+        <select id="selZoom" class="mini-select">
+          <option value="fit">Fit</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+        </select>
+        <a id="linkOut" class="mini" href="index.html?v=1.3.0" target="_blank">open overlay &#8599;</a>
+      </div>
+      <div class="preview__stage" id="previewStage">
+        <iframe id="preview" src="index.html?preview=1&v=1.3.0" title="preview"></iframe>
+      </div>
+      <p class="hint">
+        In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
+        (1920&times;1080, transparent). Open this page from
+        <code>http://localhost:8790/predictions/admin.html</code> — served by the shared
+        <code>Overlays/server.js</code> — so every change reaches OBS live.
+      </p>
+    </section>
+
+    <!-- ------------------------------------------------------------- editor -->
+    <section class="editor">
+      <nav class="tabs" role="tablist" aria-label="Settings sections">
+        <button class="tab is-active" data-tab="content" role="tab" aria-selected="true">Content</button>
+        <button class="tab" data-tab="poly" role="tab" aria-selected="false">Polymarket</button>
+        <button class="tab" data-tab="look" role="tab" aria-selected="false">Look</button>
+        <button class="tab" data-tab="layout" role="tab" aria-selected="false">Layout</button>
+        <button class="tab" data-tab="anim" role="tab" aria-selected="false">Animation</button>
+        <button class="tab" data-tab="presets" role="tab" aria-selected="false">Presets</button>
+      </nav>
+
+      <!-- CONTENT -->
+      <div class="panel-body is-active" data-panel="content">
+
+        <!-- The board itself. This is the object of the panel, so it is the one
+             block that gets a real surface; every other block is grouped by
+             spacing and a rule instead, which keeps the page from turning into
+             a stack of identical cards. -->
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Markets</h2>
+            <p class="group__note">type by hand &middot; drag to reorder</p>
+            <span class="group__meta" id="marketCount">0 markets</span>
+          </header>
+          <div class="markets">
+            <div class="markethead" aria-hidden="true">
+            <span class="mh" title="drag to reorder"></span>
+            <span class="mh" title="the market question">Topic</span>
+            <span class="mh" title="CoinGecko asset id — drives the price chart and Fetch">Asset</span>
+            <span class="mh" title="probability in percent">Prob %</span>
+            <span class="mh" title="volume in dollars">Volume</span>
+            <span class="mh" title="move in percentage points">Chg</span>
+            <span class="mh" title="free-text category">Category</span>
+            <span class="mh" title="closing date">Ends</span>
+            <span class="mh" title="render this market">Live</span>
+            <span class="mh mh--icon" title="fetch live numbers for this asset"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M13.4 8A5.4 5.4 0 1 1 11.8 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M13.5 2.1v3.3h-3.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="mh mh--icon" title="remove market">&#10005;</span>
+            </div>
+            <div id="marketList"></div>
+          </div>
+          <div id="fetchPanel" class="fetchpanel" hidden>
+            <div class="fetchpanel__head">
+              <strong id="fetchTitle">Fetched values</strong>
+              <span class="muted" id="fetchSource"></span>
+            </div>
+            <div class="fetchpanel__rows" id="fetchRows"></div>
+            <p class="hint" id="fetchNote"></p>
+            <div class="btnrow">
+              <button id="btnFetchApply" class="btn btn--primary">Apply to market</button>
+              <button id="btnFetchDiscard" class="btn">Discard</button>
+            </div>
+          </div>
+          <div class="group__foot">
+            <button id="btnAddMarket" class="btn btn--add">+ Add market</button>
+            <span class="grow"></span>
+            <label class="inlinefield">Sort
+              <select id="c_marketSort">
+                <option value="manual">manual</option>
+                <option value="volume">volume</option>
+                <option value="probability">probability</option>
+                <option value="change">change</option>
+                <option value="topic">topic</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Paste list</h2>
+            <p class="group__note">one market per line: <code>topic | probability | volume | change</code></p>
+          </header>
+          <div class="paste">
+            <textarea id="pasteIn" rows="4" spellcheck="false"
+              placeholder="Will Ethereum close above $6,000 this quarter? | 68 | $4,820,000 | +4.2&#10;Will the Fed cut rates in December? | 74% | 3.96m | -1.8"></textarea>
+            <div class="paste__foot">
+              <button id="btnPasteAppend" class="btn">Append <span id="pasteCountHint" class="muted">0</span> rows</button>
+              <button id="btnPasteClear" class="btn btn--ghost">Clear</button>
+              <span class="grow"></span>
+              <span class="muted tiny">prob 0&ndash;100 &middot; volume in dollars &middot; change in points</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Header</h2></header>
+          <div class="row2">
+            <div class="field"><label>Kicker</label><input id="c_kicker" type="text" /></div>
+            <div class="field"><label>Title</label><input id="c_title" type="text" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Right label</label><input id="c_right" type="text" /></div>
+            <div class="field"><label>Right sub-label</label><input id="c_rightSub" type="text" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Logo path</label><input id="c_logo" type="text" /></div>
+            <div class="field"><label>Logo height (px)</label><input id="c_logoHeight" type="number" min="0" /></div>
+          </div>
+          <div class="row2">
+            <label class="check"><input type="checkbox" id="c_logoOn" /> show logo</label>
+            <label class="check"><input type="checkbox" id="c_bannerOn" /> show header banner image</label>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Banner image path</label><input id="c_bannerSrc" type="text" /></div>
+            <div class="field"><label>Banner opacity (0&ndash;1)</label><input id="c_bannerOpacity" type="number" step="0.05" min="0" max="1" /></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Hero market</h2>
+            <p class="group__note">the big card on the left of the board</p>
+          </header>
+          <div class="row3">
+            <div class="field"><label>Mode</label>
+              <select id="c_heroMode">
+                <option value="volume">volume</option>
+                <option value="first">first</option>
+                <option value="index">index</option>
+              </select>
+            </div>
+            <div class="field"><label>Index</label><input id="c_heroIndex" type="number" min="0" /></div>
+            <div class="field"><label>Eyebrow label</label><input id="c_heroEyebrow" type="text" /></div>
+          </div>
+          <label class="check"><input type="checkbox" id="c_heroHistory" /> show probability history</label>
+          <div class="row2">
+            <div class="field"><label>History mode</label>
+              <select id="c_historyMode">
+                <option value="asset">asset (real 7-day price)</option>
+                <option value="auto">auto</option>
+                <option value="manual">manual</option>
+                <option value="flat">flat</option>
+              </select>
+            </div>
+            <div class="field"><label>History volatility</label><input id="c_historyVolatility" type="number" step="0.01" min="0" max="1" /></div>
+          </div>
+          <label class="check"><input type="checkbox" id="c_showWhenNotAsset" /> show the graphic even when the topic is not an asset</label>
+          <div class="row2">
+            <label class="check"><input type="checkbox" id="c_chartGlow" /> travelling glow on the line</label>
+            <div class="field"><label>Glow colour</label><input id="c_chartGlowColor" type="color" /></div>
+          </div>
+          <p class="hint">
+            In <b>asset</b> mode a market that names an asset in its <b>asset</b> column plots that
+            asset's real 7-day price series &mdash; the same cached feed the Digital Assets board uses.
+            Markets without an asset fall back to the synthetic walk, or show nothing.
+          </p>
+          <p class="hint">
+            The <b>travelling glow</b> is the Digital Assets board's animation: a short bright dash
+            sweeps the line, rests, and repeats. It is a live element on air — switch it off here if the
+            chart should stay still.
+          </p>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Asset data</h2></header>
+          <div class="row2">
+            <div class="field">
+              <label>Asset data feed <span class="muted">(7-day price history)</span></label>
+              <input id="c_dataProxy" type="text" placeholder="/market/api/market" />
+            </div>
+            <div class="field">
+              <label>Public endpoint <span class="muted">(used by Fetch if the hub is down)</span></label>
+              <input id="c_dataDirect" type="text" placeholder="https://api.coingecko.com/api/v3/coins/markets" />
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="c_dataEnabled" /> fetch asset history</label>
+          <div class="field field--wide">
+            <label>Asset keywords <span class="muted">(comma separated &mdash; a topic matching any of these gets the graphic)</span></label>
+            <textarea id="c_assetKeywords" rows="5" spellcheck="false"></textarea>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">List</h2></header>
+          <div class="row2">
+            <div class="field"><label>Max rows</label><input id="c_maxRows" type="number" min="1" max="20" /></div>
+            <label class="check"><input type="checkbox" id="c_showVolume" /> show volume</label>
+          </div>
+          <div class="row2">
+            <label class="check"><input type="checkbox" id="c_showChange" /> show change</label>
+            <label class="check"><input type="checkbox" id="c_showCategory" /> show category</label>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Footer</h2></header>
+          <div class="row2">
+            <div class="field"><label>Left text</label><input id="c_footLeft" type="text" /></div>
+            <div class="field"><label>Left source</label><input id="c_footSource" type="text" /></div>
+          </div>
+          <div class="field"><label>Right text</label><input id="c_footRight" type="text" /></div>
+        </section>
+      </div>
+
+      <!-- POLYMARKET -->
+      <div class="panel-body" data-panel="poly">
+
+        <!-- The switch that decides what goes on air. It gets a real surface of
+             its own because one mis-click here replaces the whole board. -->
+        <section class="group group--source">
+          <header class="group__head">
+            <h2 class="group__title">Source</h2>
+            <p class="group__note">what the board renders</p>
+          </header>
+          <div class="field field--wide">
+            <label>Headline source</label>
+            <select id="c_source">
+              <option value="manual">manual &mdash; the hand-typed board</option>
+              <option value="polymarket">polymarket &mdash; the fetched headlines</option>
+            </select>
+          </div>
+          <p class="hint">
+            <b>manual</b> is the board typed in the Content tab. <b>polymarket</b> is the fetched
+            headlines grouped by category &mdash; selecting it is what puts them on air.
+          </p>
+        </section>
+
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Headlines</h2>
+            <p class="group__note">fetched by hand &mdash; never on a timer</p>
+            <span class="group__meta" id="polyBoardStatus">never updated</span>
+          </header>
+          <div class="polyactions">
+            <button id="btnPolyUpdate" class="btn btn--primary">Update headlines</button>
+            <button id="btnPolyTags" class="btn">Load tags</button>
+            <span class="muted polytick" id="polyProgress"></span>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Entity</label>
+              <select id="c_polyEntity">
+                <option value="events">events &mdash; headline questions</option>
+                <option value="markets">markets &mdash; the sub-questions</option>
+              </select>
+            </div>
+            <div class="field"><label>Pull per category</label><input id="c_polyFetched" type="number" min="1" max="20" /></div>
+          </div>
+          <div class="field field--wide">
+            <label>Sort key override <span class="muted">(blank = auto)</span></label>
+            <input id="c_polySortKey" type="text" placeholder="auto" />
+          </div>
+          <p class="hint">
+            <b>events</b> fetches headline questions that carry their own markets; <b>markets</b>
+            fetches the sub-questions directly. The hub derives the upstream sort key from the
+            entity you pick &mdash; leave the override blank unless the upstream rejects it. There is
+            one Update per press and no refresh timer, so the board cannot change under you.
+          </p>
+          <div id="polyCategories"></div>
+        </section>
+      </div>
+
+      <!-- LOOK -->
+      <div class="panel-body" data-panel="look">
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Palette</h2>
+            <p class="group__note">the board's ink and status colours</p>
+          </header>
+          <div class="swatches">
+            <div class="field"><label>Stage</label><span class="swatch__line"><input id="c_palStage" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Ink</label><span class="swatch__line"><input id="c_palInk" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Ink soft</label><span class="swatch__line"><input id="c_palInkSoft" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Dim</label><span class="swatch__line"><input id="c_palDim" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Dimmer</label><span class="swatch__line"><input id="c_palDimmer" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Line</label><span class="swatch__line"><input id="c_palLine" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Line soft</label><span class="swatch__line"><input id="c_palLineSoft" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Up</label><span class="swatch__line"><input id="c_palUp" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Down</label><span class="swatch__line"><input id="c_palDown" type="color" /><code class="hexval"></code></span></div>
+            <div class="field"><label>Flat</label><span class="swatch__line"><input id="c_palFlat" type="color" /><code class="hexval"></code></span></div>
+          </div>
+          <div class="field"><label>Stage background</label><span class="swatch__line"><input id="c_stageBg" type="color" /><code class="hexval"></code></span></div>
+          <button id="btnPaletteReset" class="btn btn--ghost">Reset palette to Graphite</button>
+          <p class="hint">The overlay also accepts <code>palette(ink)</code>, <code>palette(up)</code>… in any colour field, so one swatch re-themes the whole board.</p>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Type scale</h2></header>
+          <div class="row2">
+            <div class="field"><label>Hero probability size (px)</label><input id="c_probSize" type="number" min="8" max="400" /></div>
+            <div class="field"><label>Hero topic size (px)</label><input id="c_topicSize" type="number" min="8" max="200" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>List row height (px)</label><input id="c_rowHeight" type="number" min="30" max="400" /></div>
+            <div class="field"><label>Footer size (px)</label><input id="c_footSize" type="number" min="8" max="80" /></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- LAYOUT -->
+      <div class="panel-body" data-panel="layout">
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Stage</h2></header>
+          <div class="row2">
+            <div class="field"><label>Width</label><input id="c_stageW" type="number" /></div>
+            <div class="field"><label>Height</label><input id="c_stageH" type="number" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Scale mode</label>
+              <select id="c_fit">
+                <option value="contain">contain</option>
+                <option value="cover">cover</option>
+                <option value="width">width</option>
+                <option value="none">none</option>
+              </select>
+            </div>
+            <div class="field"><label>Horizontal align</label>
+              <select id="c_alignX">
+                <option value="left">left</option>
+                <option value="center">center</option>
+                <option value="right">right</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Safe area &amp; columns</h2></header>
+          <div class="row2">
+            <div class="field"><label>Safe inset top/bottom (px)</label><input id="c_safe" type="number" min="0" /></div>
+            <div class="field"><label>Safe inset left/right (px)</label><input id="c_safeX" type="number" min="0" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Hero column width (px)</label><input id="c_heroWidth" type="number" min="0" /></div>
+            <div class="field"><label>Column gap (px)</label><input id="c_gap" type="number" min="0" /></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">List</h2></header>
+          <div class="row2">
+            <div class="field"><label>Max rows</label><input id="c_maxRows2" type="number" min="1" max="20" /></div>
+            <div class="field"><label>Row height (px)</label><input id="c_rowHeight2" type="number" min="30" max="400" /></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ANIMATION -->
+      <div class="panel-body" data-panel="anim">
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Playback</h2></header>
+          <div class="row2">
+            <label class="check"><input type="checkbox" id="c_autoPlay" /> auto-play on load</label>
+            <div class="field"><label>Auto-play delay (s)</label><input id="c_autoPlayDelay" type="number" step="0.05" min="0" /></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Entrance</h2></header>
+          <div class="row2">
+            <div class="field"><label>Fade duration (s)</label><input id="c_fadeDuration" type="number" step="0.05" min="0" /></div>
+            <div class="field"><label>Fade distance (px)</label><input id="c_fadeDistance" type="number" min="0" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Stagger (s)</label><input id="c_stagger" type="number" step="0.01" min="0" /></div>
+            <div class="field"><label>Row duration (s)</label><input id="c_rowDuration" type="number" step="0.05" min="0" /></div>
+          </div>
+          <div class="field"><label>Row ease</label><input id="c_rowEase" type="text" /></div>
+          <p class="hint">
+            Entrance only — there is no out animation (OBS hides the source, the panel never animates away).
+            Eases use GSAP syntax: <code>power2.out</code>, <code>back.out(1.4)</code>, <code>expo.out</code>…
+          </p>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Hero rotation</h2></header>
+          <div class="row2">
+            <label class="check"><input type="checkbox" id="c_rotateOn" /> rotate the hero</label>
+            <div class="field"><label>Rotation interval (ms)</label><input id="c_rotateMs" type="number" step="500" min="1000" /></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- PRESETS -->
+      <div class="panel-body" data-panel="presets">
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Palette presets</h2>
+            <p class="group__note">all dark editorial</p>
+          </header>
+          <div class="presets">
+            <button class="preset" data-preset="graphite"><span class="preset__name">Graphite</span> <span class="swatch" style="background:linear-gradient(90deg,#0f1013,#2a2d33,#7d828c,#4cc38a,#f4f4f6)"></span></button>
+            <button class="preset" data-preset="terminal"><span class="preset__name">Terminal</span> <span class="swatch" style="background:linear-gradient(90deg,#05070a,#1b2620,#5a7a68,#3ddc84,#f2f7f3)"></span></button>
+            <button class="preset" data-preset="blueprint"><span class="preset__name">Blueprint</span> <span class="swatch" style="background:linear-gradient(90deg,#0a1424,#1e2f4a,#7f97b8,#4aa3ff,#eef5ff)"></span></button>
+            <button class="preset" data-preset="broadcast"><span class="preset__name">Broadcast</span> <span class="swatch" style="background:linear-gradient(90deg,#000000,#2b2b2b,#a8a8a8,#34d17e,#ffffff)"></span></button>
+          </div>
+          <p class="hint">Each preset writes the <code>palette.*</code> swatches and the stage background — the markets you typed are never touched.</p>
+        </section>
+
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Raw JSON</h2>
+            <p class="group__note">advanced — edit + Apply</p>
+          </header>
+          <textarea id="rawJson" rows="16" spellcheck="false"></textarea>
+          <div class="btnrow">
+            <button id="btnApplyRaw" class="btn btn--primary">Apply JSON</button>
+            <button id="btnCopyRaw" class="btn">Copy</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Server / Stream Deck</h2></header>
+          <p class="hint">
+            With <code>node server.js</code> running you get an HTTP control API:<br />
+            <code>GET /api/command?action=in</code> &middot;
+            <code>?action=out</code> &middot;
+            <code>?action=replay</code> &middot;
+            <code>?action=next</code> &middot;
+            <code>?action=prev</code>
+          </p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js?v=1.3.0"></script>
+  <script src="config-merge.js?v=1.3.0"></script>
+  <script src="admin.js?v=1.3.0"></script>
+</body>
+</html>

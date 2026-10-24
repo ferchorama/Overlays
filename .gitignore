@@ -1,0 +1,38 @@
+# Operating system
+.DS_Store
+._*
+__MACOSX/
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+
+# Logs and scratch files from atomic config writes
+*.log
+npm-debug.log*
+*.tmp
+*.bak
+*.orig
+
+# Packaged Windows archives
+*-windows.zip
+
+# Live overlay command state. The server recreates these; a stale copy
+# animates a source the moment it is added.
+state.json
+
+# Concept test, not used by the Windows OBS setup.
+crypto-wallpaper-1080p.png

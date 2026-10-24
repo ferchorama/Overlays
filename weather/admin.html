@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vertical Weather — Control</title>
+  <link rel="stylesheet" href="admin.css?v=3.1.8" />
+<script>
+  /* The hub is the single source of truth for the theme: same origin, same
+     localStorage key, so switching it there switches every panel. Resolved
+     before the body paints, otherwise a dark machine flashes light first. */
+  (function () {
+    var t = 'light';
+    try {
+      var s = localStorage.getItem('obs-overlays-theme');
+      if (s === 'dark' || s === 'light') t = s;
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+    } catch (e) { /* private mode */ }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <strong>Vertical Weather</strong>
+      <span class="muted">control</span>
+    </div>
+    <div class="topbar__actions">
+        <button type="button" id="btnTheme" class="btn" title="Switch theme" aria-label="Switch theme">Theme</button>
+        <span class="sep"></span>
+      <button id="btnIn" class="btn btn--on">&#9654; Play entrance</button>
+      <button id="btnHide" class="btn">Hide</button>
+      <button id="btnRefresh" class="btn">&#8635; Refresh data</button>
+      <span class="sep"></span>
+      <button id="btnReset" class="btn btn--danger">Reset to defaults</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ------------------------------------------------------------ preview -->
+    <section class="preview">
+      <div class="preview__bar">
+        <span class="muted" id="status">ready</span>
+        <span class="grow" style="flex:1"></span>
+        <label class="mini"><input type="checkbox" id="optGrid" /> guides</label>
+        <select id="selZoom" class="mini-select">
+          <option value="fit">Fit</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+        </select>
+        <a id="linkOut" class="mini" href="index.html?v=3.1.8" target="_blank">open overlay &#8599;</a>
+      </div>
+      <div class="preview__stage" id="previewStage">
+        <iframe id="preview" src="index.html?preview=1&v=3.1.8" title="preview"></iframe>
+      </div>
+      <div class="msg" id="dataMsg"></div>
+      <p class="hint">
+        In OBS add a <strong>Browser source</strong> → <code id="obsUrl">index.html</code>
+        (1920&times;1080, transparent, “shutdown when not visible” off). Run
+        <code>node server.js</code> in the hub folder and open this page from
+        <code>http://localhost:8790/weather/admin.html</code> so edits reach OBS live.
+        The legacy per-app port is opt-in with <code>LEGACY=1</code>; the hub is the default.
+      </p>
+    </section>
+
+    <!-- ------------------------------------------------------------- editor -->
+    <section class="editor">
+      <nav class="tabs">
+        <button class="tab is-active" data-tab="cities">Cities</button>
+        <button class="tab" data-tab="data">Data</button>
+        <button class="tab" data-tab="look">Look</button>
+        <button class="tab" data-tab="fonts">Fonts</button>
+        <button class="tab" data-tab="layout">Layout</button>
+        <button class="tab" data-tab="anim">Animation</button>
+        <button class="tab" data-tab="presets">Advanced</button>
+      </nav>
+
+      <!-- CITIES -->
+      <div class="panel-body is-active" data-panel="cities">
+        <label class="section-label">Cities <span class="muted">(1 or 2 — type a name and pick the right one from the list, or pin exact coordinates)</span></label>
+        <div id="cityList" class="cities"></div>
+        <div class="row2">
+          <button id="btnAddCity" class="btn btn--ghost">+ Add city</button>
+          <button id="btnGeocode" class="btn btn--ghost">Test lookup</button>
+        </div>
+        <div class="msg" id="geoMsg"></div>
+
+        <label class="section-label">Units &amp; clock</label>
+        <div class="row2">
+          <div class="field"><label>Unit system</label>
+            <select id="c_units">
+              <option value="imperial">Imperial (°F, mph, in)</option>
+              <option value="metric">Metric (°C, km/h, mm)</option>
+            </select>
+          </div>
+          <div class="field"><label>Wind unit</label>
+            <select id="c_wind">
+              <option value="mph">mph</option>
+              <option value="kmh">km/h</option>
+              <option value="ms">m/s</option>
+              <option value="kn">knots</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_clock24" /> 24-hour clock</label>
+          <div class="field"><label>Locale</label><input id="c_locale" type="text" /></div>
+        </div>
+
+        <label class="section-label">Card contents</label>
+        <div class="row3">
+          <label class="check"><input type="checkbox" id="c_showCountry" /> country</label>
+          <label class="check"><input type="checkbox" id="c_showLocalTime" /> city time</label>
+          <label class="check"><input type="checkbox" id="c_showRange" /> high / low</label>
+        </div>
+        <div class="field"><label>Details strip fields</label>
+          <div class="row3">
+            <label class="check"><input type="checkbox" id="c_fWind" /> wind</label>
+            <label class="check"><input type="checkbox" id="c_fHum" /> humidity</label>
+            <label class="check"><input type="checkbox" id="c_fFeels" /> feels like</label>
+          </div>
+          <div class="row3">
+            <label class="check"><input type="checkbox" id="c_fPrecip" /> precip</label>
+            <label class="check"><input type="checkbox" id="c_fPressure" /> pressure</label>
+            <label class="check"><input type="checkbox" id="c_fClouds" /> clouds</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATA -->
+      <div class="panel-body" data-panel="data">
+        <label class="section-label">Auto-update</label>
+        <div class="row2">
+          <div class="field"><label>Refresh every (minutes)</label><input id="c_refresh" type="number" min="1" max="180" /></div>
+          <div class="field"><label>Retry after failure (seconds)</label><input id="c_retry" type="number" min="10" max="600" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Request timeout (ms)</label><input id="c_timeout" type="number" min="1000" max="30000" step="500" /></div>
+          <div class="field"><label>Dim timestamp after (minutes)</label><input id="c_stale" type="number" min="0" max="240" /></div>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_useCache" /> fall back to last good data</label>
+          <label class="check"><input type="checkbox" id="c_showUpdated" /> show “updated” time</label>
+        </div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_showSource" /> show data source</label>
+          <div class="field"><label>Source label</label><input id="c_sourceLabel" type="text" /></div>
+        </div>
+        <p class="hint">
+          Data: <strong>Open-Meteo</strong> — free, no API key, no signup.
+          Geocoding uses <code>geocoding-api.open-meteo.com</code>; forecasts come from
+          <code>api.open-meteo.com/v1/forecast</code>. Values are cached in the browser so a
+          network hiccup never blanks the panel.
+        </p>
+        <hr />
+        <label class="section-label">Update animation</label>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_tweenValues" /> animate value changes</label>
+          <div class="field"><label>Tween duration (s)</label><input id="c_tweenDuration" type="number" step="0.05" min="0" max="4" /></div>
+        </div>
+      </div>
+
+      <!-- LOOK -->
+      <div class="panel-body" data-panel="look">
+        <label class="section-label">Theme</label>
+        <div class="field">
+          <label>Palette</label>
+          <select id="c_theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <p class="hint">Dark is a curated palette layered over the colours below, so those stay your light design. A single browser source can also force it by adding <b>?theme=dark</b> to its URL.</p>
+
+        <label class="section-label">Header</label>
+        <div class="row2">
+          <div class="field"><label>Text</label><input id="c_headerText" type="text" /></div>
+          <div class="field"><label>Colour</label><input id="c_headerColor" type="color" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Gradient top</label><input id="c_headerGradA" type="color" /></div>
+          <div class="field"><label>Gradient bottom</label><input id="c_headerGradB" type="color" /></div>
+        </div>
+
+        <label class="section-label">City strip</label>
+        <div class="row2">
+          <div class="field"><label>Gradient top</label><input id="c_cityGradA" type="color" /></div>
+          <div class="field"><label>Gradient bottom</label><input id="c_cityGradB" type="color" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>City colour</label><input id="c_cityColor" type="color" /></div>
+          <div class="field"><label>City size (px)</label><input id="c_citySize" type="number" min="8" max="80" /></div>
+          <div class="field"><label>Local time size (px)</label><input id="c_cityTimeSize" type="number" min="8" max="60" /></div>
+        </div>
+
+        <label class="section-label">Body</label>
+        <div class="stops" id="bodyStops"></div>
+        <div class="row2">
+          <div class="field"><label>Temperature colour</label><input id="c_tempColor" type="color" /></div>
+          <div class="field"><label>Temperature size (px)</label><input id="c_tempSize" type="number" min="16" max="200" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Condition colour</label><input id="c_condColor" type="color" /></div>
+          <div class="field"><label>Condition size (px)</label><input id="c_condSize" type="number" min="8" max="80" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>High/low colour</label><input id="c_rangeColor" type="color" /></div>
+          <div class="field"><label>High/low size (px)</label><input id="c_rangeSize" type="number" min="8" max="60" /></div>
+          <div class="field"><label>High/low format</label><input id="c_rangeFormat" type="text" /></div>
+        </div>
+
+        <label class="section-label">Glass stat row</label>
+        <div class="row2">
+          <div class="field"><label>Value colour</label><input id="c_statValueColor" type="color" /></div>
+          <div class="field"><label>Value size (px)</label><input id="c_statValueSize" type="number" min="8" max="80" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Label colour</label><input id="c_statLabelColor" type="color" /></div>
+          <div class="field"><label>Label size (px)</label><input id="c_statLabelSize" type="number" min="8" max="40" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Strip tint</label><input id="c_detailsBg" type="color" /></div>
+          <div class="field"><label>Strip height (px)</label><input id="c_detailsH" type="number" min="40" max="260" /></div>
+        </div>
+
+        <label class="section-label">Icon colours</label>
+        <div class="row3">
+          <div class="field"><label>Sun</label><input id="c_icSun" type="color" /></div>
+          <div class="field"><label>Moon</label><input id="c_icMoon" type="color" /></div>
+          <div class="field"><label>Cloud</label><input id="c_icCloud" type="color" /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Rain</label><input id="c_icRain" type="color" /></div>
+          <div class="field"><label>Snow</label><input id="c_icSnow" type="color" /></div>
+          <div class="field"><label>Bolt</label><input id="c_icBolt" type="color" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Cloud (dark)</label><input id="c_icCloudDark" type="color" /></div>
+          <div class="field"><label>Fog</label><input id="c_icFog" type="color" /></div>
+        </div>
+
+        <label class="section-label">Glass slab</label>
+        <div class="row2">
+          <div class="field"><label>Glass tint (rgba)</label><input id="c_panelBg" type="text" /></div>
+          <div class="field"><label>Accent colour</label><input id="c_accent" type="color" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Border colour</label><input id="c_borderColor" type="color" /></div>
+          <div class="field"><label>Backdrop blur (px)</label><input id="c_glassBlur" type="number" min="0" max="80" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Border width (px)</label><input id="c_borderWidth" type="number" min="0" max="40" /></div>
+          <div class="field"><label>Corner radius (px)</label><input id="c_radius" type="number" min="0" max="80" /></div>
+        </div>
+        <div class="field"><label>Drop shadow (CSS)</label><input id="c_panelShadow" type="text" /></div>
+        <div class="hint">Tip: the glass reads best with a tint alpha of 0.30–0.50 over video.</div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_headerGloss" /> header gloss</label>
+          <label class="check"><input type="checkbox" id="c_bodyGloss" /> body gloss overlay</label>
+        </div>
+      </div>
+
+      <!-- FONTS -->
+      <div class="panel-body" data-panel="fonts">
+        <label class="section-label">Google fonts <span class="muted">(one per line)</span></label>
+        <textarea id="c_googleFonts" rows="3"></textarea>
+
+        <label class="section-label">Header / city font</label>
+        <div class="row2">
+          <div class="field"><label>font-family</label><input id="c_headFont" type="text" /></div>
+          <div class="field"><label>Header weight</label><input id="c_headWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>City weight</label><input id="c_cityWeight" type="number" step="100" min="100" max="900" /></div>
+          <div class="field"><label>City letter-spacing (px)</label><input id="c_cityTracking" type="number" step="0.1" /></div>
+        </div>
+
+        <label class="section-label">Temperature font</label>
+        <div class="row2">
+          <div class="field"><label>font-family</label><input id="c_tempFont" type="text" /></div>
+          <div class="field"><label>weight</label><input id="c_tempWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="field"><label>Custom font CSS URL</label><input id="c_tempFontUrl" type="text" /></div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_tempUnit" /> show ° unit</label>
+          <div class="field"><label>Unit character</label><input id="c_tempUnitChar" type="text" /></div>
+        </div>
+
+        <label class="section-label">Condition / high-low / details font</label>
+        <div class="row3">
+          <div class="field"><label>Condition weight</label><input id="c_condWeight" type="number" step="100" /></div>
+          <div class="field"><label>Range weight</label><input id="c_rangeWeight" type="number" step="100" /></div>
+          <div class="field"><label>Details weight</label><input id="c_detailsWeight" type="number" step="100" /></div>
+        </div>
+        <div class="row3">
+          <label class="check"><input type="checkbox" id="c_condUpper" /> cond. caps</label>
+          <label class="check"><input type="checkbox" id="c_detailsUpper" /> details caps</label>
+          <label class="check"><input type="checkbox" id="c_headerUpper" /> header caps</label>
+        </div>
+
+        <label class="section-label">Footer</label>
+        <div class="row2">
+          <div class="field"><label>Colour</label><input id="c_footerColor" type="color" /></div>
+          <div class="field"><label>Size (px)</label><input id="c_footerSize" type="number" min="8" max="30" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Align</label>
+            <select id="c_footerAlign">
+              <option value="left">left</option>
+              <option value="center">center</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+          <label class="check"><input type="checkbox" id="c_footerVisible" /> show footer</label>
+        </div>
+      </div>
+
+      <!-- LAYOUT -->
+      <div class="panel-body" data-panel="layout">
+        <div class="row2">
+          <div class="field"><label>Stage width</label><input id="c_stageW" type="number" /></div>
+          <div class="field"><label>Stage height</label><input id="c_stageH" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Panel X (px)</label><input id="c_panelX" type="number" /></div>
+          <div class="field"><label>Panel Y (px)</label><input id="c_panelY" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Panel width (px)</label><input id="c_panelW" type="number" /></div>
+          <div class="field"><label>Vertical anchor</label>
+            <select id="c_vAnchor">
+              <option value="top">top</option>
+              <option value="middle">middle</option>
+              <option value="bottom">bottom</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Header height (px)</label><input id="c_headerH" type="number" /></div>
+          <div class="field"><label>Footer height (px)</label><input id="c_footerH" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>City strip height (px)</label><input id="c_cityH" type="number" /></div>
+          <div class="field"><label>Body height (px)</label><input id="c_bodyH" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Details height (px)</label><input id="c_detailsH" type="number" /></div>
+          <div class="field"><label>Gap between cards (px)</label><input id="c_cardGap" type="number" min="0" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Icon size (px)</label><input id="c_iconSize" type="number" min="40" max="400" /></div>
+          <div class="field"><label>Icon inset from left (px)</label><input id="c_iconX" type="number" min="0" max="200" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Readout align</label>
+            <select id="c_tempAlign">
+              <option value="right">right</option>
+              <option value="center">center</option>
+              <option value="left">left</option>
+            </select>
+          </div>
+          <div class="field"><label>Height mode</label>
+            <select id="c_heightMode">
+              <option value="fill">fill the 1080p height</option>
+              <option value="auto">auto (fit the content)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Scale mode</label>
+            <select id="c_fit">
+              <option value="contain">contain</option>
+              <option value="cover">cover</option>
+              <option value="width">width</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+          <div class="field"><label>Horizontal align</label>
+            <select id="c_alignX">
+              <option value="left">left</option>
+              <option value="center">center</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANIMATION -->
+      <div class="panel-body" data-panel="anim">
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_autoPlay" /> auto-play entrance</label>
+          <label class="check"><input type="checkbox" id="c_ambient" /> animate the icon (rain, sun…)</label>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Cards enter from</label>
+            <select id="c_cardFrom">
+              <option value="top">top (slide down)</option>
+              <option value="bottom">bottom (slide up)</option>
+              <option value="left">left</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+          <div class="field"><label>Travel distance (px)</label><input id="c_cardDistance" type="number" min="0" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Card duration (s)</label><input id="c_cardDuration" type="number" step="0.05" /></div>
+          <div class="field"><label>Card stagger (s)</label><input id="c_cardStagger" type="number" step="0.01" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Start delay (s)</label><input id="c_cardStart" type="number" step="0.05" /></div>
+          <div class="field"><label>Card ease</label><input id="c_cardEase" type="text" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Header duration (s)</label><input id="c_headerDuration" type="number" step="0.05" /></div>
+          <div class="field"><label>Header ease</label><input id="c_headerEase" type="text" /></div>
+        </div>
+        <label class="check"><input type="checkbox" id="c_fadeRows" /> fade cards in</label>
+        <p class="hint">
+          Entrance only — no exit animation (in OBS you hide the browser source).
+          Eases use GSAP syntax: <code>power3.out</code>, <code>back.out(1.4)</code>, <code>expo.out</code>…
+        </p>
+      </div>
+
+      <!-- ADVANCED -->
+      <div class="panel-body" data-panel="presets">
+        <label class="section-label">Raw JSON <span class="muted">(advanced — edit + Apply)</span></label>
+        <textarea id="rawJson" rows="14" spellcheck="false"></textarea>
+        <div class="row2">
+          <button id="btnApplyRaw" class="btn btn--primary">Apply JSON</button>
+          <button id="btnCopyRaw" class="btn">Copy</button>
+        </div>
+        <hr />
+        <label class="section-label">Stream Deck / HTTP</label>
+        <p class="hint">
+          With <code>node server.js</code> running:<br />
+          <code>/api/command?action=in</code> · <code>?action=hide</code> · <code>?action=refresh</code>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js?v=3.1.8"></script>
+  <script src="config-merge.js?v=3.1.8"></script>
+  <script src="admin.js?v=3.1.8"></script>
+</body>
+</html>

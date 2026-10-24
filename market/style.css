@@ -1,0 +1,388 @@
+/* ============================================================================
+   Digital Assets Market — overlay stylesheet
+   Dark trading-terminal board. Every colour / font / size arrives from
+   script.js as a CSS custom property, so nothing is hardcoded here.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Stage is a fixed design surface, scaled to whatever the browser source is. */
+#stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--stage-w, 1920px);
+  height: var(--stage-h, 1080px);
+  transform-origin: top left;
+  transform: translate3d(0, 0, 0) scale(var(--stage-scale, 1));
+  background: var(--stage-bg, transparent);
+  contain: layout style;
+}
+
+/* ------------------------------------------------------------------ panel */
+.panel {
+  position: absolute;
+  transform: scale(var(--panel-zoom, 1));
+  transform-origin: center center;
+  left: var(--panel-x, 0px);
+  top: var(--panel-y, 0px);
+  width: var(--panel-w, 1180px);
+  height: var(--panel-h, auto);
+  padding: var(--panel-pad-top, 22px) var(--panel-pad-x, 26px) var(--panel-pad-bottom, 18px);
+  /* A base face for anything below that does not set its own. Every text rule
+     here declares a font token, but a token that fails to resolve is invalid at
+     computed-value time and font-family then inherits — and with nothing set on
+     html or body, that means the browser's default serif. */
+  font-family: var(--board-font, 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', sans-serif);
+  display: flex;
+  flex-direction: column;
+  opacity: var(--panel-opacity, 1);
+  border-radius: var(--panel-radius, 18px);
+  background: var(--panel-bg, rgba(8, 12, 22, .90));
+  -webkit-backdrop-filter: blur(var(--panel-blur, 26px)) saturate(var(--panel-sat, 140%));
+  backdrop-filter: blur(var(--panel-blur, 26px)) saturate(var(--panel-sat, 140%));
+  border: var(--panel-border-w, 1px) solid var(--panel-border-c, rgba(96, 130, 180, .28));
+  box-shadow: var(--panel-shadow, none), var(--panel-inner, inset 0 1px 0 rgba(255, 255, 255, .06));
+  overflow: hidden;
+  will-change: transform, opacity;
+  contain: layout paint style;
+}
+
+/* diagonal specular sheen over the glass */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--panel-sheen, none);
+  pointer-events: none;
+  z-index: 30;
+  border-radius: inherit;
+}
+
+/* ----------------------------------------------------------------- title */
+.board-title {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  font-family: var(--title-font);
+  font-weight: var(--title-weight, 700);
+  font-size: var(--title-size, 56px);
+  color: var(--title-color, #f2f6fc);
+  letter-spacing: var(--title-tracking, -0.5px);
+  text-align: var(--title-align, left);
+  text-transform: var(--title-transform, none);
+  line-height: 1.06;
+  padding-bottom: var(--title-pad-bottom, 14px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: var(--title-shadow, none);
+}
+.board-title--rule {
+  border-bottom: var(--title-rule-w, 1px) solid var(--title-rule-c, rgba(150, 178, 214, .34));
+}
+
+/* ------------------------------------------------------------------ tabs */
+.tabs {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--tabs-gap, 10px);
+  justify-content: var(--tabs-justify, flex-start);
+  height: var(--tabs-h, 34px);
+  margin: var(--tabs-mt, 0px) 0 var(--tabs-mb, 16px);
+}
+
+.tab {
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  margin: 0;
+  cursor: pointer;
+  background-clip: padding-box;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--tabs-pad-x, 15px);
+  border-radius: var(--tabs-radius, 999px);
+  background: var(--tabs-bg, rgba(255, 255, 255, .05));
+  border: 1px solid var(--tabs-border-c, rgba(150, 178, 214, .22));
+  font-family: var(--tabs-font);
+  font-weight: var(--tabs-weight, 600);
+  font-size: var(--tabs-size, 15px);
+  letter-spacing: var(--tabs-tracking, 1.1px);
+  text-transform: var(--tabs-transform, none);
+  color: var(--tabs-color, #8ea3c0);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color .2s ease, border-color .2s ease;
+}
+.tab:focus-visible {
+  outline: 2px solid var(--tabs-active-bg, #4cc9f0);
+  outline-offset: 2px;
+}
+.tab.is-active {
+  color: var(--tabs-active-color, #0b1220);
+  border-color: transparent;
+  background: transparent;   /* the sliding pill supplies the fill */
+}
+/* the pill that slides between tabs — moved by GSAP, so the accent travels
+   rather than blinking from one tab to the next */
+.tab-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  border-radius: var(--tabs-radius, 999px);
+  background: var(--tabs-active-bg, #4cc9f0);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --------------------------------------------------------------- columns */
+.cols {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: var(--cols-h, 34px);
+  padding: 0 var(--row-pad-x, 10px);
+  font-family: var(--cols-font);
+  font-weight: var(--cols-weight, 600);
+  font-size: var(--cols-size, 13px);
+  color: var(--cols-color, #7d90ab);
+  letter-spacing: var(--cols-tracking, 1.2px);
+  text-transform: var(--cols-transform, none);
+}
+.cols--rule {
+  border-bottom: 1px solid var(--cols-rule-c, rgba(150, 178, 214, .20));
+}
+.col { flex: 0 0 auto; }
+/* header and body must agree exactly, or the labels drift off their data */
+.col--asset { flex: 0 0 300px; min-width: 0; }   /* basis comes from config */
+.col--num { text-align: right; }
+
+/* ------------------------------------------------------------------ rows */
+.rows {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rows-gap, 0px);
+}
+
+.row {
+  position: relative;
+  flex: 0 0 auto;
+  height: var(--row-h, 56px);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--row-pad-x, 10px);
+  border-radius: var(--row-radius, 10px);
+  will-change: transform, opacity;
+}
+.row + .row.row--divider {
+  border-top: var(--row-div-w, 1px) solid var(--row-div-c, rgba(150, 178, 214, .11));
+}
+.row.zebra { background: var(--row-zebra-c, rgba(255, 255, 255, .018)); }
+
+/* the wash that flashes when a price ticks */
+.row__flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--row-flash-c, rgba(92, 225, 166, .13));
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.row > * { position: relative; z-index: 1; }
+
+/* asset cell */
+/* The asset cell must NOT grow. It used to be the only flexible column, so it
+   absorbed every spare pixel and — being left-aligned — parked all of it as dead
+   space between the name and the trend chart. It now hugs its content (capped by
+   assetMaxWidth) and the sparkline takes the slack, which is the documented
+   intent: widening the panel grows the chart rather than opening a gap. */
+.cell-asset {
+  flex: 0 0 300px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--logo-gap, 13px);
+}
+.cell-rank {
+  flex: 0 0 auto;
+  padding-right: 6px;
+  color: var(--rank-color, #5f7391);
+  font-family: var(--rank-font);
+  font-size: var(--rank-size, 15px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+/* Coin logos arrive in every shape — round, square, wordmarks, transparent
+   padding. Clipping the BOX to a circle (border-radius + overflow:hidden) cut
+   the corners off every square mark, so the box no longer clips at all:
+   object-fit:contain fits the whole logo inside, and the circle lives on the
+   fallback layer only, where it never crops a real image. */
+.logo {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--logo-size, 32px);
+  height: var(--logo-size, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  background: none;
+  color: var(--logo-fallback-c, #cfe0f5);
+  font-family: var(--asset-font);
+  font-weight: 700;
+  font-size: calc(var(--logo-size, 32px) * .42);
+  letter-spacing: 0;
+}
+
+/* Fallback layer: ticker initials on a soft disc. It sits *under* the image, so
+   a missing logo degrades to initials instead of an empty hole. */
+.logo span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--logo-fallback-bg, rgba(255, 255, 255, .08));
+}
+.logo--circle span { border-radius: 50%; }
+.logo--rounded span { border-radius: 9px; }
+
+.logo img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 0;
+  z-index: 1;   /* always above the initials layer */
+}
+
+.asset-names { min-width: 0; display: flex; flex-direction: column; gap: var(--asset-gap, 3px); }
+.asset-name {
+  font-family: var(--asset-font);
+  font-weight: var(--asset-name-weight, 600);
+  font-size: var(--asset-name-size, 21px);
+  color: var(--asset-name-c, #eef4ff);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asset-ticker {
+  font-family: var(--asset-font);
+  font-weight: var(--asset-ticker-weight, 600);
+  font-size: var(--asset-ticker-size, 12px);
+  color: var(--asset-ticker-c, #7d90ab);
+  letter-spacing: var(--asset-ticker-tracking, 1.3px);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* numeric cells */
+.cell-spark {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: var(--spark-h, 26px);
+  padding-right: 14px;
+}
+.cell-spark svg { display: block; width: 100%; height: 100%; max-width: 100%; overflow: visible; }
+
+.cell-price,
+.cell-change {
+  flex: 0 0 auto;
+  text-align: right;
+  font-family: var(--num-font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cell-price {
+  font-size: var(--price-size, 21px);
+  font-weight: var(--price-weight, 600);
+  color: var(--price-c, #eef4ff);
+}
+.cell-change {
+  font-size: var(--change-size, 18px);
+  font-weight: var(--change-weight, 600);
+}
+.is-up { color: var(--up, #3ddc84); }
+.is-down { color: var(--down, #ff5b6e); }
+.is-flat { color: var(--flat, #8ea3c0); }
+
+/* placeholder shimmer while the first fetch is in flight */
+.row.is-loading .asset-name,
+.row.is-loading .asset-ticker,
+.row.is-loading .cell-price,
+.row.is-loading .cell-change { color: transparent; }
+.row.is-loading .cell-price,
+.row.is-loading .cell-change {
+  background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.12), rgba(255,255,255,.05));
+  border-radius: 6px;
+  color: transparent;
+}
+
+/* stale / error */
+.panel.is-stale .rows { opacity: .78; }
+.board-note {
+  flex: 0 0 auto;
+  padding-top: 10px;
+  font-family: var(--cols-font);
+  font-size: 12px;
+  letter-spacing: .4px;
+  color: var(--cols-color, #7d90ab);
+  text-align: var(--title-align, left);
+}
+.board-note:empty { display: none; }
+
+/* ---------------------------------------------------------------- utility */
+.hidden { display: none !important; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.debug .panel, .debug .row, .debug .cols { outline: 1px dashed rgba(0, 200, 255, .8); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .panel { border: 2px solid CanvasText; background: Canvas; }
+  .board-title, .asset-name, .cell-price, .asset-ticker, .cols { color: CanvasText; }
+}

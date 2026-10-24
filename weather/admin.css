@@ -1,0 +1,251 @@
+/* ============================================================================
+   Vertical Weather Overlay — admin / control panel styling
+   ========================================================================== */
+/* ============================================================================
+   Theme — matched to The Rollup overlays hub.
+   The hub is the single source of truth: this panel reads the same
+   `obs-overlays-theme` key from localStorage, so switching the hub switches
+   every control panel with it. There is no separate preference to keep in sync.
+   ========================================================================== */
+:root {
+  --bg:         #e9f1f7;
+  --bg-2:       #f7fbfd;
+  --bg-3:       #ffffff;
+  --bg-4:       #ffffff;
+  --bg-tabs:    #f0f7fb;
+  --bg-city:    #f7fbfd;
+  --line:       rgba(12, 34, 51, 0.13);
+  --line-soft:  rgba(12, 34, 51, 0.07);
+  --line-hover: rgba(12, 34, 51, 0.30);
+  --txt:        #0c2233;
+  --muted:      #4f6a7d;
+  --accent:     #2b6b93;
+  --accent-2:   #1d5578;
+  --accent-2-hover: #14425e;
+  --on-accent:  #ffffff;
+  --danger:     #a33a22;
+  --danger-bg:  rgba(163, 58, 34, 0.09);
+  --danger-line: rgba(163, 58, 34, 0.34);
+  --on:         #1f7a4d;
+  --on-bg:      rgba(31, 122, 77, 0.09);
+  --on-line:    rgba(31, 122, 77, 0.34);
+  --warn:       #7a5200;
+  --code-bg:    rgba(12, 34, 51, 0.05);
+  --checker-a:  rgba(12, 34, 51, 0.055);
+  --checker-b:  rgba(12, 34, 51, 0.02);
+  --guide-a:    rgba(43, 107, 147, 0.16);
+  --guide-b:    rgba(163, 58, 34, 0.42);
+  --shadow:     0 1px 0 rgba(255,255,255,0.85) inset, 0 18px 40px -22px rgba(10,44,72,0.42);
+  --shadow-sm:  0 1px 0 rgba(255,255,255,0.7) inset, 0 6px 18px -12px rgba(10,44,72,0.38);
+}
+/* Neutral greys — r = g = b, same as the hub's dark theme. */
+:root[data-theme="dark"] {
+  --bg:         #151515;
+  --bg-2:       #1c1c1c;
+  --bg-3:       #232323;
+  --bg-4:       #232323;
+  --bg-tabs:    #191919;
+  --bg-city:    #1c1c1c;
+  --line:       rgba(255, 255, 255, 0.13);
+  --line-soft:  rgba(255, 255, 255, 0.07);
+  --line-hover: rgba(255, 255, 255, 0.30);
+  --txt:        #e6e6e6;
+  --muted:      #9e9e9e;
+  --accent:     #c8c8c8;
+  --accent-2:   #e8e8e8;
+  --accent-2-hover: #ffffff;
+  --on-accent:  #141414;
+  --danger:     #e8a08e;
+  --danger-bg:  rgba(255, 255, 255, 0.06);
+  --danger-line: rgba(255, 255, 255, 0.20);
+  --on:         #7fc79b;
+  --on-bg:      rgba(255, 255, 255, 0.06);
+  --on-line:    rgba(255, 255, 255, 0.20);
+  --warn:       #e2d3a4;
+  --code-bg:    rgba(255, 255, 255, 0.06);
+  --checker-a:  rgba(255, 255, 255, 0.045);
+  --checker-b:  rgba(255, 255, 255, 0.015);
+  --guide-a:    rgba(255, 255, 255, 0.10);
+  --guide-b:    rgba(255, 255, 255, 0.22);
+  --shadow:     0 1px 0 rgba(255,255,255,0.06) inset, 0 18px 40px -22px rgba(0,0,0,0.85);
+  --shadow-sm:  0 1px 0 rgba(255,255,255,0.05) inset, 0 6px 18px -12px rgba(0,0,0,0.8);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--txt);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+}
+
+.topbar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px;
+  background: var(--bg-2);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset;
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 9px; font-size: 15px; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.muted { color: var(--muted); font-weight: 400; }
+.topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+
+.btn {
+  background: var(--bg-3); color: var(--txt);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 12px; font: 600 13px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; cursor: pointer;
+  transition: background .15s, border-color .15s, transform .06s;
+}
+.btn:hover { background: var(--bg-3); border-color: var(--line-hover); }
+.btn:active { transform: translateY(1px); }
+.btn--primary { background: var(--accent-2); border-color: var(--accent-2); color: var(--on-accent); }
+.btn--primary:hover { background: var(--accent-2-hover); border-color: var(--accent-2-hover); }
+.btn--on { background: var(--on-bg); border-color: var(--on-line); color: var(--on); }
+.btn--danger { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
+.btn--ghost { background: transparent; }
+.btn.file { display: inline-flex; align-items: center; }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) 430px;
+  gap: 16px; padding: 16px; align-items: start;
+}
+@media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+
+.preview {
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 14px; padding: 12px; position: sticky; top: 68px;
+}
+.preview__bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+.mini, .mini-select {
+  background: var(--bg-3); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 5px 8px; font-size: 12px; text-decoration: none;
+}
+.mini-select { cursor: pointer; }
+/* The stage is the widget (portrait 460x1080), so the preview frame uses the
+   widget's own aspect ratio — a 16:9 box cropped the bottom off the panel. */
+.preview__stage {
+  position: relative;
+  height: min(74vh, 860px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(45deg, var(--checker-a) 25%, transparent 25%) 0 0/24px 24px,
+    linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%) 0 0/24px 24px,
+    linear-gradient(45deg, transparent 75%, var(--checker-a) 75%) 0 0/24px 24px,
+    linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%) 0 0/24px 24px,
+    var(--bg-3);
+  border-radius: 10px; overflow: hidden; border: 1px solid var(--line);
+}
+.preview__stage.guides::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--guide-a) 1px, transparent 1px) 0 0/100% 10%,
+    linear-gradient(90deg, var(--guide-a) 1px, transparent 1px) 0 0/10% 100%,
+    linear-gradient(var(--guide-b) 1px, transparent 1px) 0 50%/100% 100%,
+    linear-gradient(90deg, var(--guide-b) 1px, transparent 1px) 50% 0/100% 100%;
+}
+#preview {
+  height: 100%;
+  width: auto;
+  aspect-ratio: var(--stage-ratio, 460 / 1080);
+  max-width: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .38);
+}
+.hint { color: var(--muted); font-size: 12px; margin: 10px 2px 0; }
+.hint code, .panel-body code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 11.5px; }
+
+.editor { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.tabs { display: flex; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); background: var(--bg-tabs); flex-wrap: wrap; }
+.tab { background: transparent; border: 0; color: var(--muted); font: 600 13px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; padding: 10px 12px; border-radius: 8px 8px 0 0; cursor: pointer; }
+.tab:hover { color: var(--txt); }
+.tab.is-active { color: var(--txt); background: var(--bg-2); box-shadow: inset 0 -2px 0 var(--accent); }
+.panel-body { display: none; padding: 14px; }
+.panel-body.is-active { display: block; }
+
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.field > label { font-size: 12px; color: var(--muted); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+input[type="text"], input[type="number"], select, textarea {
+  width: 100%; background: var(--bg-4); border: 1px solid var(--line); color: var(--txt);
+  border-radius: 8px; padding: 8px 9px; font: 13px/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+}
+textarea { font-family: ui-monospace, SFMono-Regular, Menlo, 'Cascadia Mono', Consolas, 'Courier New', monospace; font-size: 12px; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent-2); }
+input[type="color"] { width: 100%; height: 34px; padding: 2px; background: var(--bg-4); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+input[type="checkbox"] { accent-color: var(--accent-2); }
+.check, .check > * { font-size: 12.5px; color: var(--txt); }
+.check { display: flex; align-items: center; gap: 7px; padding: 6px 0; }
+.field--check { justify-content: flex-end; }
+.section-label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+
+/* city editor */
+.cities { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.city {
+  background: var(--bg-city); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+}
+.city.is-off { opacity: .5; }
+.city__head { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 8px; align-items: center; }
+.city__head .grip { cursor: grab; color: var(--muted); text-align: center; }
+.city__head input[type="text"] { border: 0; background: transparent; padding: 4px 2px; font-weight: 600; }
+.city__grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+.city__grid label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+.city__grid input { padding: 6px 7px; font-size: 12px; }
+.city .ic {
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--bg-3); color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1;
+}
+.city .ic:hover { color: var(--txt); border-color: var(--line-hover); }
+.city .ic.on.is-on { color: var(--on); border-color: var(--on-line); }
+
+/* ---- city lookup ----
+   Typing a shared name ("Springfield") has to say WHICH one, so the matches drop
+   under the search field with their state and country. The wrapper is the
+   positioning context; the list floats over the rows below instead of pushing
+   the whole form around on every keystroke. */
+.city__search { position: relative; }
+.geo-list {
+  position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 2px);
+  margin: 0; padding: 4px; list-style: none;
+  max-height: 242px; overflow-y: auto;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 9px;
+  box-shadow: var(--shadow-sm);
+}
+.geo-list[hidden] { display: none; }
+.geo-item {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; line-height: 1.25; color: var(--txt);
+}
+.geo-item:hover, .geo-item.is-active { background: var(--bg-tabs); }
+.geo-item__name { font-weight: 600; }
+.geo-item__where { font-size: 11px; color: var(--muted); }
+.geo-item--none { color: var(--muted); font-style: italic; cursor: default; }
+.geo-item--none:hover { background: none; }
+/* the input sits above the floating list so the caret stays visible */
+.city__search .query { position: relative; z-index: 41; }
+
+.stops { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.stop { display: grid; grid-template-columns: 1fr 54px 62px 30px; gap: 7px; align-items: center; }
+.stop input[type="range"] { width: 100%; accent-color: var(--accent-2); }
+
+
+#status.ok { color: var(--on); }
+#status.err { color: var(--danger); }
+#status.warn { color: var(--warn); }
+
+.msg { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.msg.err { color: var(--danger); }

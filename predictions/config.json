@@ -1,0 +1,347 @@
+{
+  "meta": {
+    "name": "Prediction Markets",
+    "version": "1.3.0",
+    "migratedFrom": "1.0.0"
+  },
+  "stage": {
+    "width": 1920,
+    "height": 1080,
+    "fit": "contain",
+    "alignX": "left",
+    "background": "#0f1013"
+  },
+  "header": {
+    "visible": true,
+    "logo": {
+      "enabled": true,
+      "src": "assets/rollup-logo.png",
+      "height": 80,
+      "alt": "The Rollup"
+    },
+    "rule": true,
+    "kicker": {
+      "text": "Live from New York",
+      "size": 17,
+      "color": "#9a9fa9",
+      "tracking": 0.32,
+      "uppercase": true
+    },
+    "title": {
+      "text": "Prediction Markets",
+      "fontFamily": "'Playfair Display', Georgia, 'Times New Roman', serif",
+      "weight": 600,
+      "size": 58,
+      "color": "#f4f4f6",
+      "tracking": 0,
+      "uppercase": false
+    },
+    "right": {
+      "text": "Top markets",
+      "sub": "by 7-day volume",
+      "size": 19,
+      "color": "#c9ccd3",
+      "subColor": "#7d828c",
+      "tracking": 0.28,
+      "uppercase": true,
+      "align": "right"
+    },
+    "banner": {
+      "enabled": false,
+      "src": "assets/nyc-banner.jpg",
+      "opacity": 0.2,
+      "grayscale": true,
+      "height": 200
+    }
+  },
+  "layout": {
+    "heroWidth": 1040,
+    "gap": 48,
+    "safe": 54,
+    "safeX": 96,
+    "heroPadTop": 40,
+    "heroPadRight": 64,
+    "listPadTop": 20,
+    "listPadLeft": 48
+  },
+  "hero": {
+    "mode": "volume",
+    "index": 0,
+    "showEyebrow": true,
+    "eyebrowLabel": "#1 by volume",
+    "showEyebrowVolume": true,
+    "topicSize": 52,
+    "topicMaxLines": 2,
+    "showProbability": true,
+    "probabilitySize": 176,
+    "probabilitySuffix": "%",
+    "showStats": true,
+    "showHistory": true,
+    "showWhenNotAsset": false,
+    "assetKeywords": [
+      "bitcoin",
+      "btc",
+      "ethereum",
+      "eth",
+      "solana",
+      "sol",
+      "xrp",
+      "ripple",
+      "bnb",
+      "binance",
+      "cardano",
+      "ada",
+      "avalanche",
+      "avax",
+      "dogecoin",
+      "doge",
+      "chainlink",
+      "link",
+      "polkadot",
+      "dot",
+      "polygon",
+      "matic",
+      "arbitrum",
+      "arb",
+      "optimism",
+      "op",
+      "base",
+      "sui",
+      "aptos",
+      "ton",
+      "hyperliquid",
+      "hype",
+      "uniswap",
+      "uni",
+      "aave",
+      "maker",
+      "mkr",
+      "pendle",
+      "morpho",
+      "aerodrome",
+      "crypto",
+      "token",
+      "coin",
+      "altcoin",
+      "stablecoin",
+      "usdc",
+      "usdt",
+      "defi",
+      "etf",
+      "price",
+      "market cap",
+      "dominance",
+      "halving",
+      "staking",
+      "yield",
+      "nasdaq",
+      "s&p",
+      "sp500",
+      "gold",
+      "silver",
+      "oil",
+      "treasury",
+      "equity"
+    ],
+    "historyHeight": 64,
+    "historyLabel": "7-day probability",
+    "historyMode": "auto",
+    "historyLabelAsset": "7-day price",
+    "historyPoints": 24,
+    "historyVolatility": 0.22,
+    "chartGlow": {
+      "enabled": true,
+      "color": "#7fe6ff",
+      "length": 150,
+      "width": 3.4,
+      "duration": 3,
+      "rest": 2.5,
+      "opacity": 0.95,
+      "halo": 8
+    },
+    "showVolume": true,
+    "showChange": true,
+    "showCategory": true,
+    "showEnds": true
+  },
+  "list": {
+    "maxRows": 6,
+    "rowHeight": 124,
+    "showRank": true,
+    "showProbability": true,
+    "showChange": true,
+    "showVolume": true,
+    "showThumb": false,
+    "thumbSize": 44,
+    "changeColors": true,
+    "clickToSwitch": true,
+    "clickOpensDetail": true
+  },
+  "footer": {
+    "visible": true,
+    "progress": false,
+    "left": {
+      "text": "Live",
+      "source": "",
+      "showDot": true,
+      "dotColor": "#4cc38a"
+    },
+    "right": {
+      "text": "Not financial advice"
+    },
+    "size": 16,
+    "tracking": 0.24,
+    "color": "#7d828c",
+    "uppercase": true
+  },
+  "palette": {
+    "name": "graphite",
+    "stage": "#0f1013",
+    "ink": "#f4f4f6",
+    "inkSoft": "#e8e9ec",
+    "dim": "#7d828c",
+    "dimmer": "#5d626b",
+    "line": "#2a2d33",
+    "lineSoft": "#22252b",
+    "up": "#4cc38a",
+    "down": "#e5605e",
+    "flat": "#9a9fa9"
+  },
+  "markets": {
+    "items": [
+      {
+        "topic": "Will Ethereum close above $6,000 this quarter?",
+        "probability": 68,
+        "volume": 4820000,
+        "change": 4.2,
+        "category": "Crypto",
+        "ends": "2026-12-31",
+        "enabled": true
+      },
+      {
+        "topic": "Will the Fed cut rates at the December meeting?",
+        "probability": 74,
+        "volume": 3960000,
+        "change": 1.8,
+        "category": "Macro",
+        "ends": "2026-12-10",
+        "enabled": true
+      },
+      {
+        "topic": "Will a spot Solana ETF trade in the US this year?",
+        "probability": 41,
+        "volume": 2710000,
+        "change": -6.1,
+        "category": "Crypto",
+        "ends": "2026-12-31",
+        "enabled": true
+      },
+      {
+        "topic": "Will Arbitrum move to a native rollup in 2027?",
+        "probability": 33,
+        "volume": 1840000,
+        "change": 2.4,
+        "category": "Infra",
+        "ends": "2027-06-30",
+        "enabled": true
+      },
+      {
+        "topic": "Will Bitcoin dominance fall below 50% by March?",
+        "probability": 29,
+        "volume": 1180000,
+        "change": -3.3,
+        "category": "Crypto",
+        "ends": "2027-03-31",
+        "enabled": true
+      },
+      {
+        "topic": "Will the S&P 500 finish the year above 7,000?",
+        "probability": 57,
+        "volume": 1520000,
+        "change": 0.6,
+        "category": "Markets",
+        "ends": "2026-12-31",
+        "enabled": true
+      }
+    ],
+    "sort": "manual"
+  },
+  "source": "manual",
+  "polymarket": {
+    "endpoint": "api/polymarket",
+    "entity": "events",
+    "fetched": 5,
+    "sortKey": "",
+    "categories": [
+      {
+        "id": "crypto",
+        "label": "Crypto",
+        "tagId": "",
+        "tagSlug": "crypto",
+        "count": 3,
+        "selection": [],
+        "items": [],
+        "error": "no Polymarket tag binding for \"crypto\" — press Load tags and pick one"
+      },
+      {
+        "id": "economy",
+        "label": "Economy",
+        "tagId": "",
+        "tagSlug": "economy",
+        "count": 3,
+        "selection": [],
+        "items": [],
+        "error": "no Polymarket tag binding for \"economy\" — press Load tags and pick one"
+      },
+      {
+        "id": "finance",
+        "label": "Finance",
+        "tagId": "",
+        "tagSlug": "finance",
+        "count": 3,
+        "selection": [],
+        "items": [],
+        "error": "no Polymarket tag binding for \"finance\" — press Load tags and pick one"
+      }
+    ],
+    "updatedAt": 1792537388539,
+    "lastError": "failed: Crypto, Economy, Finance"
+  },
+  "animation": {
+    "autoPlay": true,
+    "autoPlayDelay": 0.2,
+    "fadeDuration": 0.7,
+    "fadeDistance": 8,
+    "stagger": 0.06,
+    "rowDuration": 0.5,
+    "rowEase": "power2.out",
+    "loopPreview": false,
+    "loopHoldIn": 6,
+    "loopHoldOut": 1
+  },
+  "rotate": {
+    "enabled": false,
+    "ms": 12000,
+    "pauseOnCommand": true
+  },
+  "data": {
+    "proxyUrl": "/market/api/market",
+    "directUrl": "https://api.coingecko.com/api/v3/coins/markets",
+    "currency": "usd",
+    "refreshSeconds": 300,
+    "enabled": true
+  },
+  "sync": {
+    "serverConfigUrl": "config.json",
+    "pollMs": 1500,
+    "stateUrl": "api/state",
+    "statePollMs": 700,
+    "useLocalStorage": true
+  },
+  "googleFonts": [
+    "Playfair+Display:wght@500;600;700",
+    "Inter:wght@400;500;600;700",
+    "IBM+Plex+Mono:wght@500"
+  ],
+  "fontUrls": []
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>measure</title></head>
+<body>
+<!--
+  Rendered-type measurement harness.
+  Loads the real overlay in a same-origin iframe, then reports the COMPUTED
+  font-size of every visible text node plus a clipping check. Chrome's
+  --dump-dom can't read computed styles, so this page folds the results into
+  its own DOM for `--dump-dom` to capture.
+
+  Usage:
+    chrome --headless=new --virtual-time-budget=9000 --dump-dom \
+      "http://localhost:8788/tests/measure.html?cities=2"
+-->
+<pre id="out">measuring…</pre>
+<iframe id="f" src="/index.html" style="width:460px;height:1080px;border:0"></iframe>
+<script>
+var CITY_OVERRIDE = new URLSearchParams(location.search).get('cities');
+
+/* Forward any overlay query params (?config=…, ?units=…) to the iframe so the
+   real boot path is what gets measured. `cities` is harness-only. */
+(function () {
+  var qs = new URLSearchParams(location.search);
+  qs.delete('cities');
+  var extra = qs.toString();
+  document.getElementById('f').src = '/index.html' + (extra ? '?' + extra : '');
+})();
+
+function ready(cb) {
+  var f = document.getElementById('f');
+  f.addEventListener('load', function () { setTimeout(cb, 2500); });
+}
+
+ready(function () {
+  var doc = document.getElementById('f').contentDocument;
+  var win = document.getElementById('f').contentWindow;
+  var lines = [];
+
+  /* optionally force a city count so the 1-city and 2-city layouts can be compared */
+  if (CITY_OVERRIDE) {
+    var cards = doc.querySelectorAll('[data-testid="city-card"]');
+    if (CITY_OVERRIDE === '1' && cards.length > 1) cards[1].style.display = 'none';
+  }
+
+  function px(v) { return Math.round(parseFloat(v) * 10) / 10; }
+
+  function report(label, node) {
+    if (!node) return;
+    var cs = win.getComputedStyle(node);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    if (!node.textContent || !node.textContent.trim()) return;
+    /* scrollWidth > clientWidth means the glyphs are wider than their box */
+    var clipped = node.scrollWidth > node.clientWidth + 1;
+    var tall = node.scrollHeight > node.clientHeight + 1;
+    lines.push([
+      label.padEnd(14),
+      'size=' + String(px(cs.fontSize)).padStart(6),
+      'lh=' + String(px(cs.lineHeight)).padStart(6),
+      'box=' + (node.clientWidth + 'x' + node.clientHeight).padStart(10),
+      'scroll=' + (node.scrollWidth + 'x' + node.scrollHeight).padStart(10),
+      clipped ? 'CLIPPED-W' : '',
+      tall ? 'CLIPPED-H' : '',
+      JSON.stringify(node.textContent.trim().slice(0, 26))
+    ].join(' '));
+  }
+
+  var body = doc.querySelector('.card__body');
+  if (body) lines.push('text-scale=' + body.style.getPropertyValue('--text-scale') +
+                       ' icon-scale=' + body.style.getPropertyValue('--icon-scale'));
+
+  var cards = doc.querySelectorAll('[data-testid="city-card"]');
+  lines.push('cards=' + cards.length + ' stageScale=' +
+             doc.getElementById('stage').style.getPropertyValue('--stage-scale'));
+
+  cards.forEach(function (card, i) {
+    lines.push('--- card ' + i + ' body=' + card.querySelector('.card__body').clientHeight + 'px ---');
+    report('city-name', card.querySelector('[data-testid="city-name"]'));
+    report('city-time', card.querySelector('.card__city-time'));
+    report('temp', card.querySelector('[data-testid="temp"]'));
+    report('condition', card.querySelector('[data-testid="condition"]'));
+    report('range', card.querySelector('[data-testid="range"]'));
+    card.querySelectorAll('.stat').forEach(function (s) {
+      report('stat-value', s.querySelector('.stat__value'));
+      report('stat-label', s.querySelector('.stat__label'));
+    });
+  });
+  report('footer', doc.querySelector('[data-testid="updated"]'));
+
+  document.getElementById('out').textContent = lines.join('\n');
+});
+</script>
+</body>
+</html>

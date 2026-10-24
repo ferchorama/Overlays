@@ -1,0 +1,202 @@
+{
+  "theme": "light",
+  "meta": {
+    "name": "Talking Points Panel",
+    "version": "1.1.1"
+  },
+  "stage": {
+    "width": 1920,
+    "height": 1080,
+    "fit": "contain",
+    "alignX": "left",
+    "background": "transparent"
+  },
+  "panel": {
+    "x": 38,
+    "y": 178,
+    "width": 538,
+    "verticalAnchor": "top",
+    "radius": 34,
+    "background": "rgba(216,242,255,0.88)",
+    "borderWidth": 1,
+    "borderColor": "rgba(212,240,255,0.85)",
+    "shadow": "0 26px 60px rgba(18,72,140,0.30)",
+    "glow": "inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -1px 0 rgba(190,225,255,0.45)",
+    "accentColor": "#0a84ff",
+    "blur": 36,
+    "saturate": 175,
+    "sheen": "linear-gradient(148deg, rgba(255,255,255,0.58) 0%, rgba(190,230,255,0.20) 24%, rgba(255,255,255,0) 46%, rgba(200,235,255,0.26) 100%)",
+    "opacity": 1,
+    "autoFitHeight": true
+  },
+  "header": {
+    "visible": true,
+    "height": 65,
+    "gradient": [
+      {
+        "offset": 0,
+        "color": "rgba(74,190,255,0.96)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(126,214,255,0.92)"
+      }
+    ],
+    "gloss": true,
+    "title": {
+      "text": "TODAY'S TOPICS",
+      "fontFamily": "'Montserrat', 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
+      "weight": 700,
+      "size": 40,
+      "color": "#06294f",
+      "uppercase": true,
+      "letterSpacing": 0,
+      "lineHeight": 1.05,
+      "align": "center",
+      "valign": "bottom",
+      "paddingX": 12,
+      "paddingY": 0,
+      "shadow": "none",
+      "autoShrink": true
+    }
+  },
+  "subtitle": {
+    "visible": true,
+    "height": 111,
+    "gradient": [
+      {
+        "offset": 0,
+        "color": "rgba(158,224,255,0.94)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(206,240,255,0.90)"
+      }
+    ],
+    "gloss": false,
+    "text": "09/23/26",
+    "autoDate": false,
+    "dateFormat": "MM/DD/YY",
+    "fontFamily": "'Montserrat', 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
+    "weight": 600,
+    "size": 40,
+    "color": "#0a3a72",
+    "uppercase": false,
+    "letterSpacing": 0,
+    "lineHeight": 1.1,
+    "align": "center",
+    "valign": "middle",
+    "paddingX": 12,
+    "paddingY": 0,
+    "shadow": "none",
+    "autoShrink": true
+  },
+  "topics": {
+    "maxRows": 8,
+    "rowHeight": 105,
+    "gap": 0,
+    "gradient": [
+      {
+        "offset": 0,
+        "color": "rgba(124,208,255,0.92)"
+      },
+      {
+        "offset": 24,
+        "color": "rgba(160,224,255,0.90)"
+      },
+      {
+        "offset": 74,
+        "color": "rgba(196,236,255,0.88)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(214,242,255,0.86)"
+      }
+    ],
+    "gloss": false,
+    "separator": {
+      "enabled": true,
+      "height": 1,
+      "color": "rgba(255,255,255,0.55)"
+    },
+    "text": {
+      "fontFamily": "'Proxima Nova', 'ProximaNovaA', 'Figtree', 'Montserrat', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
+      "fontUrl": "https://account-fonts.singular.live/a493e8c7-b53c-4d9f-91c0-ecdbdd3c5f98/ProximaNovaA.css",
+      "weight": 600,
+      "size": 40,
+      "color": "#0b2a5b",
+      "uppercase": false,
+      "letterSpacing": 0,
+      "lineHeight": 1.12,
+      "align": "center",
+      "paddingX": 14,
+      "maxLines": 2,
+      "autoShrink": true,
+      "minSize": 18,
+      "shadow": "0 2px 6px rgba(24,86,160,0.16)"
+    },
+    "items": [
+      {
+        "text": "Welcome to The Rollup",
+        "enabled": true
+      },
+      {
+        "text": "Market and Weather Live From FL",
+        "enabled": true
+      },
+      {
+        "text": "WSJ Highlights Kalshi Trading Patterns",
+        "enabled": true
+      },
+      {
+        "text": "Daily Equity",
+        "enabled": true
+      },
+      {
+        "text": "Topic Five",
+        "enabled": false
+      },
+      {
+        "text": "Topic Six",
+        "enabled": false
+      },
+      {
+        "text": "Topic Seven",
+        "enabled": false
+      },
+      {
+        "text": "Topic Eight",
+        "enabled": false
+      }
+    ]
+  },
+  "googleFonts": [
+    "Montserrat:wght@300;400;500;600;700;800",
+    "Figtree:wght@300;400;500;600;700;800"
+  ],
+  "animation": {
+    "autoPlay": true,
+    "autoPlayDelay": 0.2,
+    "headerDuration": 0.5,
+    "headerEase": "power1.out",
+    "textDuration": 0.35,
+    "textEase": "power1.out",
+    "rowDuration": 1,
+    "rowEase": "power3.out",
+    "rowStagger": 0.1,
+    "rowStart": 0.3,
+    "rowFrom": "top",
+    "rowDistance": 105,
+    "fadeRows": true,
+    "loopPreview": false,
+    "loopHoldIn": 4,
+    "loopHoldOut": 1.5
+  },
+  "sync": {
+    "serverConfigUrl": "config.json",
+    "pollMs": 1500,
+    "stateUrl": "api/state",
+    "statePollMs": 700,
+    "useLocalStorage": true
+  }
+}

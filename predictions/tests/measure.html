@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>measure — prediction markets headline board</title></head>
+<body>
+<!--
+  Measurement harness for the Polymarket headline board.
+
+  Chrome's --dump-dom cannot read computed styles, so this page loads the real
+  overlay in a same-origin iframe, measures it, and folds the RESULTS into its own
+  DOM for --dump-dom to capture.
+
+  The headline board cannot be unit-tested for layout: the DOM shim has no layout
+  engine, so nothing there can tell you whether three columns fit inside the
+  1920x1080 stage or whether the new text is readable. That is what this is for.
+
+  The Polymarket config is injected through the overlay's own ?config= parameter
+  (base64 JSON), so measuring the board changes no file on disk and needs no
+  fetch.
+
+  Usage:
+    chrome --headless=new --virtual-time-budget=15000 --dump-dom \
+      "http://localhost:8790/predictions/tests/measure.html"
+-->
+<pre id="out">measuring…</pre>
+<iframe id="f" style="width:1920px;height:1080px;border:0"></iframe>
+<script>
+/* A fixture with everything the board has to survive: a null-priced market, a
+   null move, a negative move, long titles, and a category with fewer items than
+   its count. Deliberately ASCII, so btoa cannot throw. */
+var FIXTURE = {
+  source: 'polymarket',
+  polymarket: {
+    endpoint: 'api/polymarket', entity: 'events', fetched: 5, sortKey: '',
+    updatedAt: Date.now() - 125000,
+    lastError: '',
+    categories: [
+      { id: 'crypto', label: 'Crypto', tagId: '1', tagSlug: 'crypto', count: 5, selection: [], error: '',
+        items: [
+          { id: 'c1', title: 'Will Bitcoin close above $150,000 before the end of this year?', probability: 68, change: 4.2, volume24hr: 4820000 },
+          { id: 'c2', title: 'Will the Federal Reserve cut rates twice more this year?', probability: 31, change: -1.1, volume24hr: 3000000 },
+          { id: 'c3', title: 'Will Ethereum flip Bitcoin by market cap?', probability: null, change: null, volume24hr: 1200000 },
+          { id: 'c4', title: 'Will a spot Solana ETF trade in the US this year?', probability: 22, change: 0, volume24hr: 600000 },
+          { id: 'c5', title: 'Will ETH burn accelerate?', probability: 9, change: 1.5, volume24hr: 300000 }
+        ] },
+      { id: 'economy', label: 'Economy', tagId: '2', tagSlug: 'economy', count: 4, selection: [], error: '',
+        items: [
+          { id: 'e1', title: 'Will CPI print below 3% for three consecutive months?', probability: 44, change: 0.4, volume24hr: 2000000 },
+          { id: 'e2', title: 'Will US GDP growth beat 3% this quarter?', probability: 57, change: -0.2, volume24hr: 1500000 },
+          { id: 'e3', title: 'Will unemployment rise above 5%?', probability: 18, change: 2.2, volume24hr: 900000 }
+        ] },
+      { id: 'finance', label: 'Finance', tagId: '3', tagSlug: 'finance', count: 4, selection: [], error: '',
+        items: [
+          { id: 'f1', title: 'Will the S&P 500 finish the year above 7,000?', probability: 39, change: 1.2, volume24hr: 1700000 },
+          { id: 'f2', title: 'Will the 10-year Treasury yield break 5%?', probability: 26, change: -0.8, volume24hr: 1100000 },
+          { id: 'f3', title: 'Will gold set a new all-time high this quarter?', probability: 61, change: 3.4, volume24hr: 800000 },
+          { id: 'f4', title: 'Will the dollar index fall below 95?', probability: 14, change: -2.6, volume24hr: 400000 }
+        ] }
+    ]
+  }
+};
+
+(function () {
+  var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(FIXTURE))));
+  document.getElementById('f').src = '/predictions/index.html?nosync=1&config=' + encodeURIComponent(b64);
+})();
+
+function lum(rgb) {
+  var c = rgb.map(function (v) {
+    v = v / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function parseRgb(s) {
+  var m = String(s).match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  var p = m[1].split(',').map(parseFloat);
+  return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+}
+function contrast(fg, bg) {
+  var a = parseRgb(fg), b = parseRgb(bg);
+  if (!a || !b) return null;
+  var l1 = lum(a), l2 = lum(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+document.getElementById('f').addEventListener('load', function () { setTimeout(measure, 3200); });
+
+function measure() {
+  var fr = document.getElementById('f');
+  var doc = fr.contentDocument, win = fr.contentWindow, lines = [];
+  var out = [];
+  function say(s) { out.push(s); }
+
+  var stage = doc.getElementById('stage');
+  var groups = doc.querySelector('.groups');
+  if (!stage || !groups) {
+    say('NO HEADLINE BOARD RENDERED — is source=polymarket reaching the overlay?');
+    document.getElementById('out').textContent = out.join('\n');
+    return;
+  }
+
+  var GENERIC = /^(serif|times new roman|times|georgia|-webkit-serif|ui-serif)$/i;
+  var SANS = /^(inter|system-ui|-apple-system|segoe ui|helvetica|arial|sans-serif|roboto)$/i;
+  var stageBox = stage.getBoundingClientRect();
+  var stageBg = win.getComputedStyle(stage).backgroundColor;
+
+  say('stage ' + Math.round(stageBox.width) + 'x' + Math.round(stageBox.height) +
+      '  background=' + stageBg);
+
+  /* ------------------------------------------------------------- structure */
+  var groupEls = [].slice.call(doc.querySelectorAll('.group'));
+  var growEls = [].slice.call(doc.querySelectorAll('.grow'));
+  var stamp = doc.querySelector('.groups__stamp');
+  say('');
+  say('--- structure ---');
+  say('groups=' + groupEls.length + '  headlines=' + growEls.length +
+      '  --group-cols=' + (doc.querySelector('.groups__grid').style.getPropertyValue('--group-cols') || '(unset)'));
+  say('stamp: ' + JSON.stringify(stamp ? stamp.textContent : '(none)'));
+  say('per category: ' + groupEls.map(function (g) {
+    return g.querySelector('.group__label').textContent + '=' + g.querySelectorAll('.grow').length;
+  }).join('  '));
+  say('em dash for the priceless market: ' +
+      (growEls.some(function (r) { return r.querySelector('.grow__pct').textContent.indexOf('\u2014') !== -1; }) ? 'present' : 'MISSING'));
+
+  /* ------------------------------------------------ horizontal fit + overflow */
+  say('');
+  say('--- columns (must all sit inside the 1920px stage) ---');
+  var worstRight = 0;
+  groupEls.forEach(function (g, i) {
+    var b = g.getBoundingClientRect();
+    var over = b.right - stageBox.right;
+    if (b.right > worstRight) worstRight = b.right;
+    say('  col ' + (i + 1) + ' left=' + Math.round(b.left) + ' right=' + Math.round(b.right) +
+        ' width=' + Math.round(b.width) + (over > 0.5 ? '  OVERFLOWS by ' + Math.round(over) + 'px' : '  fits'));
+  });
+  say('  rightmost column edge = ' + Math.round(worstRight) + ' / stage right = ' + Math.round(stageBox.right) +
+      (worstRight > stageBox.right + 0.5 ? '   OVERFLOWS THE STAGE' : '   inside the stage'));
+
+  /* ------------------------------------------------------- vertical fit */
+  var groupsBottom = groups.getBoundingClientRect().bottom;
+  var footer = doc.querySelector('.board__footer');
+  var footerTop = footer ? footer.getBoundingClientRect().top : stageBox.bottom;
+  say('');
+  say('--- vertical (the board must not run into the footer) ---');
+  say('  groups bottom=' + Math.round(groupsBottom) + '  footer top=' + Math.round(footerTop) +
+      '  stage bottom=' + Math.round(stageBox.bottom) +
+      (groupsBottom > footerTop + 0.5 ? '   OVERLAPS THE FOOTER' : '   clear of the footer'));
+  var clips = growEls.filter(function (r) {
+    return r.scrollHeight > r.clientHeight + 1 || r.scrollWidth > r.clientWidth + 1;
+  });
+  say('  headlines whose text is clipped/overflowing: ' + clips.length +
+      (clips.length ? '  <-- ' + clips.map(function (r) { return JSON.stringify(r.querySelector('.grow__topic').textContent.slice(0, 24)); }).join(', ') : ''));
+  /* The columns are flex children with no scroll, so content taller than the space
+     does not clip — it pushes past the footer, which is the failure that would
+     actually ruin the board. Measure the containers, not just the rows. */
+  var vOver = [];
+  if (groups.scrollHeight > groups.clientHeight + 1) {
+    vOver.push('groups ' + groups.scrollHeight + '>' + groups.clientHeight);
+  }
+  groupEls.forEach(function (g, i) {
+    if (g.scrollHeight > g.clientHeight + 1) vOver.push('col' + (i + 1) + ' ' + g.scrollHeight + '>' + g.clientHeight);
+  });
+  say('  containers overflowing their box: ' + (vOver.length ? vOver.join(', ') + '   OVERFLOW' : 'none'));
+
+  /* ------------------------------------------------------------ typography */
+  say('');
+  say('--- computed type (GENERIC-SERIF = a broken font token, for sans elements) ---');
+  var TYPE = [
+    ['group label', '.group__label', true],
+    ['category meta', '.group__meta', false],
+    ['stamp', '.groups__stamp', false],
+    ['headline', '.grow__topic', false],
+    ['probability', '.grow__pct', false],
+    ['move/volume', '.grow__mv', false],
+    ['volume (em)', '.grow__mv em', false]
+  ];
+  TYPE.forEach(function (t) {
+    var n = doc.querySelector(t[1]);
+    if (!n) { say('  ' + t[0].padEnd(13) + '(not found)'); return; }
+    var cs = win.getComputedStyle(n);
+    var fam = cs.fontFamily || '';
+    var first = fam.split(',')[0].replace(/["']/g, '').trim();
+    /* A named webfont is the goal. What must be caught is the opposite of what
+       the element wants: a serif element falling back to a sans, or a sans
+       element dropping to the browser's default serif because its token failed
+       to resolve. Testing for "is it generic serif" on an element that WANTS a
+       serif just cries wolf about Playfair Display. */
+    var generic = GENERIC.test(first);
+    var sans = SANS.test(first);
+    var verdict = t[2]
+      ? (sans ? 'SANS! (wanted serif)' : 'serif')
+      : (generic ? 'GENERIC-SERIF!' : 'ok');
+    say('  ' + t[0].padEnd(13) + ' size=' + String(Math.round(parseFloat(cs.fontSize) * 10) / 10).padStart(6) +
+        '  ' + verdict.padEnd(18) + ' family=' + first.slice(0, 20));
+  });
+
+  /* -------------------------------------------------------------- contrast */
+  say('');
+  say('--- contrast against the stage (AA needs 4.5:1, or 3:1 for large text) ---');
+  var CONTRAST = [
+    ['group label', '.group__label', 3.0],
+    ['category meta', '.group__meta', 4.5],
+    ['stamp', '.groups__stamp', 4.5],
+    ['headline', '.grow__topic', 4.5],
+    ['probability', '.grow__pct', 3.0],
+    ['move/volume', '.grow__mv', 4.5],
+    ['volume (em)', '.grow__mv em', 4.5]
+  ];
+  var fails = 0;
+  CONTRAST.forEach(function (t) {
+    var n = doc.querySelector(t[1]);
+    if (!n) { say('  ' + t[0].padEnd(13) + '(not found)'); return; }
+    var cs = win.getComputedStyle(n);
+    var r = contrast(cs.color, stageBg);
+    var ok = r !== null && r >= t[2];
+    if (!ok) fails++;
+    say('  ' + (ok ? 'pass' : 'FAIL') + '  ' + t[0].padEnd(13) + cs.color.padEnd(20) +
+        (r === null ? '?' : r.toFixed(2) + ':1') + '  (min ' + t[2] + ')');
+  });
+  say('  ' + fails + ' element(s) below AA');
+
+  document.getElementById('out').textContent = out.join('\n');
+}
+</script>
+</body>
+</html>

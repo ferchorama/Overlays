@@ -1,0 +1,634 @@
+/* Bundled fonts for the market board. The control panel and the OBS source
+   both load this file from disk — nothing is fetched from a CDN.
+   Each face is SIL Open Font License 1.1. Copyright lines and the license
+   text are in OFL.txt beside this file. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("figtree.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("inter.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Outfit";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("outfit.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("manrope.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("space-grotesk.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("ibm-plex-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("dm-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("montserrat.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("nunito.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("nunito-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Raleway";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("raleway.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Work Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("work-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("rubik.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Mulish";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("mulish.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Karla";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("karla.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("source-sans-3.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Libre Franklin";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("libre-franklin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("public-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lexend";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("lexend.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("plus-jakarta-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("sora.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Urbanist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("urbanist.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("albert-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Red Hat Display";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("red-hat-display.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Chivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("chivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("archivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("schibsted-grotesk.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Onest";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("onest.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("instrument-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("noto-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("roboto.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("open-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Josefin Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("josefin-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Exo 2";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("exo-2.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("quicksand.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Overpass";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("overpass.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Heebo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("heebo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("oswald.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto Condensed";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("roboto-condensed.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Teko";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("teko.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo Narrow";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("archivo-narrow.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("source-serif-4.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("newsreader.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Literata";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("literata.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fraunces.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("playfair-display.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("lora.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("merriweather.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Crimson Pro";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("crimson-pro.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("jetbrains-mono.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("roboto-mono.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fira-code.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Gabarito";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("gabarito.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("geist.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Host Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("host-grotesk.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("bricolage-grotesque.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Familjen Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("familjen-grotesk.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Commissioner";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("commissioner.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Reddit Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("reddit-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geologica";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("geologica.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("hanken-grotesk.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Mona Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("mona-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("poppins-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("poppins-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("poppins-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("poppins-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("be-vietnam-pro-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("be-vietnam-pro-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("be-vietnam-pro-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("be-vietnam-pro-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("barlow-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("barlow-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("barlow-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("barlow-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("atkinson-hyperlegible-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("atkinson-hyperlegible-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fira-sans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fira-sans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fira-sans-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fira-sans-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("barlow-condensed-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("barlow-condensed-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("barlow-condensed-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("barlow-condensed-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("ibm-plex-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("ibm-plex-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("ibm-plex-mono-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("ibm-plex-mono-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("dm-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("dm-mono-500.woff2") format("woff2");
+}

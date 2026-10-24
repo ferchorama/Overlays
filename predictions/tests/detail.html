@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>detail view — measurement harness</title></head>
+<body>
+<!--
+  Measurement harness for the split view and the detail view.
+
+  Chrome's --dump-dom cannot read computed styles, and the DOM shim used by
+  tests/smoke.js has no layout engine at all — nothing there can tell you whether
+  a market really takes BOTH columns when it is opened. This page loads the real
+  overlay in a same-origin iframe, drives it with real clicks and key events,
+  measures the rendered boxes, and folds the results into its own DOM for
+  --dump-dom to capture.
+
+  Usage (serve the app first — the hub does this):
+    chrome --headless=new --virtual-time-budget=25000 --dump-dom \
+      "http://localhost:8790/predictions/tests/detail.html?flat=1"
+
+  ?flat=1                give every market a chart, so its frame can be measured
+                         (the shipped default waits for a live price feed)
+  ?mode=shot&state=open  leave the detail view open for --screenshot
+-->
+<pre id="out">measuring…</pre>
+<iframe id="f" style="width:1920px;height:1080px;border:0"></iframe>
+<script>
+var qs = new URLSearchParams(location.search);
+var SHOT = qs.get('mode') === 'shot';
+var STATE = qs.get('state') || '';
+var out = [];
+function say(s) { out.push(s); }
+
+if (SHOT) {
+  document.getElementById('out').style.display = 'none';
+  document.body.style.margin = '0';
+}
+var f = document.getElementById('f');
+f.src = '/predictions/index.html?nosync=1';
+f.addEventListener('load', function () { setTimeout(boot, 2600); });
+
+function snap(doc, win, tag) {
+  var board = doc.querySelector('.board');
+  var main = doc.querySelector('.board__main');
+  var hero = doc.querySelector('.hero');
+  var list = doc.querySelector('.list');
+  var back = doc.querySelector('.backrow');
+  var btn = doc.querySelector('.back');
+  var topic = doc.querySelector('.hero__topic');
+  var huge = doc.querySelector('.huge');
+  var svg = doc.querySelector('.chart svg');
+  var stage = doc.getElementById('stage');
+  var bb = hero.getBoundingClientRect(), mb = main.getBoundingClientRect(), sb = stage.getBoundingClientRect();
+  var btnR = btn.getBoundingClientRect();
+
+  say('');
+  say('=== ' + tag + ' ===');
+  say(' is-detail class      : ' + board.classList.contains('is-detail'));
+  say(' main grid columns    : ' + win.getComputedStyle(main).gridTemplateColumns);
+  say(' hero box             : left=' + Math.round(bb.left) + ' right=' + Math.round(bb.right) + ' width=' + Math.round(bb.width));
+  say(' main box             : left=' + Math.round(mb.left) + ' right=' + Math.round(mb.right) + ' width=' + Math.round(mb.width));
+  say(' hero fills both sides: ' + ((Math.abs(bb.left - mb.left) < 1 && Math.abs(bb.right - mb.right) < 1) ? 'YES' : 'no'));
+  say(' list                 : display=' + win.getComputedStyle(list).display + '  aria-hidden=' + list.getAttribute('aria-hidden') + '  width=' + Math.round(list.getBoundingClientRect().width));
+  say(' back row             : display=' + win.getComputedStyle(back).display);
+  say(' back button          : visible=' + (btnR.width > 0) + '  text=' + JSON.stringify(btn.textContent) + '  tabIndex=' + btn.tabIndex);
+  say(' back button box      : left=' + Math.round(btnR.left) + ' top=' + Math.round(btnR.top) + ' width=' + Math.round(btnR.width) + ' height=' + Math.round(btnR.height));
+  say(' hero topic           : ' + JSON.stringify(topic.textContent.slice(0, 52)) + '  fontSize=' + win.getComputedStyle(topic).fontSize);
+  say(' probability number   : ' + win.getComputedStyle(huge).fontSize);
+  say(' chart svg height     : ' + (svg ? win.getComputedStyle(svg).height : '(no svg)'));
+  var side = doc.querySelector('.side'), figs = doc.querySelector('.figs');
+  if (figs && side) {
+    var fr = figs.getBoundingClientRect(), sr = side.getBoundingClientRect();
+    say(' figs row             : left=' + Math.round(fr.left) + ' right=' + Math.round(fr.right) + '  stats right edge=' + Math.round(sr.right) + '  (spread=' + (Math.abs(fr.right - sr.right) < 4 ? 'number left, stats right' : 'bunched') + ')');
+  }
+  var headerR = doc.querySelector('.board__header').getBoundingClientRect();
+  say(' back overlaps header : ' + (btnR.top < headerR.bottom - 1 ? 'YES <-- collision' : 'no'));
+
+  var over = [], clipped = [];
+  ['.board', '.board__main', '.hero', '.chart'].forEach(function (sel) {
+    var n = doc.querySelector(sel); if (!n) return;
+    var r = n.getBoundingClientRect();
+    if (r.right > sb.right + 0.5 || r.bottom > sb.bottom + 0.5 || r.left < sb.left - 0.5 || r.top < sb.top - 0.5) over.push(sel);
+    if (n.scrollHeight > n.clientHeight + 1) clipped.push(sel + ' h ' + n.scrollHeight + '>' + n.clientHeight);
+    if (n.scrollWidth > n.clientWidth + 1) clipped.push(sel + ' w ' + n.scrollWidth + '>' + n.clientWidth);
+  });
+  say(' overflow past stage  : ' + (over.length ? over.join(' ') + '  <-- OVERFLOW' : 'none'));
+  say(' clipped content      : ' + (clipped.length ? clipped.join(' ') + '  <-- CLIPPED' : 'none'));
+  say(' rows / clickable     : ' + doc.querySelectorAll('.row').length + ' / ' + doc.querySelectorAll('.row.is-clickable').length + '   hero row marked=' + doc.querySelectorAll('.row.is-on').length);
+}
+
+function boot() {
+  var fr = document.getElementById('f'), doc, win;
+  try { doc = fr.contentDocument; win = fr.contentWindow; } catch (e) { return finish('cannot reach frame: ' + e.message); }
+  var PM = win.PM;
+  if (!PM || !PM.board) return finish('PM not ready');
+  /* a flat series gives every market a chart, so the graphic's height can be
+     measured in both views (the shipped default waits for a live price feed) */
+  if (qs.get('flat') === '1') PM.apply({ hero: { historyMode: 'flat' } }, { animate: false });
+
+  if (SHOT) {
+    if (STATE === 'open') doc.querySelectorAll('.row')[2].click();
+    /* long enough for the draw to settle: the series is drawn by a tween, and a
+       screenshot is only useful once the line has finished */
+    setTimeout(function () { document.getElementById('out').textContent = 'shot ready'; }, 3200);
+    return;
+  }
+
+  snap(doc, win, 'BEFORE (split view)');
+
+  /* 1. click a row — does the market take both sides? */
+  var row = doc.querySelectorAll('.row')[2];
+  var rowTopic = row.querySelector('.row__topic').textContent;
+  var rowPct = row.querySelector('.row__pct').textContent;
+  row.click();
+  setTimeout(function () {
+    snap(doc, win, 'AFTER CLICK on row 3 ' + JSON.stringify(rowTopic.slice(0, 40)) + ' pct=' + rowPct);
+    say(' clicked row is hero  : ' + (doc.querySelector('.hero__topic').textContent === rowTopic ? 'YES' : 'NO -> ' + JSON.stringify(doc.querySelector('.hero__topic').textContent.slice(0, 40))));
+
+    /* 2. next() must keep the detail view open */
+    win.PM.next();
+    setTimeout(function () {
+      var openAfterNext = doc.querySelector('.board').classList.contains('is-detail');
+      /* the state, not the DOM: the content swaps at the animation's handover, so
+         the DOM can still hold the outgoing topic at this point */
+      var shown = win.PM.board.heroMarket().topic;
+      say('');
+      say('=== next() WHILE OPEN ===');
+      say(' next() keeps detail  : ' + (openAfterNext ? 'YES' : 'no'));
+      say(' topic after next     : ' + JSON.stringify(shown.slice(0, 40)));
+
+      /* 3. Back — a real click on the visible button */
+      doc.querySelector('.back').click();
+      setTimeout(function () {
+        snap(doc, win, 'AFTER BACK');
+        say(' back returned to list: ' + (!doc.querySelector('.board').classList.contains('is-detail') ? 'YES' : 'no'));
+        say(' hero after back      : ' + (doc.querySelector('.hero__topic').textContent === shown ? 'YES (the market stays on screen)' : 'NO'));
+
+        /* 4. keyboard: PM.open + Escape, then Enter on a focused row */
+        win.PM.open(1);
+        setTimeout(function () {
+          var opened = doc.querySelector('.board').classList.contains('is-detail');
+          win.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          setTimeout(function () {
+            say('');
+            say('=== keyboard ===');
+            say(' PM.open(1) opened    : ' + (opened ? 'YES' : 'no'));
+            say(' Escape closes        : ' + (!doc.querySelector('.board').classList.contains('is-detail') ? 'YES' : 'no'));
+            var r0 = doc.querySelectorAll('.row')[0];
+            r0.focus();
+            r0.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            setTimeout(function () {
+              say(' Enter on a row opens : ' + (doc.querySelector('.board').classList.contains('is-detail') ? 'YES' : 'no'));
+              say(' back in tab order    : ' + (doc.querySelector('.back').tabIndex === 0 ? 'YES' : 'no'));
+
+              /* the case most likely to overflow the opened view: a headline that
+                 needs all three lines at the larger detail size */
+              win.PM.apply({ markets: { items: [{
+                topic: 'Will the Federal Reserve cut interest rates at least twice before the end of the next calendar year?',
+                probability: 44, change: 2.1, volume: 900000, category: 'Economy', ends: '2026-12-31', enabled: true
+              }] } }, { animate: false });
+              win.PM.open(0);
+              setTimeout(function () {
+                snap(doc, win, 'LONG HEADLINE, opened');
+                finish('');
+              }, 700);
+            }, 600);
+          }, 400);
+        }, 500);
+      }, 700);
+    }, 900);
+  }, 1200);
+}
+
+function finish(msg) {
+  if (msg) say('\n' + msg);
+  document.getElementById('out').textContent = out.join('\n');
+}
+</script>
+</body>
+</html>
+

@@ -1,0 +1,455 @@
+/* ============================================================================
+   Vertical Weather Widget — stylesheet
+   Design: full-height (1080p) APPLE-STYLE GLASS.
+   Frosted translucent slab, 34px corners, specular hairline border, diagonal
+   sheen, soft orb behind the icon, oversized numerals, glass stat row.
+   Every colour / font / size arrives from script.js as a CSS custom property.
+
+   OBS note: backdrop-filter only has the page itself to blur, so the glass is
+   built from its own translucent tint + sheen. Lower --glass-tint alpha to let
+   more of the video through.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+#stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--stage-w, 1920px);
+  height: var(--stage-h, 1080px);
+  transform-origin: top left;
+  transform: translate3d(0, 0, 0) scale(var(--stage-scale, 1));
+  background: var(--stage-bg, transparent);
+  contain: layout style;
+}
+
+/* ------------------------------------------------------------ glass slab */
+.panel {
+  position: absolute;
+  left: var(--panel-x, 48px);
+  top: var(--panel-y, 24px);
+  width: var(--panel-w, 460px);
+  height: var(--panel-h, 1032px);
+  display: flex;
+  flex-direction: column;
+  opacity: var(--panel-opacity, 1);
+  border-radius: var(--panel-radius, 34px);
+  background: var(--glass-tint, rgba(255, 255, 255, .70));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 34px)) saturate(var(--glass-sat, 180%));
+  backdrop-filter: blur(var(--glass-blur, 34px)) saturate(var(--glass-sat, 180%));
+  border: var(--glass-border-w, 1px) solid var(--glass-border, rgba(255, 255, 255, .22));
+  box-shadow: var(--glass-shadow, 0 30px 70px rgba(0, 0, 0, .48)),
+              var(--glass-inner, inset 0 1px 0 rgba(255, 255, 255, .30));
+  overflow: hidden;
+  will-change: transform, opacity;
+  contain: layout paint style;
+}
+
+/* diagonal specular sheen */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-sheen);
+  pointer-events: none;
+  z-index: 30;
+  border-radius: inherit;
+}
+
+/* soft accent edge (iOS blue by default) */
+.panel::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 12%; bottom: 12%;
+  width: 2px;
+  background: var(--accent-c, #0a84ff);
+  opacity: .55;
+  filter: blur(.4px);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.panel__outline {
+  position: absolute;
+  inset: 0;
+  border: var(--glass-border-w, 1px) solid var(--glass-border, rgba(255, 255, 255, .22));
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 60;
+}
+
+/* ------------------------------------------------------------------ bands */
+.band {
+  position: relative;
+  width: 100%;
+  flex: 0 0 auto;
+  overflow: hidden;
+  display: flex;
+  z-index: 3;
+}
+.band__gloss { position: absolute; inset: 0; background: var(--gloss-gradient); pointer-events: none; }
+.band__text {
+  position: relative;
+  width: 100%;
+  z-index: 2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.band--header { height: var(--header-h, 0); background: var(--header-bg); align-items: center; }
+.band--header .band__text {
+  font-family: var(--header-font);
+  font-weight: var(--header-weight, 600);
+  font-size: var(--header-size, 30px);
+  color: var(--header-color, #fff);
+  letter-spacing: var(--header-tracking, 4px);
+  text-align: var(--header-align, center);
+  text-shadow: var(--header-shadow, none);
+}
+
+.band--footer {
+  height: var(--footer-h, 50px);
+  background: var(--footer-bg);
+  border-top: 1px solid var(--hairline, rgba(255, 255, 255, .10));
+  align-items: center;
+  justify-content: var(--footer-align, center);
+}
+.band--footer .band__text {
+  font-family: var(--footer-font);
+  font-weight: var(--footer-weight, 500);
+  font-size: var(--footer-size, 16px);
+  color: var(--footer-color, #2f4258);
+  letter-spacing: var(--footer-tracking, .5px);
+  padding: 0 var(--footer-pad-x, 16px);
+  text-align: var(--footer-align, center);
+}
+.footer-stale { opacity: .55; }
+
+/* ------------------------------------------------------------------ cards */
+.cards {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.card {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--card-bg-day);
+  will-change: transform, opacity;
+}
+.card.is-night { background: var(--card-bg-night); }
+.card + .card { border-top: var(--divider-w, 1px) solid var(--divider-c, rgba(255, 255, 255, .12)); }
+
+/* top row: city + local clock */
+.card__city {
+  position: relative;
+  flex: 0 0 auto;
+  height: var(--city-h, 72px);
+  background: var(--city-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--city-pad-x, 26px);
+  gap: 12px;
+}
+.card__city--rule { border-bottom: 1px solid var(--hairline, rgba(255, 255, 255, .14)); }
+.card__city-name {
+  font-family: var(--city-font);
+  font-weight: var(--city-weight, 600);
+  font-size: var(--city-size, 30px);
+  color: var(--city-color, #fff);
+  letter-spacing: var(--city-tracking, .5px);
+  text-transform: var(--city-transform, none);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card__city-time {
+  font-family: var(--city-font);
+  font-weight: 500;
+  font-size: var(--city-time-size, 26px);
+  color: var(--city-time-color, #083d85);
+  letter-spacing: .5px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* hero: glass orb, icon, big numerals */
+.card__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--body-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+.card__body-gloss { position: absolute; inset: 0; background: var(--gloss-gradient); pointer-events: none; }
+
+.card__icon {
+  position: relative;
+  width: var(--icon-size, 250px);
+  height: var(--icon-size, 250px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.card__icon svg { position: relative; width: 100%; height: 100%; overflow: visible; z-index: 2; }
+.card--glow .card__icon { filter: var(--icon-shadow, drop-shadow(0 14px 40px rgba(120, 190, 255, .38))); }
+
+/* the frosted orb behind the icon */
+.card--orb .card__icon::before {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: var(--orb-fill, radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .30), rgba(255, 255, 255, .08) 46%, rgba(255, 255, 255, 0) 70%));
+  border: 1px solid var(--orb-border, rgba(255, 255, 255, .16));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 14px 34px rgba(20, 40, 80, .18);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  z-index: 1;
+}
+
+.card__readout {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: var(--temp-align-items, center);
+  text-align: var(--temp-align, center);
+  gap: 2px;
+  padding: 0 20px;
+  min-width: 0;
+}
+.card__temp {
+  font-family: var(--temp-font);
+  font-weight: var(--temp-weight, 600);
+  font-size: var(--temp-size, 160px);
+  line-height: var(--temp-lh, .96);
+  color: var(--temp-color, #0a1a2f);
+  letter-spacing: var(--temp-tracking, -6px);
+  text-shadow: var(--temp-shadow, none);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.card__cond {
+  font-family: var(--cond-font);
+  font-weight: var(--cond-weight, 500);
+  font-size: var(--cond-size, 30px);
+  color: var(--cond-color, #1d2f47);
+  letter-spacing: var(--cond-tracking, .5px);
+  text-transform: var(--cond-transform, none);
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+}
+.card__range {
+  font-family: var(--range-font);
+  font-weight: var(--range-weight, 500);
+  font-size: var(--range-size, 25px);
+  color: var(--range-color, #3a4c66);
+  letter-spacing: .5px;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}
+
+/* glass stat row
+   A grid, not a flex row. With all six optional fields selected each cell got
+   ~76px of a 460px card, and a 36px nowrap value simply painted over its
+   neighbours ("MPH66% 500.009EB hPa0%"). The cell count decides the shape —
+   one row up to three fields, two rows beyond that — and a grid cell keeps every
+   value inside its own column no matter how wide the text is. */
+.card__details {
+  position: relative;
+  flex: 0 0 auto;
+  height: var(--details-h, 106px);
+  display: grid;
+  grid-template-columns: repeat(var(--stat-cols, 3), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-items: stretch;
+  background: var(--details-bg);
+  border-top: 1px solid var(--hairline, rgba(255, 255, 255, .10));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.stat {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 6px;
+}
+.stat.is-col-first::before { display: none; }   /* first cell of each row: no rule */
+.stat + .stat::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 28%; bottom: 28%;
+  width: 1px;
+  background: var(--hairline, rgba(255, 255, 255, .14));
+}
+.stat__value {
+  font-family: var(--stat-font);
+  font-weight: 600;
+  font-size: var(--stat-value-size, 36px);
+  color: var(--stat-value-color, #0a1a2f);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* The value must stay inside its cell. Without the cap it sized to its own
+     content, so `scrollWidth > clientWidth` was never true and fitStatValues()
+     could never shrink anything — the text just overlapped the next cell. */
+  max-width: 100%;
+  overflow: hidden;
+}
+.stat__label {
+  font-family: var(--stat-font);
+  font-weight: 500;
+  font-size: var(--stat-label-size, 15px);
+  color: var(--stat-label-color, #33465f);
+  letter-spacing: var(--stat-label-tracking, .5px);
+  text-transform: var(--stat-transform, none);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.card.no-labels .stat__label { display: none; }
+
+/* error / stale */
+.card.is-error .card__icon { opacity: .4; }
+.card.is-stale .card__details { opacity: .65; }
+.card__error {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: #ff453a;
+  opacity: .9;
+  z-index: 35;
+}
+
+/* ------------------------------------------------- ambient icon animation */
+.no-ambient .wx-rays,
+.no-ambient .wx-cloud,
+.no-ambient .wx-drop,
+.no-ambient .wx-flake,
+.no-ambient .wx-bolt,
+.no-ambient .wx-sun,
+.no-ambient .wx-moon,
+.no-ambient .wx-fog line { animation: none !important; }
+
+.wx-rays { transform-box: fill-box; transform-origin: 50% 50%; animation: wx-spin 26s linear infinite; }
+.wx-cloud { transform-box: fill-box; animation: wx-drift 5.5s ease-in-out infinite alternate; }
+.wx-sun, .wx-moon { transform-box: fill-box; transform-origin: 50% 50%; animation: wx-pulse 4.5s ease-in-out infinite; }
+.wx-drop { transform-box: fill-box; animation: wx-fall 1.15s linear infinite; }
+.wx-flake { transform-box: fill-box; animation: wx-snowfall 2.8s linear infinite; }
+.wx-bolt { transform-box: fill-box; animation: wx-flash 2.6s steps(1, end) infinite; }
+.wx-fog line { animation: wx-fogmove 4s ease-in-out infinite alternate; }
+.wx-fog line:nth-child(2) { animation-delay: .5s; }
+.wx-fog line:nth-child(3) { animation-delay: 1s; }
+
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+@keyframes wx-drift { from { transform: translateX(-3px); } to { transform: translateX(4px); } }
+@keyframes wx-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes wx-fall {
+  0%   { transform: translateY(-10px); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translateY(14px); opacity: 0; }
+}
+@keyframes wx-snowfall {
+  0%   { transform: translate(0, -6px); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translate(3px, 14px); opacity: 0; }
+}
+@keyframes wx-flash {
+  0%, 42%, 48%, 100% { opacity: 1; }
+  44%, 46% { opacity: .15; }
+}
+@keyframes wx-fogmove {
+  from { transform: translateX(-4px); }
+  to   { transform: translateX(5px); }
+}
+
+/* debug guides */
+.debug .panel, .debug .card, .debug .band { outline: 1px dashed rgba(0, 200, 255, .8); }
+.hidden { display: none !important; }
+
+/* ============================================================================
+   Skill-derived foundations
+   • published timing/easing scale instead of ad-hoc values
+   • reduced motion is a first-class state (also gated in script.js)
+   • semantic tokens so an admin palette swap needs no renames
+   ========================================================================== */
+:root {
+  --dur-micro: 120ms;
+  --dur-small: 240ms;
+  --dur-medium: 420ms;
+  --dur-large: 760ms;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+
+  /* display/heading type is roman only (never italic) */
+  --surface-glass: var(--glass-tint, rgba(255, 255, 255, .70));
+  --text-primary: #0a1a2f;
+  --text-secondary: #3a4c66;
+  --text-tertiary: #33465f;
+  --hairline: rgba(10, 26, 48, .14);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .wx-rays, .wx-cloud, .wx-drop, .wx-flake, .wx-bolt, .wx-sun, .wx-moon, .wx-fog line {
+    animation: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .panel { border: 2px solid CanvasText; background: Canvas; }
+  .card { background: Canvas; }
+  .card__temp, .card__cond, .card__range, .stat__value { color: CanvasText; text-shadow: none; }
+  .card__details, .band--header, .band--footer, .card__city { background: Canvas; color: CanvasText; }
+  .card__icon { forced-color-adjust: none; }
+}

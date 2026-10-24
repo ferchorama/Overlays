@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>glow — measurement harness</title></head>
+<body>
+<!--
+  Measurement harness for the chart's travelling glow.
+
+  The DOM shim used by tests/smoke.js has no layout and no tween engine, so the two
+  things that can actually be wrong here — a dash of the wrong size, and a loop that
+  is not armed — are measured in real Chrome. Loads the real overlay in a same-origin
+  iframe with a flat series (so every market has a chart without waiting for a price
+  feed), then reports the glow path's geometry and walks the loop through progress
+  values to show opacity and dashoffset moving.
+
+  Usage (serve the app first — the hub does this):
+    chrome --headless=new --virtual-time-budget=12000 --dump-dom \
+      "http://localhost:8790/predictions/tests/glow.html"
+
+  Add --force-prefers-reduced-motion to confirm the glow is removed entirely.
+-->
+<pre id="out">measuring…</pre>
+<iframe id="f" style="width:1920px;height:1080px;border:0"></iframe>
+<script>
+var out = [];
+function say(s) { out.push(s); }
+var f = document.getElementById('f');
+f.src = '/predictions/index.html?nosync=1';
+f.addEventListener('load', function () { setTimeout(boot, 2400); });
+
+function boot() {
+  var win, doc, PM;
+  try { win = f.contentWindow; doc = f.contentDocument; } catch (e) { return done('no frame: ' + e.message); }
+  PM = win.PM;
+  if (!PM || !PM.board) return done('PM not ready');
+
+  /* a flat series gives every market a chart, without waiting for a price feed */
+  PM.apply({ hero: { historyMode: 'flat', showWhenNotAsset: true } }, { animate: false });
+
+  setTimeout(function () {
+    var board = PM.board;
+    var glow = doc.querySelector('.chart .glow');
+    var line = doc.querySelector('.chart .line');
+    say('reduced motion: ' + (win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches));
+    say('glow path: ' + (glow ? 'present' : 'MISSING'));
+    say('  class=' + (glow && glow.getAttribute('class')) +
+        ' stroke=' + (glow && glow.getAttribute('stroke')) +
+        ' width=' + (glow && glow.getAttribute('stroke-width')));
+    say('  dasharray=' + (glow && glow.getAttribute('stroke-dasharray')) +
+        '  d matches line: ' + (!!glow && !!line && glow.getAttribute('d') === line.getAttribute('d')));
+    say('  filter=' + (glow && glow.style.filter));
+    say('  chartLineLen=' + board.chartLineLen);
+    var tl = board._glowTl;
+    say('loop: ' + (tl ? 'armed' : 'none') +
+        (tl ? '  repeat=' + (tl.repeat ? tl.repeat() : '?') +
+              '  repeatDelay=' + (tl.repeatDelay ? tl.repeatDelay() : '?') +
+              '  duration=' + (tl.duration ? tl.duration() : '?') : ''));
+
+    if (tl && glow) {
+      [0, 0.12, 0.4, 0.7, 0.95].forEach(function (p) {
+        tl.progress(p, true);
+        var cs = win.getComputedStyle(glow);
+        say('  progress ' + p.toFixed(2) +
+            '  opacity=' + cs.opacity +
+            '  dashoffset=' + (glow.style.strokeDashoffset || glow.getAttribute('stroke-dashoffset') || '-'));
+      });
+      tl.progress(0, true);
+    }
+    done('');
+  }, 1200);
+}
+
+function done(msg) {
+  if (msg) say(msg);
+  document.getElementById('out').textContent = out.join('\n');
+}
+</script>
+</body>
+</html>

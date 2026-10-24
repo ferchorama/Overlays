@@ -1,0 +1,306 @@
+{
+  "theme": "dark",
+  "meta": {
+    "name": "Vertical Weather Widget",
+    "version": "3.1.7",
+    "migratedFrom": "3.1.6"
+  },
+  "stage": {
+    "width": 460,
+    "height": 1080,
+    "fit": "contain",
+    "alignX": "left",
+    "background": "transparent"
+  },
+  "panel": {
+    "x": 0,
+    "y": 0,
+    "width": 460,
+    "heightMode": "fill",
+    "radius": 34,
+    "background": "rgba(216,242,255,0.88)",
+    "borderWidth": 1,
+    "borderColor": "rgba(212,240,255,0.85)",
+    "accentColor": "#0a84ff",
+    "shadow": "0 26px 60px rgba(18,72,140,0.30)",
+    "opacity": 1,
+    "glass": {
+      "blur": 36,
+      "saturate": 175,
+      "borderWidth": 1,
+      "borderColor": "rgba(214,241,255,0.88)",
+      "innerHighlight": "inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -1px 0 rgba(190,225,255,0.45)",
+      "sheen": "linear-gradient(148deg, rgba(255,255,255,0.58) 0%, rgba(190,230,255,0.20) 24%, rgba(255,255,255,0) 46%, rgba(200,235,255,0.26) 100%)",
+      "shadow": "0 26px 60px rgba(18,72,140,0.30)",
+      "hairline": "rgba(16,96,180,0.26)",
+      "orbFill": "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.98), rgba(224,246,255,0.62) 46%, rgba(200,236,255,0.12) 72%)",
+      "orbBorder": "rgba(255,255,255,0.94)"
+    }
+  },
+  "surfaces": {
+    "day": [
+      {
+        "offset": 0,
+        "color": "rgba(92,198,255,0.94)"
+      },
+      {
+        "offset": 52,
+        "color": "rgba(152,222,255,0.92)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(210,240,255,0.90)"
+      }
+    ],
+    "night": [
+      {
+        "offset": 0,
+        "color": "rgba(128,158,255,0.92)"
+      },
+      {
+        "offset": 52,
+        "color": "rgba(168,190,255,0.90)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(214,224,255,0.88)"
+      }
+    ]
+  },
+  "header": {
+    "visible": false,
+    "height": 0,
+    "gradient": [
+      {
+        "offset": 0,
+        "color": "rgba(180,225,255,0.40)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(180,225,255,0)"
+      }
+    ],
+    "gloss": false,
+    "text": "WEATHER",
+    "fontFamily": "-apple-system, 'SF Pro Display', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+    "weight": 600,
+    "size": 30,
+    "color": "#0b2a5b",
+    "uppercase": true,
+    "letterSpacing": 4,
+    "align": "center",
+    "valign": "middle",
+    "shadow": "none",
+    "autoShrink": true
+  },
+  "card": {
+    "gap": 0,
+    "divider": {
+      "enabled": true,
+      "color": "rgba(20,96,168,0.18)",
+      "width": 1
+    },
+    "cityBand": {
+      "height": 72,
+      "gradient": [
+        {
+          "offset": 0,
+          "color": "rgba(255,255,255,0.34)"
+        },
+        {
+          "offset": 100,
+          "color": "rgba(255,255,255,0)"
+        }
+      ],
+      "fontFamily": "-apple-system, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+      "weight": 600,
+      "size": 30,
+      "color": "#0b2a5b",
+      "uppercase": false,
+      "letterSpacing": 0.5,
+      "align": "left",
+      "paddingX": 26,
+      "showCountry": true,
+      "showLocalTime": true,
+      "timeSize": 26,
+      "timeColor": "#0a4179",
+      "accentRule": true
+    },
+    "body": {
+      "height": 0,
+      "gradient": [
+        {
+          "offset": 0,
+          "color": "rgba(255,255,255,0.24)"
+        },
+        {
+          "offset": 100,
+          "color": "rgba(200,235,255,0)"
+        }
+      ],
+      "gloss": false,
+      "iconSize": 250,
+      "iconX": 0,
+      "iconGlow": true,
+      "iconShadow": "0 12px 30px rgba(12,74,150,0.42)",
+      "orb": true,
+      "temp": {
+        "fontFamily": "-apple-system, 'SF Pro Display', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+        "fontUrl": "",
+        "weight": 600,
+        "size": 160,
+        "color": "#0a3566",
+        "unit": "°",
+        "showUnit": true,
+        "letterSpacing": -6,
+        "lineHeight": 0.96,
+        "shadow": "0 6px 18px rgba(24,86,160,0.18)",
+        "align": "center"
+      },
+      "condition": {
+        "fontFamily": "-apple-system, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+        "weight": 500,
+        "size": 30,
+        "color": "#12507f",
+        "uppercase": false,
+        "letterSpacing": 0.5,
+        "maxLines": 2
+      },
+      "range": {
+        "show": true,
+        "fontFamily": "-apple-system, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+        "weight": 500,
+        "size": 25,
+        "color": "#154c7a",
+        "format": "H {h}°      L {l}°"
+      }
+    },
+    "details": {
+      "height": 106,
+      "gradient": [
+        {
+          "offset": 0,
+          "color": "rgba(255,255,255,0.46)"
+        },
+        {
+          "offset": 100,
+          "color": "rgba(198,234,255,0.24)"
+        }
+      ],
+      "fontFamily": "-apple-system, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+      "weight": 500,
+      "size": 15,
+      "color": "#0b2a5b",
+      "uppercase": false,
+      "letterSpacing": 0.5,
+      "labelSize": 15,
+      "labelColor": "#124a70",
+      "valueSize": 36,
+      "valueColor": "#0b2a5b",
+      "showLabels": true,
+      "fields": [
+        "wind",
+        "humidity",
+        "feels"
+      ]
+    }
+  },
+  "footer": {
+    "visible": true,
+    "height": 50,
+    "gradient": [
+      {
+        "offset": 0,
+        "color": "rgba(180,225,255,0.34)"
+      },
+      {
+        "offset": 100,
+        "color": "rgba(180,225,255,0)"
+      }
+    ],
+    "fontFamily": "-apple-system, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'Figtree', sans-serif",
+    "weight": 500,
+    "size": 16,
+    "color": "#0f4c78",
+    "align": "center",
+    "letterSpacing": 0.5,
+    "paddingX": 16,
+    "showUpdated": true,
+    "updatedLabel": "Updated",
+    "showSource": true,
+    "sourceLabel": "Open-Meteo"
+  },
+  "maxCities": 2,
+  "cities": [
+    {
+      "label": "New York",
+      "query": "New York",
+      "countryCode": "US",
+      "lat": null,
+      "lon": null,
+      "enabled": true
+    },
+    {
+      "label": "Carlsbad",
+      "query": "Carlsbad",
+      "countryCode": "",
+      "lat": 32.42067,
+      "lon": -104.22884,
+      "enabled": true
+    }
+  ],
+  "units": {
+    "system": "imperial",
+    "temperature": "fahrenheit",
+    "wind": "mph",
+    "locale": "en-US",
+    "clock24": false
+  },
+  "data": {
+    "refreshMinutes": 10,
+    "timeoutMs": 9000,
+    "retryOnFailSeconds": 60,
+    "showStaleAfterMinutes": 30,
+    "forecastDays": 1,
+    "useCacheOnFailure": true,
+    "cacheKey": "wx-cache-v2"
+  },
+  "googleFonts": [
+    "Figtree:wght@400;500;600;700"
+  ],
+  "iconColors": {
+    "sun": "#ff9500",
+    "moon": "#4f5fe8",
+    "cloud": "#ffffff",
+    "cloudDark": "#6fa8e0",
+    "rain": "#0a5fd0",
+    "snow": "#ffffff",
+    "bolt": "#ffb300",
+    "fog": "#4f93c9"
+  },
+  "animation": {
+    "autoPlay": true,
+    "autoPlayDelay": 0.4,
+    "headerDuration": 0.9,
+    "headerEase": "power3.out",
+    "cardDuration": 1.8,
+    "cardEase": "power3.out",
+    "cardStagger": 0.5,
+    "cardStart": 0.55,
+    "cardFrom": "bottom",
+    "cardDistance": 150,
+    "fadeRows": true,
+    "ambient": true,
+    "tweenValues": true,
+    "tweenDuration": 1.4,
+    "loopPreview": false,
+    "loopHoldIn": 6,
+    "loopHoldOut": 2
+  },
+  "sync": {
+    "serverConfigUrl": "config.json",
+    "pollMs": 2000,
+    "stateUrl": "api/state",
+    "statePollMs": 700
+  }
+}

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talking Points Panel — Control</title>
+  <link rel="stylesheet" href="admin.css?v=1.1.3" />
+<script>
+  /* The hub is the single source of truth for the theme: same origin, same
+     localStorage key, so switching it there switches every panel. Resolved
+     before the body paints, otherwise a dark machine flashes light first. */
+  (function () {
+    var t = 'light';
+    try {
+      var s = localStorage.getItem('obs-overlays-theme');
+      if (s === 'dark' || s === 'light') t = s;
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+    } catch (e) { /* private mode */ }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <strong>Talking Points Panel</strong>
+      <span class="muted">control</span>
+    </div>
+    <div class="topbar__actions">
+        <button type="button" id="btnTheme" class="btn" title="Switch theme" aria-label="Switch theme">Theme</button>
+        <span class="sep"></span>
+      <button id="btnIn" class="btn btn--on">&#9654; Play entrance</button>
+      <button id="btnOut" class="btn">Hide</button>
+      <span class="sep"></span>
+      <button id="btnReset" class="btn btn--danger">Reset to defaults</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ------------------------------------------------------------ preview -->
+    <section class="preview">
+      <div class="preview__bar">
+        <span class="muted" id="status">ready</span>
+        <span class="grow"></span>
+        <label class="mini"><input type="checkbox" id="optGrid" /> guides</label>
+        <select id="selZoom" class="mini-select">
+          <option value="fit">Fit</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+        </select>
+        <a id="linkOut" class="mini" href="index.html?v=1.1.3" target="_blank">open overlay &#8599;</a>
+      </div>
+      <div class="preview__stage" id="previewStage">
+        <iframe id="preview" src="index.html?preview=1&v=1.1.3" title="preview"></iframe>
+      </div>
+      <p class="hint">
+        In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
+        (1920&times;1080, transparent). Open this page from
+        <code>http://localhost:8790/topics/admin.html</code> — served by the shared
+        <code>Overlays/server.js</code> — so every change reaches OBS live.
+      </p>
+    </section>
+
+    <!-- ------------------------------------------------------------- editor -->
+    <section class="editor">
+      <nav class="tabs">
+        <button class="tab is-active" data-tab="content">Content</button>
+        <button class="tab" data-tab="look">Look</button>
+        <button class="tab" data-tab="fonts">Fonts</button>
+        <button class="tab" data-tab="layout">Layout</button>
+        <button class="tab" data-tab="anim">Animation</button>
+        <button class="tab" data-tab="presets">Presets</button>
+      </nav>
+
+      <!-- CONTENT -->
+      <div class="panel-body is-active" data-panel="content">
+        <div class="field">
+          <label>Title</label>
+          <input id="c_title" type="text" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Subtitle</label>
+            <input id="c_subtitle" type="text" />
+          </div>
+          <div class="field field--check">
+            <label><input type="checkbox" id="c_autoDate" /> auto date</label>
+            <select id="c_dateFormat">
+              <option>MM/DD/YY</option>
+              <option>DD/MM/YY</option>
+              <option>MM/DD/YYYY</option>
+              <option>DD MMM YYYY</option>
+              <option>MMM DD, YYYY</option>
+              <option>YYYY-MM-DD</option>
+            </select>
+            <button type="button" class="btn" id="btnSetToday"
+                    title="Write today's date into the subtitle, in the format above">Set to today</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Show bands</label>
+          <div class="row2">
+            <label class="check"><input type="checkbox" id="c_headerVisible" /> title band</label>
+            <label class="check"><input type="checkbox" id="c_subVisible" /> subtitle band</label>
+          </div>
+        </div>
+
+        <hr />
+        <label class="section-label">Topics <span class="muted">(type to activate &middot; ⠿ toggles on/off &middot; drag to reorder)</span></label>
+        <div id="topicList" class="topics"></div>
+        <div class="row2">
+          <button id="btnAddTopic" class="btn btn--ghost">+ Add topic</button>
+        </div>
+        <div class="field" style="max-width:180px">
+          <label>Max rows</label>
+          <input id="c_maxRows" type="number" min="1" max="20" />
+        </div>
+      </div>
+
+      <!-- LOOK -->
+      <div class="panel-body" data-panel="look">
+        <label class="section-label">Theme</label>
+        <div class="field">
+          <label>Palette</label>
+          <select id="c_theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <p class="hint">Dark is a curated palette layered over the colours below, so those stay your light design. A single browser source can also force it by adding <b>?theme=dark</b> to its URL.</p>
+
+        <label class="section-label">Title band</label>
+        <div class="row2">
+          <div class="field"><label>Gradient top</label><input id="c_headerGradA" type="color" /></div>
+          <div class="field"><label>Gradient bottom</label><input id="c_headerGradB" type="color" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Title colour</label><input id="c_titleColor" type="color" /></div>
+          <div class="field"><label>Title size (px)</label><input id="c_titleSize" type="number" min="8" max="200" /></div>
+        </div>
+
+        <label class="section-label">Subtitle band</label>
+        <div class="row2">
+          <div class="field"><label>Gradient top</label><input id="c_subGradA" type="color" /></div>
+          <div class="field"><label>Gradient bottom</label><input id="c_subGradB" type="color" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Subtitle colour</label><input id="c_subColor" type="color" /></div>
+          <div class="field"><label>Subtitle size (px)</label><input id="c_subSize" type="number" min="8" max="200" /></div>
+        </div>
+
+        <label class="section-label">Topic rows</label>
+        <div class="stops" id="stops"></div>
+        <button id="btnAddStop" class="btn btn--ghost">+ Add gradient stop</button>
+        <div class="row2">
+          <div class="field"><label>Row text colour</label><input id="c_rowColor" type="color" /></div>
+          <div class="field"><label>Row text size (px)</label><input id="c_rowSize" type="number" min="8" max="200" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Row text shadow</label><input id="c_rowShadow" type="text" /></div>
+          <div class="field"><label>Row height (px)</label><input id="c_rowHeight" type="number" min="20" max="300" /></div>
+        </div>
+
+        <label class="section-label">Panel shell</label>
+        <div class="row2">
+          <div class="field"><label>Panel background</label><input id="c_panelBg" type="color" /></div>
+          <div class="field"><label>Border colour</label><input id="c_borderColor" type="color" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Border width (px)</label><input id="c_borderWidth" type="number" min="0" max="40" /></div>
+          <div class="field"><label>Corner radius (px)</label><input id="c_radius" type="number" min="0" max="80" /></div>
+        </div>
+        <div class="field"><label>Drop shadow (CSS)</label><input id="c_panelShadow" type="text" /></div>
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_glossHeader" /> header gloss</label>
+          <label class="check"><input type="checkbox" id="c_glossRows" /> row gloss overlay</label>
+        </div>
+      </div>
+
+      <!-- FONTS -->
+      <div class="panel-body" data-panel="fonts">
+        <label class="section-label">Google fonts to load <span class="muted">(one per line, e.g. <code>Montserrat:wght@400;700</code>)</span></label>
+        <textarea id="c_googleFonts" rows="3"></textarea>
+
+        <label class="section-label">Title font</label>
+        <div class="row2">
+          <div class="field"><label>font-family</label><input id="c_titleFont" type="text" /></div>
+          <div class="field"><label>weight</label><input id="c_titleWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>letter-spacing (px)</label><input id="c_titleTracking" type="number" step="0.5" /></div>
+          <div class="field field--check"><label><input type="checkbox" id="c_titleUpper" /> UPPERCASE</label></div>
+        </div>
+
+        <label class="section-label">Subtitle font</label>
+        <div class="row2">
+          <div class="field"><label>font-family</label><input id="c_subFont" type="text" /></div>
+          <div class="field"><label>weight</label><input id="c_subWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>letter-spacing (px)</label><input id="c_subTracking" type="number" step="0.5" /></div>
+          <div class="field field--check"><label><input type="checkbox" id="c_subUpper" /> UPPERCASE</label></div>
+        </div>
+
+        <label class="section-label">Topic font</label>
+        <div class="row2">
+          <div class="field"><label>font-family</label><input id="c_rowFont" type="text" /></div>
+          <div class="field"><label>weight</label><input id="c_rowWeight" type="number" step="100" min="100" max="900" /></div>
+        </div>
+        <div class="field"><label>Custom font CSS URL (optional)</label><input id="c_rowFontUrl" type="text" /></div>
+        <div class="row2">
+          <div class="field"><label>letter-spacing (px)</label><input id="c_rowTracking" type="number" step="0.5" /></div>
+          <div class="field field--check"><label><input type="checkbox" id="c_rowUpper" /> UPPERCASE</label></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>max lines</label><input id="c_rowMaxLines" type="number" min="1" max="4" /></div>
+          <div class="field field--check"><label><input type="checkbox" id="c_rowAutoShrink" /> auto-shrink to fit</label></div>
+        </div>
+      </div>
+
+      <!-- LAYOUT -->
+      <div class="panel-body" data-panel="layout">
+        <div class="row2">
+          <div class="field"><label>Stage width</label><input id="c_stageW" type="number" /></div>
+          <div class="field"><label>Stage height</label><input id="c_stageH" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Panel X (px)</label><input id="c_panelX" type="number" /></div>
+          <div class="field"><label>Panel Y (px)</label><input id="c_panelY" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Panel width (px)</label><input id="c_panelW" type="number" /></div>
+          <div class="field"><label>Vertical anchor</label>
+            <select id="c_vAnchor">
+              <option value="top">top</option>
+              <option value="middle">middle</option>
+              <option value="bottom">bottom</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Title band height</label><input id="c_headerH" type="number" /></div>
+          <div class="field"><label>Subtitle band height</label><input id="c_subH" type="number" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Row gap (px)</label><input id="c_rowGap" type="number" min="0" /></div>
+          <div class="field field--check"><label><input type="checkbox" id="c_autoFit" /> auto-fit height to stage</label></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Separator</label>
+            <div class="row2">
+              <input id="c_sepColor" type="color" />
+              <input id="c_sepH" type="number" min="0" max="10" />
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="c_sepOn" /> draw separator lines</label>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Scale mode</label>
+            <select id="c_fit">
+              <option value="contain">contain</option>
+              <option value="cover">cover</option>
+              <option value="width">width</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+          <div class="field"><label>Horizontal align</label>
+            <select id="c_alignX">
+              <option value="left">left</option>
+              <option value="center">center</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANIMATION -->
+      <div class="panel-body" data-panel="anim">
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_autoPlay" /> auto-play on load</label>
+          <label class="check"><input type="checkbox" id="c_loopPreview" /> loop in preview</label>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Rows enter from</label>
+            <select id="c_rowFrom">
+              <option value="top">top (slide down)</option>
+              <option value="bottom">bottom (slide up)</option>
+              <option value="left">left</option>
+              <option value="right">right</option>
+            </select>
+          </div>
+          <div class="field"><label>Travel distance (px)</label><input id="c_rowDistance" type="number" min="0" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Row duration (s)</label><input id="c_rowDuration" type="number" step="0.05" /></div>
+          <div class="field"><label>Row stagger (s)</label><input id="c_rowStagger" type="number" step="0.01" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Row start delay (s)</label><input id="c_rowStart" type="number" step="0.05" /></div>
+          <div class="field"><label>Row ease</label><input id="c_rowEase" type="text" /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Header duration (s)</label><input id="c_headerDuration" type="number" step="0.05" /></div>
+          <div class="field"><label>Header ease</label><input id="c_headerEase" type="text" /></div>
+        </div>
+        <label class="check"><input type="checkbox" id="c_fadeRows" /> fade rows in</label>
+        <p class="hint">
+          Entrance only — there is no out animation (OBS hides the source, the panel never animates away).
+          Eases use GSAP syntax: <code>power3.out</code>, <code>back.out(1.4)</code>, <code>elastic.out(1,0.5)</code>, <code>expo.out</code>…
+        </p>
+      </div>
+
+      <!-- PRESETS -->
+      <div class="panel-body" data-panel="presets">
+        <label class="section-label">Theme presets</label>
+        <div class="presets">
+          <button class="preset" data-preset="sky">Sky Glass <span class="swatch" style="background:linear-gradient(90deg,#4abeff,#7ed6ff,#c4ecff,#d6f2ff)"></span></button>
+          <button class="preset" data-preset="dusk">Dusk Periwinkle <span class="swatch" style="background:linear-gradient(90deg,#809eff,#a8beff,#d2dcff,#e2eaff)"></span></button>
+          <button class="preset" data-preset="lagoon">Lagoon <span class="swatch" style="background:linear-gradient(90deg,#40cec4,#78e0d4,#c4f2ec,#d8f8f4)"></span></button>
+          <button class="preset" data-preset="sunrise">Sunrise <span class="swatch" style="background:linear-gradient(90deg,#ffba66,#ffd496,#ffecd0,#fff4e2)"></span></button>
+        </div>
+        <hr />
+        <label class="section-label">Raw JSON <span class="muted">(advanced — edit + Apply)</span></label>
+        <textarea id="rawJson" rows="16" spellcheck="false"></textarea>
+        <div class="row2">
+          <button id="btnApplyRaw" class="btn btn--primary">Apply JSON</button>
+          <button id="btnCopyRaw" class="btn">Copy</button>
+        </div>
+        <hr />
+        <label class="section-label">Server / Stream Deck</label>
+        <p class="hint">
+          With <code>node server.js</code> running you get an HTTP control API:<br />
+          <code>GET /api/command?action=in</code> &middot;
+          <code>?action=out</code> &middot;
+          <code>?action=replay</code>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js?v=1.1.3"></script>
+  <script src="config-merge.js?v=1.1.3"></script>
+  <script src="admin.js?v=1.1.3"></script>
+</body>
+</html>
