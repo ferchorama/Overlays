@@ -184,6 +184,9 @@ All older saved configs migrate automatically on load.
   persistence across updates, and the removal of the photo/backdrop work.
 - New root `README.md` documents the hub, the Update-now flow, the settings
   contract, the layout and packaging.
+- `README.md` is now a short install-and-use guide (two pages); the detailed
+  material — data flow, provider proxies, settings internals, tests, layout,
+  packaging and rollback commands — moved to `REFERENCE.md`.
 - `update.bat` — puts the files on a Windows machine and keeps them current:
   `git clone` on the first run, `git fetch` + `git merge --ff-only` after that,
   and an in-place `git init`/checkout when the folder came from a zip. Installs
