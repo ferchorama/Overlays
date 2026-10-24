@@ -32,7 +32,7 @@ window.PM_PALETTES = {
 window.PM_DEFAULT_CONFIG = {
   meta: {
     name: 'Prediction Markets',
-    version: '1.3.0'
+    version: '1.4.1'
   },
 
   /* ---------------- Design stage ----------------
@@ -400,7 +400,10 @@ window.PM_DEFAULT_CONFIG = {
      serves every overlay, which matters because the free tier rate-limits hard
      (measured: 10 of 12 rapid calls returned 429). */
   data: {
-    proxyUrl: '/market/api/market',
+    /* Served by THIS app's hub prefix. The hub shares one CoinGecko cache with
+       the market board, so a price series already fetched for the board is free
+       here. Relative on purpose: an absolute path breaks behind a base path. */
+    proxyUrl: 'api/data',
     /* Used by the dashboard's Fetch button when the hub proxy is not reachable
        (e.g. the panel opened straight from disk). CoinGecko's free tier is
        rate-limited, so this is only ever hit on an explicit click, never on a

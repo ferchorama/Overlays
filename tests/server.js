@@ -5,10 +5,9 @@
 
      node tests/server.js
 
-   The point of fusing the two servers is that ONE process serves both projects
-   under path prefixes and keeps the old ports working. These checks pin exactly
-   that: both apps reachable, each with its own state and its own action list,
-   nothing escaping the app directory, and the hub reporting honest status.
+   One process, one port. These checks pin that: every app reachable under its
+   prefix, each with its own state and its own action list, nothing escaping
+   the app directory, and LEGACY=1 no longer opening a second listener.
    ========================================================================== */
 'use strict';
 
@@ -19,8 +18,8 @@ const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 8899;          // deliberately not a real port, so a running studio
-const LEGACY_WX = 8897;     // dedicated legacy ports, so the test never fights
-const LEGACY_TP = 8896;     // a live studio server for 8787/8788
+const CLOSED_A = 8897;      // ports the old per-app listeners used to claim
+const CLOSED_B = 8896;
 
 const results = [];
 const check = (name, pass, info) => results.push({ name, pass, info });
@@ -75,7 +74,7 @@ function waitForPort(attempts) {
 const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
   env: Object.assign({}, process.env, {
     PORT: String(PORT), LEGACY: '1',
-    LEGACY_PORT_WEATHER: String(LEGACY_WX), LEGACY_PORT_TOPICS: String(LEGACY_TP)
+    LEGACY_PORT_WEATHER: String(CLOSED_A), LEGACY_PORT_TOPICS: String(CLOSED_B)
   }),
   stdio: ['ignore', 'pipe', 'pipe']
 });
@@ -105,12 +104,14 @@ function finish() {
   const hub = await get('/');
   check('hub page served at /', hub.status === 200 && /The Rollup overlays hub/.test(hub.body), 'HTTP ' + hub.status);
   check('hub injects the studio config', /window\.__STUDIO__\s*=/.test(hub.body), 'placeholder replaced');
-  check('hub lists both apps', /Vertical Weather/.test(hub.body) && /Talking Points/.test(hub.body)
+  check('hub lists every app', /Vertical Weather/.test(hub.body) && /Talking Points/.test(hub.body)
     || /__STUDIO__/.test(hub.body), 'apps injected client-side');
   check('hub HTML is not cached', hub.status === 200, 'no-store');
 
   const apps = json(await get('/api/apps'));
-  const wanted = ['weather', 'topics', 'market'];
+  /* every overlay the hub serves — adding a folder without adding it here is
+     how a new app quietly ships with no coverage at all */
+  const wanted = ['weather', 'topics', 'market', 'predictions'];
   check('/api/apps lists every app', !!apps && wanted.every((id) => apps.apps.some((a) => a.id === id)),
     apps ? apps.apps.map((a) => a.id).join(', ') : 'no JSON');
   check('app status carries versions',
@@ -119,8 +120,11 @@ function finish() {
 
   const health = json(await get('/healthz'));
   check('/healthz reports the port', !!health && health.ok === true && health.port === PORT, 'port ' + (health && health.port));
+  check('app status has no per-app port',
+    !!apps && apps.apps.every((a) => a.legacyPort == null),
+    apps ? apps.apps.map((a) => a.id + ':' + a.legacyPort).join(', ') : '-');
 
-  /* ------------------------------------------------- both apps, one origin */
+  /* ------------------------------------------------ every app, one origin */
   const wx = await get('/weather/index.html');
   const tp = await get('/topics/index.html');
   check('weather overlay served under /weather/', wx.status === 200 && /Vertical Weather Overlay/.test(wx.body),
@@ -132,6 +136,12 @@ function finish() {
   const tpAdmin = await get('/topics/admin.html');
   check('weather admin served', wxAdmin.status === 200, 'HTTP ' + wxAdmin.status);
   check('topics admin served', tpAdmin.status === 200, 'HTTP ' + tpAdmin.status);
+
+  const pmOverlay = await get('/predictions/index.html');
+  const pmAdmin = await get('/predictions/admin.html');
+  check('predictions overlay served under /predictions/',
+    pmOverlay.status === 200 && /Prediction Markets/.test(pmOverlay.body), 'HTTP ' + pmOverlay.status);
+  check('predictions admin served', pmAdmin.status === 200, 'HTTP ' + pmAdmin.status);
 
   /* assets must resolve RELATIVE to the prefix — this is what makes the fusion
      work without touching either project */
@@ -195,6 +205,30 @@ function finish() {
     !!mkState && mkState.action === 'next' && typeof mkState.seq === 'number',
     mkState ? mkState.action + ' seq=' + mkState.seq : 'no JSON');
 
+  /* predictions is manual-advance only: the board steps next/prev by hand, so
+     the command half of that contract is worth pinning here too. */
+  const pmCmd = json(await get('/predictions/api/command?action=next'));
+  check('predictions command routed to predictions',
+    !!pmCmd && pmCmd.app === 'predictions' && pmCmd.state.action === 'next',
+    pmCmd && pmCmd.state && pmCmd.state.action);
+  const pmState = json(await get('/predictions/api/state'));
+  check('predictions state carries the step the board has to replay',
+    !!pmState && pmState.action === 'next' && typeof pmState.seq === 'number',
+    pmState ? pmState.action + ' seq=' + pmState.seq : 'no JSON');
+  const pmCfg = json(await get('/predictions/api/config'));
+  check('predictions config endpoint answers JSON',
+    !!pmCfg && typeof pmCfg === 'object', pmCfg ? 'keys=' + Object.keys(pmCfg).length : 'no JSON');
+  /* The dashboard's Update now relies on these two actions being routed and
+     recorded; a typo here would silently disable the button. */
+  const mkUpdate = json(await get('/market/api/command?action=update'));
+  check('market accepts the update action',
+    !!mkUpdate && mkUpdate.ok === true && mkUpdate.state.action === 'update',
+    mkUpdate && mkUpdate.state && mkUpdate.state.action);
+  const pmRefresh = json(await get('/predictions/api/command?action=refresh'));
+  check('predictions accepts the refresh action',
+    !!pmRefresh && pmRefresh.ok === true && pmRefresh.state.action === 'refresh',
+    pmRefresh && pmRefresh.state && pmRefresh.state.action);
+
   /* ---------------------------------------------------------- containment */
   const trav = await get('/weather/../../etc/passwd');
   check('path traversal is refused', trav.status === 403 || trav.status === 404,
@@ -211,25 +245,33 @@ function finish() {
   check('unknown app prefix is a 404 with guidance',
     unknownApp.status === 404 && /try one of/.test(unknownApp.body), 'HTTP ' + unknownApp.status);
 
-  /* ------------------------------------------------- the backward-compat promise
-     Existing OBS browser sources point at http://localhost:8788/index.html and
-     http://localhost:8787/index.html. Fusing the servers must not break them, so
-     each legacy port still serves its own project at the ROOT (no prefix). */
-  const legacyWx = await rawGet(LEGACY_WX, '/index.html');
-  const legacyTp = await rawGet(LEGACY_TP, '/index.html');
-  check('legacy weather port serves the overlay at root',
-    legacyWx.status === 200 && /Vertical Weather Overlay/.test(legacyWx.body), 'HTTP ' + legacyWx.status);
-  check('legacy topics port serves the overlay at root',
-    legacyTp.status === 200 && /Talking Points/.test(legacyTp.body), 'HTTP ' + legacyTp.status);
-  check('legacy ports serve their own assets',
-    (await rawGet(LEGACY_WX, '/script.js')).status === 200 &&
-    (await rawGet(LEGACY_TP, '/script.js')).status === 200, 'both 200');
+  /* The panels share one combobox implementation, served from /shared/ by the
+     hub. It must be reachable exactly like an app asset, and it must not become
+     a way out of the tree. */
+  const combo = await get('/shared/combobox.js');
+  check('shared panel components are served',
+    combo.status === 200 && /createCombobox/.test(combo.body), 'HTTP ' + combo.status);
+  const sharedEscape = await get('/shared/../server.js');
+  check('the /shared mount cannot escape its directory',
+    sharedEscape.status === 403 || sharedEscape.status === 404, 'HTTP ' + sharedEscape.status);
 
-  const legacyCmd = json(await rawGet(LEGACY_WX, '/api/command?action=refresh'));
-  check('legacy port keeps the command API', !!legacyCmd && legacyCmd.app === 'weather',
-    legacyCmd && legacyCmd.app);
+  /* Every data overlay answers /api/status before any provider has been read. */
+  for (const app of ['weather', 'market', 'predictions']) {
+    const st = await get('/' + app + '/api/status');
+    check(app + ' reports an empty data status before the first read',
+      st.status === 200 && json(st).ok === true && json(st).hasData === false,
+      'HTTP ' + st.status);
+  }
 
-  check('legacy banner was printed', /Legacy ports/.test(serverLog), 'logged');
+  /* LEGACY=1 and the old port env vars are set above on purpose. They must not
+     open a second listener. */
+  const closedA = await rawGet(CLOSED_A, '/index.html');
+  const closedB = await rawGet(CLOSED_B, '/index.html');
+  check('LEGACY=1 does not listen on a second port',
+    closedA.status === 0 && closedB.status === 0,
+    'ports ' + CLOSED_A + '=' + closedA.status + ', ' + CLOSED_B + '=' + closedB.status);
+  check('startup log names only the hub port',
+    /localhost:8899/.test(serverLog) && !/Legacy ports/.test(serverLog), 'logged');
 
   /* ------------------------------------------------- fallback coverage
      The CoinPaprika fallback drops any coin it has no id for. If someone adds a

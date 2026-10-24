@@ -5,33 +5,20 @@
    Start this ONCE and every overlay is live:
 
      node server.js            → hub at http://localhost:8790
-     PORT=9000 node server.js  → custom primary port
-     LEGACY=1 node server.js   → also listen on the old per-app ports
+     PORT=9000 node server.js  → custom port
 
-   Ports
-     8790  (PORT)  the hub. Serves everything under a path prefix:
+   One port. Everything is served under a path prefix:
                      /              hub page — links to every overlay
                      /weather/…     Vertical Weather overlay + admin + API
                      /topics/…      Talking Points overlay + admin + API
                      /market/…      Digital Assets Market overlay + admin + API
                                      + /api/market   (cached CoinGecko proxy)
-                      /predictions/… Prediction Markets overlay + admin + API
+                     /predictions/… Prediction Markets overlay + admin + API
                                      + /api/polymarket (cached Polymarket proxy)
                      /healthz       JSON status
-     (with LEGACY=1 each app is also served at the root of its own port:
-      8788 weather · 8787 topics · 8789 market · 8791 predictions — see below)
 
-   The legacy ports (8788 weather, 8787 topics, 8789 market, 8791 predictions) are
-   OFF by default. They exist only for an OBS source already pointed at a per-app
-   URL before the projects were fused. Nothing in this repo points at them.
-   Weather, topics and predictions each still ship a standalone server.js that
-   binds their own port, so leaving those legacy listeners on alongside one of
-   those invites a clash; the market board has no standalone server and is only
-   ever served by this process.
-
-   The Polymarket proxy is hub-only for the same reason: the app servers carry no
-   upstream machinery, and the prediction panel says so plainly if it is opened
-   from one of them instead.
+   The Polymarket and CoinGecko proxies live only in this process. Open every
+   control panel from the hub URLs above.
 
    Every client URL in each overlay is relative (script.js, api/config,
    config.json), so serving them under a prefix needs no changes to any of them.
@@ -56,12 +43,6 @@ function arg(name, fallback) {
 }
 
 const PORT = parseInt(arg('port', process.env.PORT || '8790'), 10);
-/* Off by default. The legacy ports existed to avoid re-wiring OBS browser
-   sources already pointed at 8787/8788/8789 — but the target machine is a clean
-   Windows box whose sources are built from the hub's URLs, and each app still
-   ships its own standalone server.js that binds those ports. Two things
-   fighting over the same port is a worse default than none. LEGACY=1 opts in. */
-const LEGACY = arg('legacy', process.env.LEGACY || '0') !== '0';
 
 /* Each app keeps its own directory, config.json, state.json and action list —
    fusing the servers must not fuse the state of two unrelated overlays. */
@@ -259,9 +240,9 @@ function polyItem(raw, entity) {
 function normalisePolymarket(body, params) {
   const what = params.get('what') || 'top';
   let parsed;
-  try { parsed = JSON.parse(body); } catch (e) { throw new Error('Polymarket did not return JSON'); }
+  try { parsed = JSON.parse(body); } catch (e) { throw new Error('the feed did not return JSON'); }
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.error) {
-    throw new Error('Polymarket returned an error: ' + JSON.stringify(parsed.error).slice(0, 200));
+    throw new Error('the feed returned an error: ' + JSON.stringify(parsed.error).slice(0, 200));
   }
 
   if (what === 'tags') {
@@ -272,7 +253,7 @@ function normalisePolymarket(body, params) {
       if (!label) return null;
       return { id: String(t.id != null ? t.id : ''), label: label, slug: String(t.slug || '') };
     }).filter(Boolean).sort((a, b) => a.label.localeCompare(b.label));
-    if (!tags.length) throw new Error('Polymarket returned an empty tag list');
+    if (!tags.length) throw new Error('the feed returned an empty tag list');
     /* The full tag list is thousands of entries; the panel only ever searches it,
        so the response is capped to keep it from being a multi-megabyte payload
        handed to a browser. */
@@ -297,7 +278,7 @@ function normalisePolymarket(body, params) {
   const top = items.slice(0, limit);
 
   if (!top.length) {
-    throw new Error('Polymarket returned no open ' + entity + ' for tag ' +
+    throw new Error('the feed returned no open ' + entity + ' for tag ' +
       ((polyTagBinding(params.get('tagId'), params.get('tagSlug')) || {}).value || '(none)'));
   }
   return JSON.stringify({
@@ -310,13 +291,367 @@ function normalisePolymarket(body, params) {
   });
 }
 
+/* ===========================================================================
+   Weather data, city photos and asset search.
+
+   All three are served from this process rather than from the browser, for one
+   reason: the dashboard and the OBS browser source are different browser
+   contexts (OBS runs its own CEF profile, so neither BroadcastChannel nor a
+   `storage` event can cross between them). The hub is the only shared thing
+   they have, so it is also the only place a fetch can be made once and read by
+   both. Every response here is cached, so N sources cost one upstream call.
+
+   The bases are overridable so the test suite can point them at a fake
+   upstream, exactly like POLYMARKET_API_BASE.
+   =========================================================================== */
+const OPEN_METEO_BASE = process.env.OPEN_METEO_BASE || 'https://api.open-meteo.com';
+const OPEN_METEO_GEO_BASE = process.env.OPEN_METEO_GEO_BASE || 'https://geocoding-api.open-meteo.com';
+const COINGECKO_BASE = process.env.COINGECKO_BASE || 'https://api.coingecko.com';
+
+/* A "short cache": long enough that reloading a scene does not re-hit the
+   provider, short enough that the numbers are still worth showing. */
+const WEATHER_TTL_MS = 120000;
+const WEATHER_STALE_MS = 900000;
+const GEO_TTL_MS = 24 * 60 * 60 * 1000;
+/* Two dashboards (or a dashboard and a Stream Deck macro) pressing Update at
+   the same moment must not turn into two provider calls. The in-flight map
+   already joins them; this is the belt for requests a second apart. */
+const FORCE_COOLDOWN_MS = 2000;
+
+const UA = 'obs-overlays/1.0 (+the-rollup overlays hub)';
+
+function httpJson(url, timeoutMs, headers) {
+  return new Promise((resolve, reject) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
+    fetch(url, {
+      signal: ctrl.signal,
+      headers: Object.assign({ Accept: 'application/json', 'User-Agent': UA }, headers || {})
+    }).then((r) => {
+      if (!r.ok) throw new Error('upstream HTTP ' + r.status);
+      return r.text();
+    }).then((body) => {
+      clearTimeout(timer);
+      try { resolve(JSON.parse(body)); }
+      catch (e) { reject(new Error('the upstream did not return JSON')); }
+    }, (e) => {
+      clearTimeout(timer);
+      reject(new Error(e && e.name === 'AbortError' ? 'upstream timed out' : ('network: ' + (e && e.message))));
+    });
+  });
+}
+
+/* `force=1` must not create a second cache entry, or every manual update would
+   leave the previous entry behind and the next read would hit the stale one. */
+function dataKey(params) {
+  const keys = Array.from(new Set(Array.from(params.keys()))).sort();
+  const out = new URLSearchParams();
+  keys.forEach((k) => {
+    if (k === 'force') return;
+    params.getAll(k).forEach((v) => out.append(k, v));
+  });
+  return out.toString();
+}
+
+function forceCooldown(status, res) {
+  const now = Date.now();
+  if (status.lastForcedAt && now - status.lastForcedAt < FORCE_COOLDOWN_MS) {
+    const wait = FORCE_COOLDOWN_MS - (now - status.lastForcedAt);
+    res.setHeader('Retry-After', String(Math.ceil(wait / 1000)));
+    send(res, 429, JSON.stringify({
+      error: { code: 'cooldown', message: 'updating too quickly — try again shortly', retryAfterMs: wait }
+    }), 'application/json; charset=utf-8');
+    return true;
+  }
+  status.lastForcedAt = now;
+  return false;
+}
+
+/* ---------------------------------------------------------- weather data ---
+   One forecast request for every city, not one per city: Open-Meteo accepts
+   comma-separated coordinates and answers an array in the same order, with
+   `timezone=auto` resolved per location (verified against the live API). That
+   is what lets the widget load with a single provider call.
+
+   Cities WITHOUT pinned coordinates are geocoded first. The admin pins
+   lat/lon when the operator picks a place, so this is only the first-run case;
+   geocodes are cached for a day. */
+function createWeatherData() {
+  const cache = new Map();     /* dataKey -> { ts, body } */
+  const inflight = new Map();
+  const geocodes = new Map();  /* query|country -> { ts, place } */
+  const status = {
+    fetchedAt: 0, error: null, inFlight: false, source: 'open-meteo',
+    stale: false, lastForcedAt: 0
+  };
+
+  function cleanUnits(raw) {
+    let u = raw;
+    try { u = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { u = null; }
+    u = u && typeof u === 'object' ? u : {};
+    const pick = (v, allowed, fallback) => (allowed.indexOf(v) === -1 ? fallback : v);
+    return {
+      temperature: pick(u.temperature, ['celsius', 'fahrenheit'], 'celsius'),
+      wind: pick(u.wind, ['kmh', 'mph', 'ms', 'kn'], 'kmh'),
+      precipitation: pick(u.precipitation, ['mm', 'inch'], 'mm')
+    };
+  }
+
+  function cleanCities(raw) {
+    let list = raw;
+    try { list = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { list = null; }
+    if (!Array.isArray(list)) return null;
+    const out = [];
+    for (const c of list) {
+      if (!c || typeof c !== 'object') continue;
+      /* `Number(null)` is 0, and 0,0 is a real point in the Gulf of Guinea — a
+         city with no pinned coordinates used to be silently fetched there
+         instead of geocoded. Only a present, non-empty numeric pair counts. */
+      const hasLat = c.lat != null && c.lat !== '' && isFinite(Number(c.lat));
+      const hasLon = c.lon != null && c.lon !== '' && isFinite(Number(c.lon));
+      const lat = Number(c.lat), lon = Number(c.lon);
+      const hasCoords = hasLat && hasLon && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+      const query = String(c.query || '').trim();
+      if (!hasCoords && !query) continue;
+      out.push({
+        label: String(c.label || query || '').slice(0, 80),
+        query: query.slice(0, 80),
+        countryCode: String(c.countryCode || '').toUpperCase().slice(0, 2),
+        lat: hasCoords ? Math.round(lat * 1e6) / 1e6 : null,
+        lon: hasCoords ? Math.round(lon * 1e6) / 1e6 : null
+      });
+      if (out.length >= 2) break;   /* the widget shows two cards at most */
+    }
+    return out.length ? out : null;
+  }
+
+  async function geocode(city) {
+    const key = (city.query.toLowerCase() + '|' + city.countryCode);
+    const hit = geocodes.get(key);
+    if (hit && Date.now() - hit.ts < GEO_TTL_MS) return hit.place;
+    let url = OPEN_METEO_GEO_BASE + '/v1/search?name=' + encodeURIComponent(city.query) +
+      '&count=1&language=en&format=json';
+    if (city.countryCode) url += '&countryCode=' + encodeURIComponent(city.countryCode);
+    const j = await httpJson(url, 12000);
+    const r = j && Array.isArray(j.results) ? j.results[0] : null;
+    if (!r || r.latitude == null || r.longitude == null) {
+      throw new Error('could not find "' + (city.query || city.label) + '"');
+    }
+    const place = {
+      lat: Math.round(Number(r.latitude) * 1e6) / 1e6,
+      lon: Math.round(Number(r.longitude) * 1e6) / 1e6,
+      name: String(r.name || city.query || city.label),
+      country: String(r.country || ''),
+      admin1: String(r.admin1 || ''),
+      timezone: String(r.timezone || '')
+    };
+    geocodes.set(key, { ts: Date.now(), place });
+    return place;
+  }
+
+  async function load(cities, units) {
+    const resolved = await Promise.all(cities.map(async (c) => {
+      if (c.lat != null && c.lon != null) return { city: c, lat: c.lat, lon: c.lon, place: null };
+      const place = await geocode(c);
+      return { city: c, lat: place.lat, lon: place.lon, place };
+    }));
+
+    const url = OPEN_METEO_BASE + '/v1/forecast' +
+      '?latitude=' + resolved.map((r) => r.lat).join(',') +
+      '&longitude=' + resolved.map((r) => r.lon).join(',') +
+      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,' +
+      'weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m' +
+      '&daily=temperature_2m_max,temperature_2m_min' +
+      '&forecast_days=1&timezone=auto' +
+      '&temperature_unit=' + units.temperature +
+      '&wind_speed_unit=' + units.wind +
+      '&precipitation_unit=' + units.precipitation;
+
+    const json = await httpJson(url, 15000);
+    const rows = Array.isArray(json) ? json : [json];
+    if (rows.length !== resolved.length) {
+      throw new Error('the forecast returned ' + rows.length + ' result(s) for ' + resolved.length + ' city/cities');
+    }
+    rows.forEach((row) => {
+      if (!row || !row.current || typeof row.current.temperature_2m !== 'number') {
+        throw new Error('the forecast payload is incomplete');
+      }
+    });
+    return {
+      fetchedAt: Date.now(),
+      source: 'open-meteo',
+      cities: resolved.map((r, i) => ({
+        key: r.city.label + '|' + r.lat + ',' + r.lon,
+        label: r.city.label,
+        lat: r.lat,
+        lon: r.lon,
+        timezone: rows[i].timezone || (r.place && r.place.timezone) || '',
+        utcOffsetSeconds: rows[i].utc_offset_seconds == null ? null : rows[i].utc_offset_seconds,
+        forecast: rows[i]
+      }))
+    };
+  }
+
+  async function handler(req, res, parsed) {
+    const params = parsed.searchParams;
+    const cities = cleanCities(params.get('cities'));
+    if (!cities) {
+      return send(res, 400, JSON.stringify({
+        error: { code: 'missing_query_binding', message: 'this request needs at least one city with coordinates or a name' }
+      }), 'application/json; charset=utf-8');
+    }
+    const units = cleanUnits(params.get('units'));
+    const key = dataKey(params);
+    const forced = params.get('force') === '1';
+    const hit = cache.get(key);
+
+    if (!forced && hit && Date.now() - hit.ts < WEATHER_TTL_MS) {
+      res.setHeader('X-Cache', 'HIT');
+      res.setHeader('X-Fetched-At', String(hit.ts));
+      res.setHeader('X-Cache-Age', String(Math.round((Date.now() - hit.ts) / 1000)));
+      return send(res, 200, hit.body, 'application/json; charset=utf-8');
+    }
+    if (forced && forceCooldown(status, res)) return;
+
+    if (!inflight.has(key)) inflight.set(key, load(cities, units));
+    let out;
+    try {
+      out = await inflight.get(key);
+    } catch (e) {
+      inflight.delete(key);
+      status.inFlight = false;
+      status.error = String((e && e.message) || e);
+      if (hit && Date.now() - hit.ts < WEATHER_STALE_MS) {
+        res.setHeader('X-Cache', 'STALE');
+        res.setHeader('X-Fetched-At', String(hit.ts));
+        res.setHeader('X-Upstream-Error', 'upstream_error');
+        return send(res, 200, hit.body, 'application/json; charset=utf-8');
+      }
+      return send(res, 502, JSON.stringify({
+        error: { code: 'upstream_error', message: status.error }
+      }), 'application/json; charset=utf-8');
+    }
+    inflight.delete(key);
+
+    const body = JSON.stringify(out);
+    cache.set(key, { ts: out.fetchedAt, body });
+    status.fetchedAt = out.fetchedAt;
+    status.error = null;
+    status.inFlight = false;
+    status.stale = false;
+    res.setHeader('X-Cache', forced ? 'REFRESH' : 'MISS');
+    res.setHeader('X-Fetched-At', String(out.fetchedAt));
+    return send(res, 200, body, 'application/json; charset=utf-8');
+  }
+
+  handler.status = () => Object.assign({}, status);
+  return handler;
+}
+
+/* ------------------------------------------------------------- asset search
+   Backs the market dashboard's "change asset" combobox. CoinGecko's /search is
+   the right endpoint because the board renders from CoinGecko ids: searching
+   by name and returning the id is exactly the mapping the operator needs, and
+   it is the only place a ticker could be mistaken for an id. */
+function shapeCoinSearch(body, params) {
+  let parsed;
+  try { parsed = JSON.parse(body); } catch (e) { throw new Error('the search feed did not return JSON'); }
+  const coins = Array.isArray(parsed && parsed.coins) ? parsed.coins : [];
+  const seen = {};
+  const out = [];
+  coins.forEach((c) => {
+    if (!c || typeof c !== 'object' || !c.id || seen[c.id]) return;
+    seen[c.id] = 1;
+    out.push({
+      id: String(c.id),
+      name: String(c.name || c.id),
+      symbol: String(c.symbol || '').toUpperCase(),
+      thumb: String(c.thumb || c.large || ''),
+      rank: c.market_cap_rank == null ? null : c.market_cap_rank
+    });
+  });
+  if (!out.length) throw new Error('no asset matched that search');
+  return JSON.stringify({ q: String(params.get('q') || ''), count: out.length, coins: out.slice(0, 12) });
+}
+
+/* Predictions and the market board read the SAME upstream (CoinGecko markets),
+   so they share one cache: two overlays must not cost two provider calls. */
+const MARKET_DATA_STORES = {
+  cache: new Map(),
+  inflight: new Map(),
+  status: { fetchedAt: 0, error: null, inFlight: false, source: 'coingecko', lastForcedAt: 0 }
+};
+
+/* One spec, two paths: /market/api/market for the board and /predictions/api/data
+   for the prediction board's price charts. Same build, same cache, same store,
+   so whichever overlay asks first pays for the call. */
+function marketDataSpec(path) {
+  return {
+    path: path,
+    dataStatus: true,
+    stores: MARKET_DATA_STORES,
+    /* 90s: a reload or a scene switch inside this window costs zero provider
+       calls, and the board is never more than a minute and a half behind. */
+    ttlMs: 90000,
+    staleMs: 900000,
+    timeoutMs: 12000,
+    retries: 3,
+    userAgent: 'obs-overlays/1.0 (digital assets board)',
+    source: 'coingecko',
+    missingBindingMessage: 'the board has no assets to fetch',
+    build: function (params) {
+      var ids = params.get('ids') || '';
+      var currency = params.get('currency') || 'usd';
+      var changes = params.get('changes') || '24h,7d';
+      var spark = params.get('sparkline') === '0' ? 'false' : 'true';
+      /* no ids means "the whole market" upstream — a multi-megabyte answer
+         nobody asked for. An empty board has nothing to fetch, so refuse it. */
+      if (!ids.trim()) return null;
+      return COINGECKO_BASE + '/api/v3/coins/markets' +
+        '?vs_currency=' + encodeURIComponent(currency) +
+        '&ids=' + encodeURIComponent(ids) +
+        '&price_change_percentage=' + encodeURIComponent(changes) +
+        '&sparkline=' + spark +
+        '&order=market_cap_desc&per_page=250&page=1';
+    },
+    /* Hold a fallback response a little longer than a primary one: CoinPaprika's
+       bulk payload is ~1.6 MB, so re-pulling it every 90s through a long outage
+       is wasteful. Kept short enough that a brief CoinGecko 429 still recovers
+       within a minute and a half. */
+    fallbackTtlMs: 90000,
+    forceFallbackEnv: 'MARKET_FORCE_FALLBACK',
+    /* used only when CoinGecko is down or rate-limiting us */
+    fallback: {
+      name: 'CoinPaprika',
+      timeoutMs: 15000,
+      retries: 1,
+      /* The bulk list stops at the top ~2000 coins by rank, which covers most
+         of the board but not all of it — Zama sits around rank 6300 and is
+         simply absent from this payload. Anything the bulk list misses is
+         therefore fetched one coin at a time below; without that, mapping such
+         a coin had no effect and its row quietly emptied during an outage. */
+      build: function () {
+        return 'https://api.coinpaprika.com/v1/tickers?quotes=USD';
+      },
+      detail: {
+        build: function (cpId) {
+          return 'https://api.coinpaprika.com/v1/tickers/' + encodeURIComponent(cpId) + '?quotes=USD';
+        },
+        /* a bound, so a config full of obscure coins cannot turn one degraded
+           refresh into a burst of requests */
+        max: 6
+      },
+      normalise: normaliseCoinPaprika
+    }
+  };
+}
+
 const APPS = [
   {
     id: 'weather',
     name: 'Vertical Weather',
-    tagline: 'Full-height 1080p glass widget · live Open-Meteo data',
+    tagline: 'Full-height 1080p glass widget · live conditions',
     dir: path.join(BASE, 'weather'),
-    legacyPort: 8788,
     actions: ['in', 'play', 'hide', 'out', 'refresh', 'update'],
     /* the weather server answers an unknown action with a 400 + `allowed`,
        which is what makes a Stream Deck key debuggable */
@@ -328,7 +663,6 @@ const APPS = [
     name: 'Talking Points',
     tagline: 'Animated talking-points panel · entrance-only for OBS',
     dir: path.join(BASE, 'topics'),
-    legacyPort: 8787,
     actions: ['in', 'out', 'replay'],
     strictActions: false,
     supportsIndex: true
@@ -338,120 +672,96 @@ const APPS = [
     name: 'Digital Assets Market',
     tagline: 'Live crypto board · category tabs · seven-day trends',
     dir: path.join(BASE, 'market'),
-    legacyPort: 8789,
-    actions: ['in', 'hide', 'refresh', 'next', 'prev'],
+    /* next/prev/refresh are the operator's hands; `update` forces the provider
+       to be re-read even if the cache is still warm. */
+    actions: ['in', 'hide', 'refresh', 'update', 'next', 'prev'],
     strictActions: false,
     supportsIndex: false,
     /* Cached upstream: CoinGecko's free tier rate-limits aggressively, so every
        browser source shares one call per window instead of polling the API. */
-    upstream: {
-      path: '/api/market',
-      ttlMs: 60000,
-      staleMs: 900000,
-      timeoutMs: 12000,
-      retries: 3,
-      userAgent: 'obs-overlays/1.0 (digital assets board)',
-      build: function (params) {
-        var ids = params.get('ids') || '';
-        var currency = params.get('currency') || 'usd';
-        var changes = params.get('changes') || '24h,7d';
-        var spark = params.get('sparkline') === '0' ? 'false' : 'true';
-        return 'https://api.coingecko.com/api/v3/coins/markets' +
-          '?vs_currency=' + encodeURIComponent(currency) +
-          '&ids=' + encodeURIComponent(ids) +
-          '&price_change_percentage=' + encodeURIComponent(changes) +
-          '&sparkline=' + spark +
-          '&order=market_cap_desc&per_page=250&page=1';
-      },
-      source: 'coingecko',
-      /* Hold a fallback response a little longer than a primary one: CoinPaprika's
-         bulk payload is ~1.6 MB, so re-pulling it every 60s through a long outage
-         is wasteful. Kept short enough that a brief CoinGecko 429 still recovers
-         within a minute and a half. */
-      fallbackTtlMs: 90000,
-      forceFallbackEnv: 'MARKET_FORCE_FALLBACK',
-      /* used only when CoinGecko is down or rate-limiting us */
-      fallback: {
-        name: 'CoinPaprika',
-        timeoutMs: 15000,
+    upstreams: [
+      marketDataSpec('/api/market'),
+      {
+        /* name → CoinGecko id, for the dashboard's "change asset" combobox.
+           Cached for five minutes: the same handful of queries is typed over
+           and over while an operator edits a board. */
+        path: '/api/search',
+        ttlMs: 300000,
+        staleMs: 3600000,
+        timeoutMs: 10000,
         retries: 1,
-        /* The bulk list stops at the top ~2000 coins by rank, which covers most
-           of the board but not all of it — Zama sits around rank 6300 and is
-           simply absent from this payload. Anything the bulk list misses is
-           therefore fetched one coin at a time below; without that, mapping such
-           a coin had no effect and its row quietly emptied during an outage. */
-        build: function () {
-          return 'https://api.coinpaprika.com/v1/tickers?quotes=USD';
+        userAgent: 'obs-overlays/1.0 (asset search)',
+        source: 'coingecko',
+        missingBindingMessage: 'type at least one character to search assets',
+        build: function (params) {
+          var q = String(params.get('q') || '').trim().slice(0, 64);
+          if (!q) return null;
+          return COINGECKO_BASE + '/api/v3/search?query=' + encodeURIComponent(q);
         },
-        detail: {
-          build: function (cpId) {
-            return 'https://api.coinpaprika.com/v1/tickers/' + encodeURIComponent(cpId) + '?quotes=USD';
-          },
-          /* a bound, so a config full of obscure coins cannot turn one degraded
-             refresh into a burst of requests */
-          max: 6
-        },
-        normalise: normaliseCoinPaprika
+        shape: shapeCoinSearch
       }
-    }
+    ]
   },
   {
     id: 'predictions',
     name: 'Prediction Markets',
-    tagline: 'Polymarket headlines by category · or a hand-typed board · manual topic changes',
+    tagline: 'Headlines by category · or a hand-typed board · manual topic changes',
     dir: path.join(BASE, 'predictions'),
-    legacyPort: 8791,
     /* next/prev step the hero market by hand — there is deliberately no timer
-       and no auto-advance, so the board never changes under the operator */
-    actions: ['in', 'out', 'replay', 'next', 'prev', 'show'],
+       and no auto-advance, so the board never changes under the operator.
+       `refresh` re-reads the (hub-cached) asset history; `update` forces a new
+       provider read. */
+    actions: ['in', 'out', 'replay', 'next', 'prev', 'show', 'refresh', 'update'],
     strictActions: false,
     supportsIndex: true,
-    /* Polymarket headlines. The overlay never touches this: the CONTROL PANEL
-       calls it when the operator presses Update, and writes what comes back
-       into config.json, which the overlay already polls. So the fetch is
-       operator-triggered by construction — there is no code path that could
-       refresh the board on a timer. */
-    upstream: {
-      path: '/api/polymarket',
-      ttlMs: 120000,
-      staleMs: 900000,
-      timeoutMs: 15000,
-      retries: 2,
-      userAgent: 'obs-overlays/1.0 (prediction headlines)',
-      source: 'polymarket',
-      missingBindingMessage: 'this category needs a Polymarket tag id or slug before it can be fetched',
-      build: function (params) {
-        var what = params.get('what') || 'top';
-        if (what === 'tags') return POLYMARKET_API_BASE + '/tags';
+    upstreams: [
+      /* Polymarket headlines. The overlay never touches this: the CONTROL PANEL
+         calls it when the operator presses Update, and writes what comes back
+         into config.json, which the overlay already polls. So the fetch is
+         operator-triggered by construction — there is no code path that could
+         refresh the board on a timer. */
+      {
+        path: '/api/polymarket',
+        ttlMs: 120000,
+        staleMs: 900000,
+        timeoutMs: 15000,
+        retries: 2,
+        userAgent: 'obs-overlays/1.0 (prediction headlines)',
+        source: 'polymarket',
+        missingBindingMessage: 'this category needs a tag id or slug before it can be fetched',
+        build: function (params) {
+          var what = params.get('what') || 'top';
+          if (what === 'tags') return POLYMARKET_API_BASE + '/tags';
 
-        var entity = POLY_ENTITIES.indexOf(params.get('entity')) === -1 ? 'events' : params.get('entity');
-        var bind = polyTagBinding(params.get('tagId'), params.get('tagSlug'));
-        if (!bind) return null;      /* → 400 missing_query_binding, not a global top */
+          var entity = POLY_ENTITIES.indexOf(params.get('entity')) === -1 ? 'events' : params.get('entity');
+          var bind = polyTagBinding(params.get('tagId'), params.get('tagSlug'));
+          if (!bind) return null;      /* → 400 missing_query_binding, not a global top */
 
-        var q = new URLSearchParams();
-        q.set('limit', String(clampInt(params.get('limit'), 1, 50, 5)));
-        q.set('offset', '0');
-        q.set('active', 'true');
-        q.set('closed', 'false');
-        /* The two endpoints document different sort-key spellings, so the right
-           one is picked per entity; config may override it verbatim. */
-        var sortRaw = String(params.get('sortKey') || '');
-        q.set('order', /^[a-z0-9_]{1,24}$/i.test(sortRaw) ? sortRaw : POLY_SORT_KEY[entity]);
-        q.set('ascending', 'false');
-        q.set(bind.key, bind.value);
-        return POLYMARKET_API_BASE + '/' + entity + '?' + q.toString();
+          var q = new URLSearchParams();
+          q.set('limit', String(clampInt(params.get('limit'), 1, 50, 5)));
+          q.set('offset', '0');
+          q.set('active', 'true');
+          q.set('closed', 'false');
+          /* The two endpoints document different sort-key spellings, so the right
+             one is picked per entity; config may override it verbatim. */
+          var sortRaw = String(params.get('sortKey') || '');
+          q.set('order', /^[a-z0-9_]{1,24}$/i.test(sortRaw) ? sortRaw : POLY_SORT_KEY[entity]);
+          q.set('ascending', 'false');
+          q.set(bind.key, bind.value);
+          return POLYMARKET_API_BASE + '/' + entity + '?' + q.toString();
+        },
+        shape: normalisePolymarket
       },
-      shape: normalisePolymarket
-    }
+      /* The price history behind the 7-day chart. Same CoinGecko call and the
+         same cache as the market board, reached through this app's own prefix so
+         the overlay needs no knowledge of where the market board is mounted. */
+      marketDataSpec('/api/data')
+    ]
   }
 ];
 
-/* Ports are overridable so the test suite can run hermetically without
-   fighting a already-running studio server for 8787/8788. */
 APPS.forEach((a) => {
   a.prefix = '/' + a.id;
-  const override = process.env['LEGACY_PORT_' + a.id.toUpperCase()];
-  if (override) a.legacyPort = parseInt(override, 10);
 });
 
 /* --------------------------------------------------------------- utilities */
@@ -483,7 +793,7 @@ function send(res, code, body, type) {
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     /* lets the overlay read whether the proxy answered from cache or upstream */
-    'Access-Control-Expose-Headers': 'X-Cache, X-Cache-Age, X-Upstream-Error, X-Source, X-Degraded, Retry-After',
+    'Access-Control-Expose-Headers': 'X-Cache, X-Cache-Age, X-Fetched-At, X-Upstream-Error, X-Source, X-Degraded, Retry-After',
     'Cache-Control': 'no-store'
   });
   res.end(body);
@@ -598,8 +908,7 @@ function appStatus(app) {
     prefix: app.prefix,
     command: app.prefix + '/api/command?action=' + app.actions[0],
     overlay: app.prefix + '/index.html',
-    admin: app.hasAdmin === false ? null : app.prefix + '/admin.html',
-    legacyPort: LEGACY ? app.legacyPort : null
+    admin: app.hasAdmin === false ? null : app.prefix + '/admin.html'
   };
 }
 
@@ -614,9 +923,15 @@ function appStatus(app) {
      - one upstream call per window serves every browser source
      - stale-but-marked data beats an empty table on air
    ------------------------------------------------------------------------ */
-function createUpstream(spec) {
-  const cache = new Map();      /* query string -> { ts, body, source } */
-  const inflight = new Map();   /* de-dupes a thundering herd of identical calls */
+function createUpstream(spec, shared) {
+  /* Two apps can read the same provider (the market board and the prediction
+     board's price charts), so the cache, the in-flight map and the status can be
+     handed in. One cache means one provider call for both overlays. */
+  const cache = (shared && shared.cache) || new Map();      /* query string -> { ts, body, source } */
+  const inflight = (shared && shared.inflight) || new Map(); /* de-dupes a thundering herd */
+  const status = (shared && shared.status) || {
+    fetchedAt: 0, error: null, inFlight: false, source: spec.source || 'primary', lastForcedAt: 0
+  };
 
   function jitteredBackoff(attempt) {
     const base = Math.min(30000, 1000 * Math.pow(2, attempt));
@@ -797,23 +1112,41 @@ function createUpstream(spec) {
     }
   }
 
-  return async function upstreamHandler(req, res, parsed) {
-    const key = parsed.search || "";
+  async function upstreamHandler(req, res, parsed) {
+    /* `force` is not part of the cache key: a manual update must replace the
+       entry, not sit beside it. The key is rebuilt without it, in a stable
+       order, so the overlay's request and the dashboard's forced request hit
+       the same entry even if their query strings differ in order. */
+    const key = dataKey(parsed.searchParams);
+    const forced = parsed.searchParams.get('force') === '1';
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.ts < ttlFor(hit)) {
+
+    if (!forced && hit && Date.now() - hit.ts < ttlFor(hit)) {
       res.setHeader("X-Cache", "HIT");
       res.setHeader("X-Cache-Age", Math.round((Date.now() - hit.ts) / 1000) + "s");
+      res.setHeader("X-Fetched-At", String(hit.ts));
       res.setHeader("X-Source", hit.source || "primary");
+      status.fetchedAt = hit.ts;
+      status.error = null;
       return send(res, 200, hit.body, "application/json; charset=utf-8");
     }
+    if (forced && forceCooldown(status, res)) return;
 
+    status.inFlight = true;
     if (!inflight.has(key)) inflight.set(key, fetchData(parsed.searchParams));
     const out = await inflight.get(key);
     inflight.delete(key);
+    status.inFlight = false;
 
     if (out.ok) {
-      cache.set(key, { ts: Date.now(), body: out.body, source: out.source });
-      res.setHeader("X-Cache", "MISS");
+      const at = Date.now();
+      cache.set(key, { ts: at, body: out.body, source: out.source });
+      status.fetchedAt = at;
+      status.error = null;
+      status.source = out.source || "primary";
+      status.stale = false;
+      res.setHeader("X-Cache", forced ? "REFRESH" : "MISS");
+      res.setHeader("X-Fetched-At", String(at));
       res.setHeader("X-Source", out.source || "primary");
       if (out.degraded) {
         res.setHeader("X-Degraded", "1");
@@ -823,12 +1156,16 @@ function createUpstream(spec) {
       return send(res, 200, out.body, "application/json; charset=utf-8");
     }
 
+    status.error = String(out.message || out.code || "upstream failed");
+
     /* Stale beats broken: a board showing prices a minute old with a "cached"
        badge is far more useful on air than an empty table. */
     if (hit && Date.now() - hit.ts < spec.staleMs) {
       res.setHeader("X-Cache", "STALE");
+      res.setHeader("X-Fetched-At", String(hit.ts));
       res.setHeader("X-Source", hit.source || "primary");
       res.setHeader("X-Upstream-Error", out.code);
+      status.stale = true;
       return send(res, 200, hit.body, "application/json; charset=utf-8");
     }
 
@@ -841,6 +1178,9 @@ function createUpstream(spec) {
       }
     }), "application/json; charset=utf-8");
   };
+
+  upstreamHandler.status = () => Object.assign({}, status);
+  return upstreamHandler;
 }
 
 /* --------------------------------------------------------------- app router */
@@ -876,9 +1216,50 @@ async function handleApp(app, req, res, sub, parsed) {
     return json(res, 200, { ok: true, app: app.id, state });
   }
 
-  if (app.upstream && sub === app.upstream.path) {
-    if (!app.__upstream) app.__upstream = createUpstream(app.upstream);
-    return app.__upstream(req, res, parsed);
+  /* ------------------------------------------------------- provider endpoints
+     One handler per data path, created on first use and kept for the life of
+     the process (its cache with it). `app.__dataStatus` is what /api/status
+     reports, so the dashboards can show "last updated" without asking the
+     overlay — which cannot answer across the browser-context boundary. */
+  if (app.id === 'weather') {
+    if (sub === '/api/data') {
+      if (!app.__weatherData) {
+        app.__weatherData = createWeatherData();
+        app.__dataStatus = app.__weatherData.status;
+      }
+      return app.__weatherData(req, res, parsed);
+    }
+  }
+
+  const upstreams = app.upstreams || (app.upstream ? [app.upstream] : []);
+  for (const spec of upstreams) {
+    if (sub !== spec.path) continue;
+    if (!app.__upstreams) app.__upstreams = new Map();
+    if (!app.__upstreams.has(spec.path)) {
+      const handler = createUpstream(spec, spec.stores);
+      app.__upstreams.set(spec.path, handler);
+      if (spec.dataStatus) app.__dataStatus = handler.status;
+    }
+    return app.__upstreams.get(spec.path)(req, res, parsed);
+  }
+
+  if (sub === '/api/status') {
+    const fn = app.__dataStatus;
+    const st = (typeof fn === 'function') ? fn() : {
+      fetchedAt: 0, error: null, inFlight: false, source: '', lastForcedAt: 0
+    };
+    const ageMs = st.fetchedAt ? Math.max(0, Date.now() - st.fetchedAt) : null;
+    return json(res, 200, {
+      ok: true,
+      app: app.id,
+      hasData: !!st.fetchedAt,
+      fetchedAt: st.fetchedAt || 0,
+      ageMs: ageMs,
+      inFlight: !!st.inFlight,
+      stale: !!st.stale,
+      source: st.source || '',
+      error: st.error || null
+    });
   }
 
   if (sub === '/api/config') {
@@ -922,8 +1303,8 @@ async function handleApp(app, req, res, sub, parsed) {
   });
 }
 
-/* Route a request to an app given the mount prefix ('' = mounted at the root,
-   which is how the legacy ports work). Returns false if the prefix misses. */
+/* Route a request to an app given its mount prefix. Returns false if the
+   prefix misses. */
 function routeToApp(app, mount, req, res, parsed) {
   let pathname = decodeURIComponent(parsed.pathname);
 
@@ -950,7 +1331,7 @@ function hubPage(origin) {
     const tpl = fs.readFileSync(path.join(BASE, 'index.html'), 'utf8');
     const apps = APPS.map((a) => appStatus(a));
     return tpl.replace('/*__STUDIO__*/', 'window.__STUDIO__ = ' + JSON.stringify({
-      origin, port: PORT, apps, legacy: LEGACY
+      origin, port: PORT, apps
     }) + ';');
   } catch (e) {
     return '<!doctype html><meta charset="utf-8"><h1>The Rollup overlays hub</h1>' +
@@ -976,6 +1357,23 @@ const primary = http.createServer((req, res) => {
   }
   if (pathname === '/' || pathname === '/index.html') {
     return send(res, 200, hubPage('http://localhost:' + PORT), 'text/html; charset=utf-8');
+  }
+
+  /* Shared browser-side modules (the search combobox the panels reuse). Served
+     from one place so weather and market cannot drift into two copies; the same
+     dot-segment rule keeps anything else in the tree unreachable. */
+  if (pathname.indexOf('/shared/') === 0) {
+    const file = resolveInside(path.join(BASE, 'shared'), pathname.slice('/shared'.length));
+    if (!file) return send(res, 403, 'forbidden', 'text/plain');
+    return fs.stat(file, (err, st) => {
+      if (err || st.isDirectory()) return send(res, 404, 'not found: ' + pathname, 'text/plain');
+      res.writeHead(200, {
+        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store'
+      });
+      fs.createReadStream(file).pipe(res);
+    });
   }
 
   for (const app of APPS) {
@@ -1010,32 +1408,8 @@ primary.listen(PORT, () => {
     console.log('    overlay        http://localhost:' + PORT + a.prefix + '/index.html');
     if (a.hasAdmin !== false) console.log('    control panel  http://localhost:' + PORT + a.prefix + '/admin.html');
   });
-  if (LEGACY) {
-    console.log('');
-    console.log('  Legacy ports (existing OBS sources keep working):');
-    APPS.forEach((a) => console.log('    ' + a.legacyPort + '  →  ' + a.name));
-  }
   console.log('');
 });
-
-/* ------------------------------------------------------------- legacy ports */
-if (LEGACY) {
-  APPS.forEach((app) => {
-    const srv = http.createServer((req, res) => {
-      const parsed = new URL(req.url, 'http://localhost');
-      routeToApp(app, '', req, res, parsed);
-    });
-    srv.on('error', (e) => {
-      if (e.code === 'EADDRINUSE') {
-        console.log('  ! port ' + app.legacyPort + ' is already in use — ' + app.name +
-          ' is still available at http://localhost:' + PORT + app.prefix + '/');
-      } else {
-        console.log('  ! legacy listener for ' + app.id + ' failed: ' + e.message);
-      }
-    });
-    srv.listen(app.legacyPort);
-  });
-}
 
 process.on('SIGINT', () => {
   console.log('\n  shutting down\n');

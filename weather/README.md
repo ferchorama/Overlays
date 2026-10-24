@@ -5,8 +5,9 @@ A **portrait 1080p** weather widget for OBS Studio: **1080 px tall, 460 px wide*
 condition icon, hi/lo, and a glass stat row (wind / humidity / feels-like).
 
 Live data comes from **[Open-Meteo](https://open-meteo.com)** — free, **no API
-key**, no signup, CORS-enabled (works straight from a browser source).
-One or two cities, auto-updating, fully customisable from a control panel.
+key**, no signup. The widget reads it through the shared hub, which makes one
+batched forecast request for both cities and caches the answer; the widget itself
+has no refresh timer. One or two cities, fully customisable from a control panel.
 
 The entrance animates once and the widget then **stays on screen** — there is
 deliberately no exit animation (in OBS you hide the source).
@@ -49,11 +50,13 @@ that background.
 | `index.html` | The widget. Point OBS at this. |
 | `icons.js` | Animated inline-SVG weather icons + WMO mapping (29 codes, 14 groups, day/night). |
 | `config.js` | **All defaults** — glass tokens, cities, units, layout, animation, data policy. |
-| `script.js` | Engine: fetch → normalise → render, entrance timeline, live sync, command API. |
+| `config-merge.js` | Version-aware migration that **keeps every saved setting** across a build update and fills in new options. |
+| `script.js` | Engine: hub read → normalise → render, entrance timeline, live sync, command API. |
 | `style.css` | Glass surfaces, layout, ambient icon animation, a11y tokens. |
-| `admin.html` / `admin.css` / `admin.js` | Control panel: live preview, editors, 4 glass presets, export/import. |
-| `server.js` | Optional zero-dep Node server: serves files, stores `config.json`, HTTP command API. |
-| `tests/smoke.js` | Runs the real engine in Node with a DOM shim + mocked Open-Meteo (3 modes). |
+| `admin.html` / `admin.css` / `admin.js` | Control panel: live preview, editors, raw JSON with Apply/Copy, Stream Deck reference. |
+| `tests/smoke.js` | Runs the real engine in Node with a DOM shim + a stubbed hub payload (3 modes). |
+| `../shared/combobox.js` | The city-picker search dropdown (`/shared/combobox.js`, served by the hub). |
+| `../shared/datasync.js` | The Data-tab **Update now** control and its guards (`/shared/datasync.js`). |
 | `vendor/gsap.min.js` | Local GSAP so the widget works offline (CDN is the fallback). |
 | `.skills/` | The 15 SKILL.md documents this build applied (reference only). |
 
@@ -61,45 +64,26 @@ that background.
 
 ## Quick start
 
-### 1. Simplest (no server)
+### 1. Without the hub (design only)
 
 1. OBS → **Add → Browser** → *Local file* → `index.html`.
 2. Width **460**, Height **1080** (the widget maps 1:1).
    *(Dropping it on a 1920×1080 canvas also works — `contain` keeps it at 100% on the left.)*
-3. It animates in on load and stays.
+3. It animates in and stays — but it shows **no weather**: every reading comes
+   from the hub's `api/data`, so with no hub running the cards sit on their
+   loading/error state. Start the hub for anything on air.
 
 ### 2. Recommended (live control + Stream Deck)
 
-Both overlays share **one** server — start it once and this widget is up too:
+Every overlay shares **one** hub — start it once and this widget is up too:
 
 ```bash
-cd ~/Documents/Overlays
+cd Overlays
 node server.js            # → hub at http://localhost:8790
 ```
 
 * Control panel: <http://localhost:8790/weather/admin.html>
 * OBS browser source: <http://localhost:8790/weather/index.html> (460×1080)
-
-The old per-app port (`http://localhost:8788/index.html`) is no longer opened by
-default. Point your OBS source at the `/weather/` URL above, or start the hub with
-`LEGACY=1` if you would rather not re-wire it.
-
-<details>
-<summary>Running this folder without the hub (standalone server)</summary>
-
-```bash
-cd weather          # from ~/Documents/Overlays
-node server.js            # → http://localhost:8788 (standalone only)
-```
-
-* Control panel: <http://localhost:8788/admin.html>
-* OBS browser source: <http://localhost:8788/index.html> (460×1080)
-
-This per-app server is the only thing that still listens on the legacy `8788`.
-The hub ignores that port unless you start it with `LEGACY=1`; the `/weather/`
-URLs above are the default.
-
-</details>
 
 Edits are written to `config.json`; the running source picks them up within ~2 s
 **without replaying the entrance**.
@@ -122,7 +106,8 @@ everything else reflows, and the city cards keep splitting the full height.
 
 * **1 or 2 cities** — cards split the 1080 px height equally
   (2 cities → 517 px each: 76 city + 319 hero + 122 stats).
-* Type a city name → geocoded automatically, or pin exact `lat`/`lon`.
+* Type a city name → the panel's picker geocodes it; the hub geocodes it once
+  (cached 24 h) if you did not pin coordinates, or pin exact `lat`/`lon`.
 * **Units**: imperial (°F, mph, in) or metric (°C, km/h, mm); wind override to
   m/s or knots; 12/24-hour clock; locale.
 * Typing in a greyed-out city enables it; drag ⠿ to reorder.
@@ -179,43 +164,52 @@ and a name with no matches says so rather than silently doing nothing.
 |---|---|---|
 | Play the entrance | **▶ Play entrance** | `/api/command?action=in` |
 | Hide instantly | **Hide** | `/api/command?action=hide` |
-| Re-fetch now | **↻ Refresh data** | `/api/command?action=refresh` |
+| Update now — force a provider read | **Update now** (Data tab) | `/api/command?action=update` |
+| Re-read the hub cache (no provider call) | — (this is what Update now bumps) | `/api/command?action=refresh` |
 
-Keyboard in the overlay window: `i` = in, `h` = hide, `r` = refresh.
+Keyboard in the overlay window: `i` = in, `h` = hide, `r` = refresh (re-read the hub cache).
 Stream Deck / Companion: a **Web Request** against
-`http://localhost:8790/weather/api/command?action=refresh` (etc.).
+`http://localhost:8790/weather/api/command?action=refresh` (etc.), or
+`?action=update` to force a provider read.
 
 ---
 
-## Data: verified behaviour
+## Data: one read per load, no timer
 
-**Endpoints** (checked live against the real API):
-`geocoding-api.open-meteo.com/v1/search` and `api.open-meteo.com/v1/forecast`
-with `current=` + `daily=` + `timezone=auto` + unit params (exact field list in
-`config.js`). Confirmed response:
+The widget no longer talks to Open-Meteo directly and no longer refreshes on a
+timer. It asks the **hub** once per page load:
 
-```json
-{ "timezone": "America/New_York", "utc_offset_seconds": -14400,
-  "current": { "time": "2026-09-24T13:00", "temperature_2m": 84.4,
-               "relative_humidity_2m": 75, "apparent_temperature": 93.2,
-               "is_day": 1, "weather_code": 1, "wind_speed_10m": 5.4,
-               "cloud_cover": 25, "surface_pressure": 1012.3 },
-  "daily": { "temperature_2m_max": [ ... ], "temperature_2m_min": [ ... ] } }
+```
+GET /weather/api/data?cities=[{label,query,countryCode,lat,lon},…]&units={temperature,wind,precipitation}
 ```
 
-* `timezone=auto` → `current.time` is the **city's** local time (shown next to
-  the city name); the footer shows when we last fetched.
-* **WMO → icon/label**: all 29 documented codes mapped, day + night variants.
-* **Cache**: every success is stored in `localStorage` (`data.cacheKey`), so a
-  cold start paints instantly and an outage keeps the last good reading. A
-  cached reading is labelled `Updated 12:25 PM (cached)` and the widget reports
-  `data-state="stale"` — it never pretends cached data is live.
-* **Refresh**: every `data.refreshMinutes` (10). On failure the retry backs off
-  exponentially **with jitter** (60s → 120s → 240s… capped at 15 min), resets on
-  success, and the panel shows `RETRYING IN <n>S`.
-* **Timeouts** 9 s; a new refresh aborts anything in flight (`AbortController`),
-  so stale responses cannot overwrite newer ones.
-* **Fail fast** on a malformed payload (missing coords/temperature) before render.
+The hub (`server.js`, `createWeatherData`):
+
+* **one forecast request for both cities** — comma-separated coordinates, and
+  `timezone=auto` resolves **per location** (verified: New York
+  `America/New_York` and Denver `America/Denver` come back in one response);
+* geocodes only the cities without pinned coordinates (the admin pins lat/lon
+  when you pick a place), cached server-side for a day;
+* caches the response for **120 s** — a reload or an OBS scene switch inside
+  that window costs **zero** provider requests;
+* supports `force=1` (used by Update now / the `update` command), joins an
+  in-flight request instead of starting a second, and refuses two forced reads
+  inside 2 s with `429 cooldown`;
+* on failure serves the last good body marked `X-Cache: STALE` for up to 15 min.
+
+The widget paints the last good payload from `localStorage`
+(`data.cacheKey`) immediately, then confirms in the background; while the cache
+is younger than `data.cacheTtlSeconds` (120) it does not ask at all. There is
+**no refresh interval, no retry backoff timer and no idle provider traffic** —
+`tests/smoke.js` asserts the request count after the load.
+
+`data-state` still reports `ready` / `stale` / `error`, and a failed manual
+update keeps the values on screen (marked cached) rather than blanking the card.
+
+**WMO → icon/label**: all 29 documented codes mapped, day + night variants.
+**Timeouts** 9 s at the overlay, 15 s at the hub. The hub rejects a payload that
+is missing a city or a temperature, and the overlay renders the affected card as
+an explicit error rather than `undefined°`; the other card is unaffected.
 
 ---
 
@@ -308,30 +302,23 @@ three equal stat cells clipped a long wind value (`10 MPH ESE` showed as
   shows the temperature as `—` and the stat labels with `—` values instead of
   an empty slab.
 
-### Saved configs are migrated, not pinned
+### Settings are persistent
 
 The control panel and the overlay each keep a full copy of the config
-(`localStorage` and `config.json`). If that copy came from an older build it
-used to win, so a palette fix would silently revert the next time the panel
-rendered — the theme appearing to "change back" on the next edit.
+(`localStorage` and `config.json`). **A build update never resets what you
+saved.** `config-merge.js` runs on every load and on every save:
 
-`config-merge.js` fixes that: while `meta.version` is unchanged your saved
-settings win; when the version changes, the saved config keeps only your
-**content** (cities, units, refresh policy) and the shipped build supplies the
-whole **look**. The panel header tells you when this happened, e.g.
-`look updated to v3.0.10 (was v3.0.0) — your cities were kept`.
+* same `meta.version` → your saved config wins;
+* new version → every value you saved that the build still knows wins, new
+  options are filled in from the shipped build, and retired keys are dropped
+  (an old `background` block cannot come back to life);
+* a saved `false`, `0` or `''` survives, because only `undefined` has no copy;
+* the panel header says so once, e.g.
+  `settings upgraded to v3.2.5 (was v3.1.7) — your settings were kept`.
 
-Content is copied **by value and as-is**. An earlier build cloned with
-`JSON.parse(JSON.stringify(o || {}))`, which turned a saved `false` (or `0`) into an
-empty object — and `{}` is truthy, so a migrated switch could come back ON. Falsy
-values now survive a migration unchanged.
-
-The control panel also reads `config.json` when it opens and adopts it as the
-source of truth, merged over the browser's copy with that same migration. A
-fresh browser profile (or a stale `localStorage`) therefore shows the cities and
-settings actually on air instead of the shipped samples, and simply opening the
-panel no longer writes anything back.
-
+The shipped build is v3.2.5, so a `config.json` still stamped 3.1.7 or 3.2.0
+upgrades in place: your cities, units, data policy and every Look-tab value stay
+exactly as you left them.
 ### URL parameters
 
 `?fit=contain|cover|width|none` · `?units=imperial|metric` · `?configUrl=…` ·
@@ -346,16 +333,16 @@ OBS caches whatever the browser source loaded, so a changed `style.css` or
 asset is therefore referenced with a version stamp:
 
 ```html
-<link rel="stylesheet" href="style.css?v=3.0.1" />
-<script src="script.js?v=3.0.1"></script>
+<link rel="stylesheet" href="style.css?v=3.2.3" />
+<script src="script.js?v=3.2.3"></script>
 ```
 
 After changing any file, raise the version everywhere at once:
 
 ```bash
-node tools/bump.js          # patch  3.0.1 → 3.0.2   (the usual one)
-node tools/bump.js minor    # 3.0.2 → 3.1.0
-node tools/bump.js major    # 3.1.0 → 4.0.0
+node tools/bump.js          # patch  3.2.3 → 3.2.4   (the usual one)
+node tools/bump.js minor    # 3.2.3 → 3.3.0
+node tools/bump.js major    # 3.3.0 → 4.0.0
 node tools/bump.js sync     # re-stamp with the current version, no bump
 node tools/bump.js --check  # report only, change nothing
 ```
@@ -374,29 +361,32 @@ Still seeing the old build? In OBS right-click the source → **Refresh**, or ti
 ## Tests
 
 ```bash
-node tests/smoke.js            # happy path, 2 cities
-node tests/smoke.js --fail     # API 503 with a warm cache
-node tests/smoke.js --no-cache # API 503 with nothing cached
+node tests/smoke.js            # load-once, 2 cities (happy path)
+node tests/smoke.js --fail     # hub 503 with a warm cache
+node tests/smoke.js --no-cache # hub 503 with nothing cached
 node tests/contrast.js         # WCAG contrast + palette vibe gate
 node tests/admin.js            # control panel: boots, wiring, editing, save
 node tests/type.js             # hero-fit maths + type legibility floor
 ```
 
-The test loads the **real** `icons.js`, `config.js` and `script.js` into a small
-DOM shim with a mocked Open-Meteo, then asserts what actually rendered.
+The smoke test loads the **real** `icons.js`, `config.js` and `script.js` into a
+small DOM shim with a stubbed hub payload (exactly the JSON
+`/weather/api/data` returns), then asserts what actually rendered — including
+that the provider-facing request count is still 1 after ~2 s, which is the "no
+periodic refresh" claim.
 
 | Check | Result |
 |---|---|
-| 20 happy-path checks (cards, temp, condition, hi/lo, stat values + labels, footer, `data-state=ready`, aria-live, API called, sun-disc fill, icon colours wired to `--wx-*`, entrance choreography, and the stat-strip layout for 1/4/6 fields) | **20/20** |
-| 5 cached-failure checks (kept `80°`, `data-state=stale`, `(cached)` footer) — 3 real, 2 mode-specific | **5/5** |
-| 5 no-cache failure checks (`– –`, `RETRYING IN <n>S`, `data-state=error`) — 3 real, 2 mode-specific | **5/5** |
+| 25 happy-path checks (cards, temp, condition, hi/lo, stat values + labels, footer, `data-state=ready`, aria-live, **one hub request on load**, **no provider polling while idle**, **the `refresh` command re-reads the hub**, sun-disc fill, icon colours wired to `--wx-*`, entrance choreography, stat-strip layout for 1/4/6 fields) | **25/25** |
+| 10 cached-failure checks (kept `80°`, `data-state=stale`, `(cached)` footer) | **10/10** |
+| 10 no-cache failure checks (`– –`, `PRESS R TO RETRY`, `data-state=error`) | **10/10** |
 | Contrast gate: 8 text tokens vs. the glass over black **and** white video | **8/8 AA** |
 | Palette vibe gate (light, saturated, day≠night) | **4/4** |
-| Admin page runtime check: boots, all bound fields resolve, rows/stop editor build, adopts `config.json` without writing, edits, save POST, numeric-input ranges, all eight icon pickers bound, hub URL hint, city picker (debounce, states, pin, keyboard), title only changes on selection | **67/67** |
+| Admin page runtime check: boots, all bound fields resolve, rows/stop editor build, adopts `config.json` without writing, edits, save POST, numeric-input ranges, all eight icon pickers bound, hub URL hint, city picker (debounce, states, pin, keyboard), title only changes on selection | **68/68** |
 | Type-size test: fit maths, legibility floor, small-print minimums, no NaN on degenerate input | **19/19** |
 | `node --check` on every JS file | pass |
-| Live Open-Meteo geocoding + forecast curl | 200, expected shape |
-| Server smoke test (`node server.js` + curl) | pages 200, command API ok, bad action → 400 with `allowed`, bad config → 400 |
+| Live Open-Meteo batched forecast (2 cities, one request) | 200, per-city timezone correct |
+| Hub routes (`Overlays/server.js`, the only server) | pages 200, command API ok, bad action → 400 with `allowed`, bad config → 400 |
 
 ### Verifying visually
 

@@ -14,8 +14,7 @@
      • clicking a list row opens the market ON THAT ROW under every sort, not
        whichever market happens to sit at the row's config index
      • space on a focused row selects that row and does NOT then skip past it
-     • the venue name is kept when Polymarket really is the source, and stripped
-       when the odds are hand-typed
+     • a venue name never reaches the board, on either source
    ========================================================================== */
 'use strict';
 
@@ -266,8 +265,9 @@ setTimeout(async () => {
 
   /* ------------------------------------------------------------ the stamp */
   const stamp = byClass(stage, 'groups__stamp')[0];
-  check('the board names its source and how stale it is',
-    /polymarket/.test(stamp.textContent) && /2m ago/.test(stamp.textContent), stamp.textContent);
+  check('the board says how stale the headlines are, without naming a venue',
+    /updated/i.test(stamp.textContent) && /2m ago/.test(stamp.textContent) &&
+    !/polymarket|coingecko/i.test(stamp.textContent), stamp.textContent);
   PM.apply(polyCfg({ polymarket: Object.assign(polyCfg().polymarket, { updatedAt: Date.now() - 3000 }) }), { animate: false });
   await wait(60);
   check('a fresh pull reads "just now"', /just now/.test(byClass(stage, 'groups__stamp')[0].textContent),
@@ -365,11 +365,11 @@ setTimeout(async () => {
   /* --------------------------------------------- venue honesty by source */
   PM.apply({ source: 'polymarket', footer: { left: { source: 'Polymarket' } } }, { animate: false });
   await wait(40);
-  check('with the Polymarket source selected the venue name is kept',
-    /Polymarket/i.test(textOf(byClass(stage, 'ftxt')[0])), textOf(byClass(stage, 'ftxt')[0]));
+  check('the venue name stays off the board even when headlines are selected',
+    !/Polymarket/i.test(textOf(byClass(stage, 'ftxt')[0])), textOf(byClass(stage, 'ftxt')[0]));
   PM.apply({ source: 'manual', footer: { left: { source: 'Polymarket' } } }, { animate: false });
   await wait(40);
-  check('with the hand-typed source it is stripped again (it would be a lie)',
+  check('the venue name stays off the hand-typed board too',
     !/Polymarket/i.test(textOf(byClass(stage, 'ftxt')[0])), textOf(byClass(stage, 'ftxt')[0]));
 
   /* ============================ the hand-typed board's own two defects ==== */

@@ -67,6 +67,10 @@
   function boardSignature(c) {
     var copy = deepMerge(c, {});
     delete copy.meta;
+    /* __startIndex is a runtime hint (which tab to open on), never something the
+       board renders. A resolved config.json never carries it, so counting it made
+       the first poll look like a change and tore the board down ~2s after load. */
+    delete copy.__startIndex;
     return JSON.stringify(copy);
   }
 
@@ -221,6 +225,14 @@
     this.rowEls = [];
     this.tl = null;
     this._safety = null;
+    /* A provider can omit an id it has no market data for (CoinGecko's search
+       indexes coins that /coins/markets does not price), and a refresh can time
+       out on the client while the hub is still retrying upstream. Either way the
+       new row must not shimmer forever: one bounded retry, then an explicit
+       "no market data" row. */
+    this._retryTimer = null;
+    this._retries = 0;
+    this.state.missing = 0;
   }
 
   Board.prototype.mount = function () {
@@ -369,7 +381,6 @@
     panel.style.setProperty('--row-div-c', r.divider && r.divider.enabled ? r.divider.color : 'transparent');
     panel.style.setProperty('--row-div-w', ((r.divider && r.divider.width) || 1) + 'px');
     panel.style.setProperty('--row-zebra-c', r.zebraColor);
-    panel.style.setProperty('--row-flash-c', r.tickFlash);
   };
 
   /* Column headers are built from `columns.order`, so a column can be reordered
@@ -398,6 +409,10 @@
            widths — which is exactly what drifted the labels off their data. */
         c.style.flex = colFlex({ columns: col }, 'asset', 300);
         c.style.minWidth = '0';
+        /* the documented cap: past this the surplus goes to the trend chart
+           instead of opening a gutter. Applied to the header and the cell with
+           the same value, or the labels drift off their data again. */
+        if (col.assetMaxWidth > 0) c.style.maxWidth = col.assetMaxWidth + 'px';
       } else if (key === 'sparkline') {
         c.style.flex = colFlex({ columns: col }, key, 160);
         c.style.textAlign = 'left';
@@ -520,9 +535,15 @@
       row.dataset.coin = id;
       if (cfg.rows.divider && cfg.rows.divider.enabled && i > 0) row.classList.add('row--divider');
       if (cfg.rows.zebra && i % 2 === 1) row.classList.add('zebra');
-      if (!rec) row.classList.add('is-loading');
-
-      el('div', 'row__flash', row);
+      /* shimmer only while a read is genuinely in flight; once it has finished,
+         an id with no record is a permanent "no market data" row, not a loader */
+      var waiting = !rec && (!self.state.loaded || self.stage.dataset.state === 'loading');
+      if (waiting) row.classList.add('is-loading');
+      else if (!rec) {
+        row.classList.add('is-missing');
+        row.dataset.missing = '1';
+        row.title = 'the provider has no market data for "' + id + '"';
+      }
 
       var shown = {};
       cfg.columns.order.forEach(function (key) {
@@ -533,9 +554,10 @@
           shown.rank = rk;
         } else if (key === 'asset') {
           var cell = el('div', 'cell-asset', row);
-          /* same proportional flex as the header column above it */
+          /* same proportional flex and the same cap as the header column */
           cell.style.flex = colFlex(cfg, 'asset', 300);
           cell.style.minWidth = '0';
+          if (cfg.columns.assetMaxWidth > 0) cell.style.maxWidth = cfg.columns.assetMaxWidth + 'px';
           var logo = el('div', 'logo logo--' + (cfg.rows.logo.radius || 'circle'), cell);
           logo.dataset.testid = 'logo';
           self.setLogo(logo, rec);
@@ -571,6 +593,15 @@
 
       self.rowEls.push({ root: row, coin: id, cells: shown });
     });
+
+    /* An empty section is a legitimate state (the operator is rebuilding a tab,
+       or a saved config arrived without coins). Say so on the board rather than
+       showing a titled panel with nothing under it. */
+    if (!ids.length) {
+      var empty = el('div', 'board-empty', host);
+      empty.dataset.testid = 'empty';
+      empty.textContent = 'No assets in this section';
+    }
 
     this.updateNote();
 
@@ -741,28 +772,29 @@
     }
   };
 
+  /* "2m ago" rather than a clock time: on air what matters is how stale the
+     prices are, not the moment they were pulled. */
+  function agoLabel(ms) {
+    var s = Math.max(0, Math.round(ms / 1000));
+    if (s < 45) return 'just now';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + 'm ago';
+    var h = Math.round(m / 60);
+    if (h < 36) return h + 'h ago';
+    return Math.round(h / 24) + 'd ago';
+  }
+
   Board.prototype.updateNote = function () {
     var st = this.state, cfg = this.cfg;
-    /* The footer doubles as the board's status line (cached / error / degraded),
-       so an operator switching it off is choosing a clean face over the
-       diagnostics. Clearing the text is enough: the stylesheet hides an empty
-       .board-note, so there is no leftover padding under the last row. */
-    if (cfg.footer && cfg.footer.enabled === false) {
+    /* The line under the rows is only the age of the last fetch. Cache, errors
+       and a missing trend stay off it — those still set data-state on the stage.
+       Clearing the text is enough: the stylesheet hides an empty .board-note,
+       so there is no leftover padding under the last row. */
+    if (!cfg.footer || cfg.footer.enabled === false || !st.fetchedAt) {
       setText(this.note, '');
       return;
     }
-    var parts = [];
-    if (st.fetchedAt) {
-      var mins = Math.max(0, Math.round((Date.now() - st.fetchedAt) / 60000));
-      parts.push('Updated ' + (mins === 0 ? 'just now' : mins + 'm ago'));
-    }
-    if (st.fromCache) parts.push('cached');
-    if (st.error) parts.push(st.error);
-    parts.push(st.source || 'CoinGecko');
-    /* the fallback carries no 7d series, so say the trend column is empty
-       rather than letting it look like a rendering fault */
-    if (st.degraded) parts.push('no trend data');
-    setText(this.note, parts.join('  ·  '));
+    setText(this.note, 'Updated ' + agoLabel(Date.now() - st.fetchedAt));
   };
 
   /* ---------------------------------------------------------------- data */
@@ -831,8 +863,9 @@
   /* Proxy first (one upstream call serves every browser source), then the API
      directly, then the last good response. `fromCache` marks stale data so the
      board never pretends old prices are live. */
-  Board.prototype.fetchData = function () {
+  Board.prototype.fetchData = function (opts) {
     var self = this, d = this.cfg.data;
+    var force = !!(opts && opts.force);
     var ids = this.buildIds().join(',');
     var q = 'ids=' + encodeURIComponent(ids) +
             '&currency=' + encodeURIComponent(d.currency) +
@@ -907,7 +940,7 @@
       return true;
     }
 
-    return fetchJson(d.proxyUrl + '?' + q, d.timeoutMs)
+    return fetchJson(d.proxyUrl + '?' + q + (force ? '&force=1' : ''), d.timeoutMs)
       .then(function (r) {
         var payload = r.json;
         var list = Array.isArray(payload) ? payload : (payload && payload.coins);
@@ -931,15 +964,16 @@
       });
   };
 
-  Board.prototype.refresh = function () {
+  Board.prototype.refresh = function (opts) {
     var self = this;
     this.stage.dataset.state = 'loading';
-    return this.fetchData().then(function () {
+    return this.fetchData(opts).then(function () {
       self.state.loaded = true;
       self.stage.dataset.state = self.state.error ? 'stale' : 'ready';
       self.renderRows();
       self.animateRowsIn();
       self.announce();
+      self.afterRefresh();
       return true;
     }).catch(function (e) {
       self.state.loaded = true;
@@ -947,8 +981,37 @@
       self.stage.dataset.state = 'error';
       self.renderRows();
       self.updateNote();
+      self.afterRefresh();
       return false;
     });
+  };
+
+  /* Ids the board asked for but the last payload could not answer. */
+  Board.prototype.missingIds = function () {
+    var self = this;
+    return this.buildIds().filter(function (id) { return id && !self.data[id]; });
+  };
+
+  /* One retry, five seconds after a read that left rows unanswered. A config
+     change rebuilds the board (fresh board, fresh retry budget), and the hub has
+     usually finished its upstream attempt by then, so the retry hits its cache.
+     No repeating timer is reintroduced: at most one extra read per load. */
+  Board.prototype.afterRefresh = function () {
+    var missing = this.missingIds();
+    this.state.missing = missing.length;
+    this.stage.dataset.missing = String(missing.length);
+    if (!missing.length) {
+      this._retries = 0;
+      if (this._retryTimer) { clearTimeout(this._retryTimer); this._retryTimer = null; }
+      return;
+    }
+    if (this._retries >= 1 || this._retryTimer) return;
+    var self = this;
+    this._retries++;
+    this._retryTimer = setTimeout(function () {
+      self._retryTimer = null;
+      self.refresh();
+    }, 5000);
   };
 
   /* ------------------------------------------------------------- a11y text */
@@ -1071,6 +1134,27 @@
     });
   };
 
+  /* A row the operator just added to the ACTIVE category: the board is already
+     on air, so replaying the entrance would flash every price. Animate only the
+     new rows, from the same "slide up + fade" family as the entrance. */
+  Board.prototype.animateNewRows = function (previousIds) {
+    var a = this.cfg.animation;
+    if (REDUCE_MOTION || !previousIds) return;
+    var seen = {};
+    previousIds.forEach(function (id) { seen[id] = 1; });
+    var fresh = this.rowEls.filter(function (r) { return r.coin && !seen[r.coin]; });
+    if (!fresh.length) return;
+    var nodes = fresh.map(function (r) { return r.root; });
+    gsap.from(nodes, {
+      y: a.newRowFrom == null ? 18 : a.newRowFrom,
+      opacity: a.fadeRows === false ? 1 : 0,
+      duration: a.newRowDuration == null ? 0.55 : a.newRowDuration,
+      ease: a.newRowEase || 'power2.out',
+      stagger: 0.05,
+      clearProps: 'transform'
+    });
+  };
+
   /* The pill is measured from the live DOM, so it stays correct for any font,
      padding or tab count. */
   /* `instant` skips the tween: used for the first paint, where an indicator
@@ -1150,17 +1234,13 @@
        edit in the control panel cannot put a hidden board back on air. */
     hidden: false,
 
-    schedule: function () {
-      var self = this, d = this.cfg.data;
-      clearInterval(this.timer);
-      var secs = Math.max(15, d.refreshSeconds || 120);
-      this.timer = setInterval(function () {
-        if (self.board) self.board.refresh();
-      }, secs * 1000);
-    },
-
-    refresh: function () {
-      return this.board ? this.board.refresh() : Promise.resolve(false);
+    /* The data timer is gone: the hub caches the provider response and the board
+       asks it once per load. `force` is only used by a manual update. */
+    refresh: function (force) {
+      /* the visible board is mid-exit and about to be replaced: refreshing it
+         would re-render the rows that are collapsing */
+      if (this._removing) return Promise.resolve(false);
+      return this.board ? this.board.refresh({ force: force === true }) : Promise.resolve(false);
     },
 
     play: function () {
@@ -1174,7 +1254,57 @@
     setCategory: function (i) { if (this.board) this.board.setCategory(i); },
     next: function () { if (this.board) this.board.next(); },
     prev: function () { if (this.board) this.board.prev(); },
+    /* Detect a removed row FIRST: the rebuild replaces every node, so an exit
+       animation started after the rebuild would animate a detached element.
+       Animate the old row out on the old board, then rebuild. */
     applyConfig: function (cfg) {
+      var prev = this.board || null;
+      if (this._removing) { this._pendingCfg = cfg; return this.board; }
+      var a = cfg.animation || {};
+      var removeSecs = a.removeRowDuration == null ? 0.28 : Number(a.removeRowDuration);
+      var removed = [];
+      if (prev && !REDUCE_MOTION && removeSecs > 0 && prev._entranceDone && prev.state.onAir) {
+        var act = prev.activeIndex;
+        var nextCat = (cfg.categories || [])[act];
+        var nextCoins = (nextCat && nextCat.coins) ? nextCat.coins : [];
+        removed = prev.activeCoins().filter(function (id) { return nextCoins.indexOf(id) === -1; });
+      }
+      if (!removed.length) return this._rebuild(cfg);
+
+      var self = this;
+      var nodes = prev.rowEls.filter(function (r) { return removed.indexOf(r.coin) !== -1; })
+        .map(function (r) { return r.root; });
+      if (!nodes.length) return this._rebuild(cfg);
+
+      this._removing = true;
+      var finished = false;
+      var done = function () {
+        if (finished) return;
+        finished = true;
+        clearTimeout(self._removeSafety);
+        self._removing = false;
+        var pending = self._pendingCfg;
+        self._pendingCfg = null;
+        self._rebuild(pending || cfg);
+      };
+      /* OBS throttles rAF while a source is hidden; the collapse must never
+         strand the board on the old config */
+      this._removeSafety = setTimeout(done, Math.round((removeSecs + 0.5) * 1000));
+      gsap.to(nodes, {
+        height: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+        opacity: 0,
+        overflow: 'hidden',
+        duration: removeSecs,
+        ease: a.removeRowEase || 'power2.inOut',
+        onComplete: done
+      });
+      return this.board;
+    },
+
+    /* Build the next board: this is the config path after any exit animation. */
+    _rebuild: function (cfg) {
       this.cfg = cfg;
       var wasOnAir = !!(this.board && this.board.state.onAir);
       /* Carry the current data and freshness into the rebuild. A new board starts
@@ -1183,8 +1313,34 @@
          known prices immediately and the refresh then updates them in place, so
          even a genuine config change cannot blank the board on air. */
       var prev = this.board || null;
+      if (prev && prev._retryTimer) { clearTimeout(prev._retryTimer); prev._retryTimer = null; }
+      /* what the ACTIVE category showed before this config arrived: any coin in
+         the same category afterwards is a row the operator just added */
+      var prevActiveCoins = prev ? prev.activeCoins().slice() : null;
+      /* The visible category is runtime state like the data below, not part of
+         the config: a resolved config.json never carries __startIndex, so every
+         rebuild (a look edit in the admin, the first poll) used to snap the board
+         back to the first category. Carry it unless the new config asks for a
+         specific one. */
+      if (prev && cfg.__startIndex == null) cfg.__startIndex = prev.activeIndex;
       fitStage(cfg);
       var next = new Board(cfg, document.getElementById('stage'));
+      if (!prev) {
+        /* Paint the last good frame before the network answers. A scene switch
+           used to show '—' in every row until the fetch landed; the payload is
+           already in localStorage, so a reload can start from it. The hub then
+           confirms or replaces it — no extra provider call inside its TTL. */
+        try {
+          var rawCache = localStorage.getItem(cfg.data && cfg.data.cacheKey);
+          var cached = rawCache ? JSON.parse(rawCache) : null;
+          if (cached && cached.coins && Object.keys(cached.coins).length) {
+            next.data = cached.coins;
+            next.state.fetchedAt = cached.ts || 0;
+            next.state.fromCache = true;
+            next.state.loaded = true;
+          }
+        } catch (e) { /* private mode / quota */ }
+      }
       if (prev) {
         next.data = prev.data;
         next.state = Object.assign({}, next.state, {
@@ -1204,8 +1360,10 @@
         else if (this.hidden) this.board.hideInstant();
         else if (cfg.animation.autoPlay) this.board.play(cfg.animation.autoPlayDelay || 0);
         else this.board.showInstant();
+        /* only the on-air case animates an added row: a hidden board has nothing
+           to reveal, and the entrance path is a full choreography already */
+        if (wasOnAir) this.board.animateNewRows(prevActiveCoins);
       }.bind(this));
-      this.schedule();
       return this.board;
     }
   };
@@ -1219,7 +1377,8 @@
     switch (cmd.action) {
       case 'in': case 'play': Engine.play(); break;
       case 'out': case 'hide': Engine.hide(); break;
-      case 'refresh': case 'update': Engine.refresh(); break;
+      case 'refresh': Engine.refresh(false); break;
+      case 'update': Engine.refresh(true); break;
       case 'next': case 'advance': Engine.next(); break;
       case 'prev': case 'back': Engine.prev(); break;
       case 'category':
@@ -1269,7 +1428,6 @@
       var idx = (cfg.categories || []).findIndex(function (c) { return c.id === want; });
       if (idx > -1) cfg.__startIndex = idx;
     }
-    if (qs.get('refresh')) cfg.data.refreshSeconds = parseInt(qs.get('refresh'), 10) || cfg.data.refreshSeconds;
     if (qs.get('fit')) cfg.stage.fit = qs.get('fit');
 
     /* Skip re-applying an unchanged config: the poll fires every couple of
@@ -1364,7 +1522,7 @@
   window.CM.Board = Board;
   window.CM.play = function () { Engine.play(); };
   window.CM.hide = function () { Engine.hide(); };
-  window.CM.refresh = function () { return Engine.refresh(); };
+  window.CM.refresh = function (force) { return Engine.refresh(force); };
   window.CM.next = function () { Engine.next(); };
   window.CM.prev = function () { Engine.prev(); };
   window.CM.setCategory = function (i) { Engine.setCategory(i); };
@@ -1374,6 +1532,7 @@
   window.CM.formatChange = formatChange;
   window.CM.configSignature = boardSignature;   /* what counts as a visible change */
   window.CM.mergeIncoming = mergeIncoming;      /* exposed so the version-gate can be tested */
+  window.CM.handleCommand = handleCommand;     /* exposed so the command → update path is testable */
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

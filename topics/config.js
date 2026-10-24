@@ -52,7 +52,7 @@ window.TP_DEFAULT_CONFIG = {
   theme: 'light',
   meta: {
     name: 'Talking Points Panel',
-    version: '1.1.3'
+    version: '1.1.4'
   },
 
   /* ---------------- Stage (design canvas) ---------------- */

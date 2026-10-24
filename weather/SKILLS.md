@@ -10,20 +10,20 @@ it is kept here as reference only and is not loaded at runtime by the overlay.
 | # | Skill | Source (GitHub) | Applied to |
 |---|---|---|---|
 | 1 | `frontend-design` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | Panel hierarchy: the temp + icon lockup is the single hero; the details strip is a real grouping (size/weight steps) instead of chips; no decorative dividers. |
-| 2 | `theme-factory` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/theme-factory) | One committed palette per preset; all four presets in `admin.js` carry a matching icon-colour set so a theme swap never leaves mismatched art. |
-| 3 | `canvas-design` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/canvas-design) | Safe-area discipline on the 1920×1080 stage: nothing may overlap the panel border; every band keeps its own padding. |
+| 2 | `theme-factory` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/theme-factory) | One committed palette, with a matching icon-colour set so the art can never drift from the theme. |
+| 3 | `canvas-design` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/canvas-design) | Safe-area discipline on the 460×1080 portrait stage: nothing may overlap the panel border; every band keeps its own padding. |
 | 4 | `web-artifacts-builder` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/web-artifacts-builder) | Anti-slop tells removed: no uniform rounded corners, no purple gradient, no centred-everything layout, no Inter in the overlay. |
-| 5 | `webapp-testing` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/webapp-testing) | The headless-Chromium smoke-check recipe (load → wait for the data state → inspect → screenshot at 1920×1080) and `data-state` on `#stage`. |
+| 5 | `webapp-testing` | [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/webapp-testing) | The headless-Chromium smoke-check recipe (load → wait for the data state → inspect → screenshot at 460×1080) and `data-state` on `#stage`. |
 | 6 | `hallmark` | [Nutlope/hallmark](https://github.com/Nutlope/hallmark) | Token discipline (components reference `var(--…)`, no inline hex in `style.css`), roman headings only, and the contrast gate that fixed the hi/lo colour. |
 | 7 | `huashu-design` | [alchaincyf/huashu-design](https://github.com/alchaincyf/huashu-design) | "Never assert from memory": Open-Meteo endpoint params, units, timezone and response shape were **verified live with curl** before shipping (results in the README). |
 | 8 | `design-system-patterns` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/ui-design/skills/design-system-patterns) | Semantic tokens (`--surface-details`, `--text-detail`, `--text-muted-on-silver`) and a purpose-named palette driven from config → CSS variables. |
 | 9 | `interaction-design` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/ui-design/skills/interaction-design) | Published timing/easing scale (`--dur-micro…--dur-large`, `--ease-out`); entrance animates transform/opacity only; no overshoot on data. |
-| 10 | `error-handling-patterns` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/developer-essentials/skills/error-handling-patterns) | Exponential backoff **with jitter** (capped at 15 min), last-good data kept on screen, console logging of URL + status + city, and hard failure on a malformed payload. |
+| 10 | `error-handling-patterns` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/developer-essentials/skills/error-handling-patterns) | Last-good data kept on screen, stale-on-failure served by the hub for up to 15 min, console logging of the failing URL + status, and a hard failure on an unusable payload instead of a blank card. |
 | 11 | `e2e-testing-patterns` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/developer-essentials/skills/e2e-testing-patterns) | Stable `data-testid` hooks (`temp`, `condition`, `range`, `details`, `updated`, `city-card`) and `data-state="ready|error"` so tests never bind to CSS classes. |
 | 12 | `wcag-audit-patterns` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/accessibility-compliance/skills/wcag-audit-patterns) | Weather SVGs are exposed as labelled images (`role="img"` + `<title>`), a visually-hidden `aria-live` region announces each update, `forced-colors` support, and the contrast fixes below. |
 | 13 | `modern-javascript-patterns` | [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/javascript-typescript/skills/modern-javascript-patterns) | The fetch path now normalises the payload into a small view model with `?.` / `??` defaults before anything reaches the DOM. |
 | 14 | `systematic-debugging` | [obra/superpowers](https://github.com/obra/superpowers/tree/main/skills/systematic-debugging) | Boundary instrumentation (`[weather] request failed: …`) and the node smoke-test that actually caught a real bug (see below). |
-| 15 | `verification-before-completion` | [obra/superpowers](https://github.com/obra/superpowers/tree/main/skills/verification-before-completion) | Every claim in the README is backed by a command that was run: live API curl, icon-mapping unit check, server smoke test. |
+| 15 | `verification-before-completion` | [obra/superpowers](https://github.com/obra/superpowers/tree/main/skills/verification-before-completion) | Every claim in the README is backed by a command that was run: live API curl, icon-mapping unit check, hub smoke test. |
 
 ## Concrete changes that came out of the skills
 
@@ -34,22 +34,27 @@ it is kept here as reference only and is not loaded at runtime by the overlay.
 2. **Reduced motion is honoured in JS *and* CSS.** `REDUCE_MOTION` short-circuits
    `Panel.play()` to an instant appear, and a `prefers-reduced-motion` block kills
    the ambient icon keyframes.
-3. **Backoff + jitter instead of a fixed retry** (`schedule()` in `script.js`),
-   capped at 15 minutes, reset on success, with the retry delay surfaced in the
-   panel itself as `RETRYING IN 60S` rather than a vague error.
-4. **One in-flight request group.** `newRequestGroup()` aborts the previous
-   geocode/forecast requests via `AbortController`; superseded responses are
-   dropped instead of overwriting newer data.
-5. **Fail fast on payload shape** — missing coordinates or temperature throws
-   before render, so `undefined°` can never ship.
+3. **No retry loop at all.** The old `schedule()` timer and its exponential backoff
+   were removed when the hub took over provider access: the widget asks
+   `/weather/api/data` once per load, and the hub's short cache (plus its
+   stale-on-failure window) is what stops a failure from becoming a blank card.
+   The panel no longer has a `RETRYING IN <n>S` state to surface.
+4. **One in-flight request group.** `newRequestGroup()` aborts the previous hub
+   request via `AbortController`; a superseded response cannot overwrite a newer
+   one.
+5. **Fail fast on payload shape** — a city whose entry has no temperature renders
+   an explicit per-city error before anything numeric is drawn, so `undefined°`
+   can never ship.
 6. **Honest failure state.** Last-good cached values stay on screen; only when
-   there is nothing at all does the card show `DATA UNAVAILABLE` + the retry time.
+   there is nothing at all does the card show `DATA UNAVAILABLE` with
+   `PRESS R TO RETRY`.
 7. **Accessibility**: labelled icon SVGs, `aria-live` summary, `data-testid`
    hooks, `forced-colors` support, `.sr-only` utility.
 8. **Performance/isolation**: `contain: layout paint style` on `.panel`.
-9. **Server hardening** (`server.js`): atomic write-then-rename of `config.json`
-   and `state.json`, JSON-shape validation, and a self-describing 400 with the
-   list of allowed actions for Stream Deck debugging.
+9. **Hub hardening** (`Overlays/server.js`, the only server): atomic
+   write-then-rename of `config.json` and `state.json`, JSON-shape validation,
+   and a self-describing 400 with the list of allowed actions for Stream Deck
+   debugging.
 10. **Token discipline**: semantic surface/text tokens and a published
     duration/easing scale in `style.css`.
 
@@ -88,8 +93,8 @@ no amount of CSS review would have caught:
 1. **Data never rendered.** `details.dataset.testid` in `mount()` ran *before*
    `var details = el(...)` was assigned, so `details` was `undefined` and the
    whole panel threw a `TypeError` during build — the overlay came up empty.
-   Fixed by setting the test hook after the element exists. Verified: 10/10
-   happy-path checks now pass (was 0 rendered values).
+   Fixed by setting the test hook after the element exists. Verified at the
+   time: 10/10 happy-path checks passed (was 0 rendered values).
 2. **Cached data masqueraded as live.** The cache-fallback path replaced the
    error object entirely, so after an API failure the widget showed an old
    reading with a fresh-looking `Updated 12:25 PM` footer and `data-state="ready"`.
@@ -103,9 +108,9 @@ Also fixed while in there: `startLoop()` referenced a non-existent
 Run them with:
 
 ```bash
-node tests/smoke.js            # 10/10
-node tests/smoke.js --fail     # 5/5  (cache kept, state=stale, "(cached)")
-node tests/smoke.js --no-cache # 5/5  (– –, RETRYING IN <n>S, state=error)
+node tests/smoke.js            # 25/25
+node tests/smoke.js --fail     # 10/10 (cache kept, state=stale, "(cached)")
+node tests/smoke.js --no-cache # 10/10 (– –, PRESS R TO RETRY, state=error)
 ```
 
 ---
@@ -144,9 +149,10 @@ Two follow-on fixes fell out of the light conversion:
   `interaction-design` "don't animate layout, do use elevation" idea applied
   statically.
 
-All five presets (Glass Light, Cool Mist, Sky Blue, Warm Sand, Graphite) carry a
-complete set — surface, text, hairline, orb, accent and icon colours — so
-switching a preset can never leave white text on a light background.
+The five presets the panel then shipped (Glass Light, Cool Mist, Sky Blue, Warm
+Sand, Graphite) each carried a complete set — surface, text, hairline, orb,
+accent and icon colours — so switching one could never leave white text on a
+light background. The preset selector itself was removed later (see Update 3).
 
 ---
 
@@ -174,7 +180,7 @@ greys and no blacks:
 so mid-blue ink no longer had headroom. The ink was darkened until all eight
 pass AA at the worst video extreme — the script's whole point.
 
-Final: `tests/smoke.js` 12/12 + 5/5 + 5/5, `tests/contrast.js` 8/8.
+At that point: `tests/smoke.js` 12/12 + 5/5 + 5/5, `tests/contrast.js` 8/8.
 
 ---
 
@@ -287,14 +293,14 @@ both test harnesses):
 
 * same `meta.version` → the saved config wins, your edits are respected;
 * different version → the saved config contributes only **content**
-  (cities, units, refresh policy for the weather widget; title, subtitle, topic
-  list for the talking-points panel) and the shipped build supplies the whole
-  **look**, with `meta.migratedFrom` recorded and the control panel saying so
-  instead of switching theme silently.
+  (cities, units and the data policy for the weather widget; title, subtitle,
+  topic list for the talking-points panel) and the shipped build supplies the
+  whole **look**, with `meta.migratedFrom` recorded and the control panel saying
+  so instead of switching theme silently.
 
 `mergeIncoming()` in both `script.js` and `admin.js` now routes every source
-through it: localStorage, `config.json`, `postMessage`, Import and Apply-JSON.
-Guards added to `tests/admin.js` (weather 25/25 now includes: stale palette
+through it: localStorage, `config.json`, `postMessage` and Apply-JSON.
+Guards added to `tests/admin.js` (weather 25/25 at that point included: stale palette
 discarded, stale ink discarded, cities kept, units kept, same-version edits
 still respected).
 
@@ -314,8 +320,8 @@ future icon can't repeat it (13/13).
 
 ## Update 7 — the icon colours were never actually connected
 
-`theme-factory`'s entry in the table above claims a committed icon-colour set per
-theme. It was written, stored, migrated and editable — and completely inert.
+`theme-factory`'s entry in the table above claims a committed icon-colour set.
+It was written, stored, migrated and editable — and completely inert.
 
 `icons.js` paints each shape with `var(--wx-sun)`, `var(--wx-rain)` and so on.
 Nothing ever **set** those custom properties: not `style.css`, not `script.js`.
@@ -340,7 +346,7 @@ Also in this pass: `resolveTheme` was hoisted out of `start()` to module scope.
 The `config` branch of `handleCommand` called it from outside that scope, so any
 `{action:'config'}` command threw a `ReferenceError` instead of applying a theme.
 
-Smoke is **14/14** and the admin check **30/30** now.
+At that point smoke was **14/14** and the admin check **30/30**.
 
 ## Update 8 — a city’s title is not its search name
 

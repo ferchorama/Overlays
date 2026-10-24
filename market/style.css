@@ -202,16 +202,6 @@ html, body {
 }
 .row.zebra { background: var(--row-zebra-c, rgba(255, 255, 255, .018)); }
 
-/* the wash that flashes when a price ticks */
-.row__flash {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--row-flash-c, rgba(92, 225, 166, .13));
-  opacity: 0;
-  pointer-events: none;
-  z-index: 0;
-}
 .row > * { position: relative; z-index: 1; }
 
 /* asset cell */
@@ -225,7 +215,7 @@ html, body {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--logo-gap, 13px);
+  gap: 13px;
 }
 .cell-rank {
   flex: 0 0 auto;
@@ -336,6 +326,14 @@ html, body {
 /* placeholder shimmer while the first fetch is in flight */
 .row.is-loading .asset-name,
 .row.is-loading .asset-ticker,
+/* A finished read with no record for an id is not a loader: CoinGecko's search
+   can return coins that /coins/markets does not price. Show the row, muted and
+   labelled, so the operator sees what is wrong instead of an endless shimmer. */
+.row.is-missing .asset-name { opacity: .72; }
+.row.is-missing .asset-ticker { opacity: .6; }
+.row.is-missing .cell-price,
+.row.is-missing .cell-change { opacity: .55; }
+.row.is-missing .cell-spark { opacity: .3; }
 .row.is-loading .cell-price,
 .row.is-loading .cell-change { color: transparent; }
 .row.is-loading .cell-price,
@@ -345,18 +343,35 @@ html, body {
   color: transparent;
 }
 
-/* stale / error */
-.panel.is-stale .rows { opacity: .78; }
+/* the note under the rows: the age of the last fetch, nothing else */
 .board-note {
   flex: 0 0 auto;
   padding-top: 10px;
-  font-family: var(--cols-font);
-  font-size: 12px;
-  letter-spacing: .4px;
+  /* Same face as the column headers. A bare var() with no fallback is invalid
+     when the token is missing, and font-family then drops to the browser's
+     default serif. Weight and tracking have to come along too, or 12px at
+     weight 400 reads as a different font from the rest of the board. */
+  font-family: var(--cols-font, var(--board-font, 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', sans-serif));
+  font-weight: var(--cols-weight, 600);
+  font-size: var(--cols-size, 19px);
+  letter-spacing: var(--cols-tracking, 1.2px);
+  text-transform: var(--cols-transform, none);
   color: var(--cols-color, #7d90ab);
   text-align: var(--title-align, left);
 }
 .board-note:empty { display: none; }
+
+/* An empty section is a real state: the tab exists, its list is empty. The board
+   says so on the same baseline as the rows rather than leaving a bare panel. */
+.board-empty {
+  flex: 0 0 auto;
+  padding: 18px 0 2px;
+  font-family: var(--cols-font, var(--board-font, sans-serif));
+  font-size: var(--cols-size, 16px);
+  color: var(--cols-color, #7d90ab);
+  text-align: var(--title-align, left);
+  opacity: .85;
+}
 
 /* ---------------------------------------------------------------- utility */
 .hidden { display: none !important; }

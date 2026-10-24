@@ -2,13 +2,13 @@
    Saved-config migration — Prediction Markets
    ----------------------------------------------------------------------------
    The control panel and the overlay each keep a full copy of the config
-   (localStorage / config.json). Without this, a config saved by an older build
-   silently pins the old palette, so the board flips back the next time it
-   renders — a theme fix would appear to undo itself.
+   (localStorage / config.json). Settings are PERSISTENT: a build update adds new
+   options but never resets what the operator saved — the dashboard's promise is
+   "save once, it stays saved".
 
-   Rule: same meta.version → the saved config wins (your edits are yours).
-         different version  → keep only what you typed (the markets, the titles)
-         and take the whole look from the shipped build.
+   Rule: same meta.version → the saved config wins.
+         different version  → every saved value the build still knows wins, the
+         build fills in new keys and keeps ownership of the endpoint URLs.
    ========================================================================== */
 (function () {
   'use strict';
@@ -35,6 +35,22 @@
     if (o === undefined) return undefined;
     return JSON.parse(JSON.stringify(o));
   }
+  /* Copy every value the shipped build still knows about. Arrays (markets, the
+     Polymarket category list) are taken whole; objects are walked key-by-key so
+     retired settings cannot come back; meta is handled separately. */
+  function mergeKnown(base, patch) {
+    if (!isObj(patch)) return clone(base);
+    var out = clone(base);
+    Object.keys(patch).forEach(function (k) {
+      if (k === 'meta' || !(k in base)) return;
+      var pv = patch[k], bv = base[k];
+      if (Array.isArray(pv)) out[k] = clone(pv);
+      else if (isObj(pv) && isObj(bv)) out[k] = mergeKnown(bv, pv);
+      else if (pv !== undefined) out[k] = clone(pv);
+    });
+    return out;
+  }
+
   function versionOf(c) { return (c && c.meta && c.meta.version) || '0.0.0'; }
 
   /* The text the operator owns — everything else is look. Note `markets.items`
@@ -93,19 +109,19 @@
     var sv = versionOf(stored), nv = versionOf(shipped);
     if (sv === nv) return deepMerge(clone(shipped), stored);
 
-    var out = deepMerge(clone(shipped), {});
-    CONTENT.forEach(function (pair) {
-      var v = getPath(stored, pair[0]);
-      if (v === undefined || v === null) return;
-      if (pair[1] === 'array' && !Array.isArray(v)) return;
-      if (pair[1] === 'string' && typeof v !== 'string') return;
-      setPath(out, pair[0], clone(v));
-    });
+    /* Persistence: keep the saved settings, add the new build's options. Endpoint
+       paths stay build-owned — a stale proxy URL would silently break the chart
+       after an update. */
+    var out = mergeKnown(shipped, stored);
+    if (isObj(out.data)) {
+      out.data.proxyUrl = shipped.data.proxyUrl;
+      out.data.directUrl = shipped.data.directUrl;
+    }
     out.meta = Object.assign({}, shipped.meta, { migratedFrom: sv });
 
     API.migrated = true;
     API.migratedFrom = sv;
-    API.lastNote = 'saved markets were from v' + sv + ' — your topics were kept, the look was updated to v' + nv;
+    API.lastNote = 'settings were from v' + sv + ' — kept as saved, new options from v' + nv + ' applied';
     if (typeof console !== 'undefined') console.info('[prediction-markets] ' + API.lastNote);
     return out;
   }
@@ -116,4 +132,28 @@
   API.contentPaths = CONTENT.map(function (p) { return p[0]; });
 
   window.PM_MIGRATE = API;
+
+  /* ------------------------------------------------------- hub-relative URLs
+     The asset chart is served by the ASSETS board's proxy, not this app's, so
+     its default is a root-absolute path ('/market/api/market'). That path is
+     only correct while the hub is mounted at the server root. Behind a base
+     path ('/studio/predictions/index.html') the leading slash silently points
+     at the wrong place, and the chart sits on its placeholder forever with no
+     error to explain why.
+
+     The page cannot know the hub root from a leading slash, but it can read the
+     mount it was served from: this panel always lives one directory under the
+     hub root, so strip the file name and that one directory. Served from disk
+     there is no hub at all, so the value is returned untouched and the direct
+     endpoint is the fallback. */
+  window.PM_hubUrl = function (url) {
+    if (typeof url !== 'string' || url.charAt(0) !== '/') return url;
+    if (typeof location === 'undefined' || !location || typeof location.pathname !== 'string') return url;
+    if (location.protocol === 'file:') return url;
+    /* '/predictions/index.html' → '/predictions/' → ''      (hub at the root)
+       '/studio/predictions/admin.html' → '/studio/'          (hub under a base) */
+    var dir = location.pathname.replace(/[^/]*$/, '');
+    var root = dir.replace(/[^/]+\/$/, '');
+    return root.replace(/\/+$/, '') + url;
+  };
 })();

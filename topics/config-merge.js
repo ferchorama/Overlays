@@ -2,12 +2,12 @@
    Saved-config migration — Talking Points Panel
    ----------------------------------------------------------------------------
    The control panel and the overlay both keep a full copy of the config
-   (localStorage / config.json). Without this, a config saved by an older build
-   silently pins the old theme, so the panel flips back the next time it renders.
+   (localStorage / config.json). Settings are PERSISTENT: a build update adds new
+   options but never resets what the operator saved.
 
-   Rule: same meta.version → the saved config wins (your edits are yours).
-         different version  → keep only what you typed (title, subtitle, topic
-         list) and take the whole look from the shipped build.
+   Rule: same meta.version → the saved config wins.
+         different version  → every saved value the build still knows wins, and
+         the build fills in new keys.
    ========================================================================== */
 (function () {
   'use strict';
@@ -33,6 +33,20 @@
     if (o === undefined) return undefined;
     return JSON.parse(JSON.stringify(o));
   }
+  /* Copy every value the shipped build still knows about; retired keys drop. */
+  function mergeKnown(base, patch) {
+    if (!isObj(patch)) return clone(base);
+    var out = clone(base);
+    Object.keys(patch).forEach(function (k) {
+      if (k === 'meta' || !(k in base)) return;
+      var pv = patch[k], bv = base[k];
+      if (Array.isArray(pv)) out[k] = clone(pv);
+      else if (isObj(pv) && isObj(bv)) out[k] = mergeKnown(bv, pv);
+      else if (pv !== undefined) out[k] = clone(pv);
+    });
+    return out;
+  }
+
   function versionOf(c) { return (c && c.meta && c.meta.version) || '0.0.0'; }
 
   /* the text the operator owns — everything else is look */
@@ -65,19 +79,12 @@
     var sv = versionOf(stored), nv = versionOf(shipped);
     if (sv === nv) return deepMerge(clone(shipped), stored);
 
-    var out = deepMerge(clone(shipped), {});
-    CONTENT.forEach(function (pair) {
-      var v = getPath(stored, pair[0]);
-      if (v === undefined || v === null) return;
-      if (pair[1] === 'array' && !Array.isArray(v)) return;
-      if (pair[1] === 'string' && typeof v !== 'string') return;
-      setPath(out, pair[0], clone(v));
-    });
+    var out = mergeKnown(clone(shipped), stored);
     out.meta = Object.assign({}, shipped.meta, { migratedFrom: sv });
 
     API.migrated = true;
     API.migratedFrom = sv;
-    API.lastNote = 'saved settings were from v' + sv + ' — your title, date and topics were kept, the look was updated to v' + nv;
+    API.lastNote = 'settings were from v' + sv + ' — kept as saved, new options from v' + nv + ' applied';
     if (typeof console !== 'undefined') console.info('[talking-points] ' + API.lastNote);
     return out;
   }

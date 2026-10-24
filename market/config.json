@@ -1,9 +1,10 @@
 {
   "meta": {
     "name": "Digital Assets Market",
-    "version": "1.0.13",
-    "migratedFrom": "1.0.12",
-    "savedAt": 1792605863990
+    "version": "1.1.6",
+    "schema": 2,
+    "migratedFrom": "1.1.5",
+    "savedAt": 1792849856824
   },
   "font": {
     "id": "figtree"
@@ -52,8 +53,7 @@
     "rule": true,
     "ruleColor": "rgba(150,178,214,0.34)",
     "ruleWidth": 1,
-    "shadow": "none",
-    "autoShrink": true
+    "shadow": "none"
   },
   "tabs": {
     "visible": true,
@@ -137,11 +137,8 @@
     },
     "zebra": false,
     "zebraColor": "rgba(255,255,255,0.018)",
-    "tickFlash": "rgba(92,225,166,0.13)",
-    "tickFlashMs": 900,
     "radius": 10,
     "logo": {
-      "show": true,
       "size": 58,
       "radius": "circle",
       "fallbackBackground": "rgba(255,255,255,0.08)",
@@ -202,9 +199,7 @@
     "up": "#3ddc84",
     "down": "#ff5b6e",
     "flat": "#8ea3c0",
-    "rankColor": "#9aa8bd",
-    "sparkUp": "#3ddc84",
-    "sparkDown": "#ff5b6e"
+    "rankColor": "#9aa8bd"
   },
   "categories": [
     {
@@ -263,7 +258,8 @@
         "syrup",
         "uniswap",
         "aave",
-        "morpho"
+        "morpho",
+        "maker"
       ]
     }
   ],
@@ -273,10 +269,7 @@
     "directUrl": "https://api.coingecko.com/api/v3/coins/markets",
     "currency": "usd",
     "sparkline": true,
-    "refreshSeconds": 120,
     "timeoutMs": 12000,
-    "retryOnFailSeconds": 45,
-    "showStaleAfterSeconds": 600,
     "useCacheOnFailure": true,
     "cacheKey": "cm-cache-v1"
   },
@@ -293,6 +286,9 @@
     "rowStart": 0.26,
     "rowFrom": 20,
     "fadeRows": true,
+    "newRowDuration": 0.55,
+    "newRowFrom": 18,
+    "newRowEase": "power2.out",
     "sparklineDraw": 0.9,
     "tabSwitch": true,
     "pillDuration": 0.25,
@@ -300,11 +296,7 @@
     "tabSwitchDuration": 0.2,
     "tabSwitchStagger": 0.04,
     "tabEase": "power2.inOut",
-    "tabInEase": "power2.out",
-    "tweenValues": true,
-    "tweenDuration": 0.9,
-    "tweenEase": "power2.out",
-    "flashOnTick": true
+    "tabInEase": "power2.out"
   },
   "sync": {
     "serverConfigUrl": "config.json",

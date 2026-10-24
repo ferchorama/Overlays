@@ -211,6 +211,8 @@ let bootError = null;
 try {
   require(path.join(ROOT, 'config.js'));
   require(path.join(ROOT, 'config-merge.js'));
+  /* the city picker is the shared combobox now, and admin.js assumes it */
+  require(path.join(ROOT, '..', 'shared', 'combobox.js'));
 
   /* A saved config written by the build that injected the "New City" label, so
      the boot-time repair is genuinely exercised rather than assumed. Same
@@ -245,8 +247,8 @@ if (bootError) {
 }
 
 /* ---------------------------------------------- stale saved config --- */
-/* The bug this guards: a config stored by an older build overrode the shipped
-   palette, so the theme flipped back to the old one on the next edit. */
+/* Settings must be persistent: a build update may add new options, but it must
+   never reset the look the operator saved. */
 {
   const shipped = global.WX_DEFAULT_CONFIG;
   const stale = JSON.parse(JSON.stringify(shipped));
@@ -254,14 +256,18 @@ if (bootError) {
   stale.panel = Object.assign({}, shipped.panel, { background: 'rgba(14,20,32,0.40)', accentColor: '#000000' });
   stale.card = JSON.parse(JSON.stringify(shipped.card));
   stale.card.body.temp.color = '#ffffff';
+  delete stale.card.cityBand.showCountry;          /* a key the saved copy predates */
   stale.cities = [{ label: 'Tampa', query: 'Tampa', lat: null, lon: null, enabled: true }];
   stale.units = Object.assign({}, shipped.units, { system: 'metric' });
 
   const merged = global.WX_MIGRATE.apply(shipped, stale);
-  check('stale stored palette is discarded', merged.panel.background === shipped.panel.background,
-    merged.panel.background);
-  check('stale stored ink is discarded', merged.card.body.temp.color === shipped.card.body.temp.color,
+  check('a saved palette survives the version bump (settings are persistent)',
+    merged.panel.background === 'rgba(14,20,32,0.40)', merged.panel.background);
+  check('a saved ink survives the version bump', merged.card.body.temp.color === '#ffffff',
     merged.card.body.temp.color);
+  check('a key the saved copy never had comes from the build',
+    merged.card.cityBand.showCountry === shipped.card.cityBand.showCountry,
+    'showCountry=' + merged.card.cityBand.showCountry);
   check('stored cities survive the migration', merged.cities.length === 1 && merged.cities[0].label === 'Tampa',
     merged.cities.map((c) => c.label).join(','));
   check('stored units survive the migration', merged.units.system === 'metric', merged.units.system);

@@ -133,8 +133,8 @@ const TOKENS = [
   ['gain value', cfg.colors.up, cfg.rows.change.size, cfg.rows.change.weight],
   ['loss value', cfg.colors.down, cfg.rows.change.size, cfg.rows.change.weight],
   ['rank', cfg.colors.rankColor, cfg.rows.rankSize, 500],
-  /* the footnote under the rows: 12px, and it takes the column-header ink */
-  ['updated note', cfg.columns.color, 12, 400]
+  /* the footnote under the rows uses the column-header face, size, and weight */
+  ['updated note', cfg.columns.color, cfg.columns.size, cfg.columns.weight]
 ];
 TOKENS.forEach(([label, colour, sizePx, weight]) => {
   const min = minFor(sizePx, weight);

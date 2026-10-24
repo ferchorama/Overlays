@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vertical Weather — Control</title>
-  <link rel="stylesheet" href="admin.css?v=3.1.8" />
+  <link rel="stylesheet" href="admin.css?v=3.2.5" />
 <script>
   /* The hub is the single source of truth for the theme: same origin, same
      localStorage key, so switching it there switches every panel. Resolved
@@ -51,18 +51,17 @@
           <option value="0.75">75%</option>
           <option value="1">100%</option>
         </select>
-        <a id="linkOut" class="mini" href="index.html?v=3.1.8" target="_blank">open overlay &#8599;</a>
+        <a id="linkOut" class="mini" href="index.html?v=3.2.5" target="_blank">open overlay &#8599;</a>
       </div>
       <div class="preview__stage" id="previewStage">
-        <iframe id="preview" src="index.html?preview=1&v=3.1.8" title="preview"></iframe>
+        <iframe id="preview" src="index.html?preview=1&v=3.2.5" title="preview"></iframe>
       </div>
       <div class="msg" id="dataMsg"></div>
       <p class="hint">
         In OBS add a <strong>Browser source</strong> → <code id="obsUrl">index.html</code>
-        (1920&times;1080, transparent, “shutdown when not visible” off). Run
+        (460&times;1080 — this widget is portrait, transparent, “shutdown when not visible” off). Run
         <code>node server.js</code> in the hub folder and open this page from
         <code>http://localhost:8790/weather/admin.html</code> so edits reach OBS live.
-        The legacy per-app port is opt-in with <code>LEGACY=1</code>; the hub is the default.
       </p>
     </section>
 
@@ -132,11 +131,18 @@
 
       <!-- DATA -->
       <div class="panel-body" data-panel="data">
-        <label class="section-label">Auto-update</label>
-        <div class="row2">
-          <div class="field"><label>Refresh every (minutes)</label><input id="c_refresh" type="number" min="1" max="180" /></div>
-          <div class="field"><label>Retry after failure (seconds)</label><input id="c_retry" type="number" min="10" max="600" /></div>
+        <label class="section-label">Manual update</label>
+        <div class="ds-row">
+          <button id="btnDataUpdate" class="btn btn--ghost" type="button">Update now</button>
+          <span id="dataStatus" class="ds-status" role="status" aria-live="polite"></span>
         </div>
+        <p class="hint">
+          The widget fetches nothing on a timer. It reads the hub once when it loads, and the hub
+          refreshes from Open-Meteo only when its short cache has expired (2 min) or when you press
+          this button. Both cities are fetched in one request.
+        </p>
+        <hr />
+        <label class="section-label">Cache &amp; failure</label>
         <div class="row2">
           <div class="field"><label>Request timeout (ms)</label><input id="c_timeout" type="number" min="1000" max="30000" step="500" /></div>
           <div class="field"><label>Dim timestamp after (minutes)</label><input id="c_stale" type="number" min="0" max="240" /></div>
@@ -150,10 +156,8 @@
           <div class="field"><label>Source label</label><input id="c_sourceLabel" type="text" /></div>
         </div>
         <p class="hint">
-          Data: <strong>Open-Meteo</strong> — free, no API key, no signup.
-          Geocoding uses <code>geocoding-api.open-meteo.com</code>; forecasts come from
-          <code>api.open-meteo.com/v1/forecast</code>. Values are cached in the browser so a
-          network hiccup never blanks the panel.
+          Forecasts and city lookup go out through the hub. Values are cached in this browser too, so a
+          scene switch repaints instantly instead of waiting on the network.
         </p>
         <hr />
         <label class="section-label">Update animation</label>
@@ -442,8 +446,10 @@
     </section>
   </main>
 
-  <script src="config.js?v=3.1.8"></script>
-  <script src="config-merge.js?v=3.1.8"></script>
-  <script src="admin.js?v=3.1.8"></script>
+  <script src="../shared/combobox.js?v=3.2.5"></script>
+  <script src="../shared/datasync.js?v=3.2.5"></script>
+  <script src="config.js?v=3.2.5"></script>
+  <script src="config-merge.js?v=3.2.5"></script>
+  <script src="admin.js?v=3.2.5"></script>
 </body>
 </html>

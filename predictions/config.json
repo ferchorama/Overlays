@@ -281,7 +281,7 @@
         "count": 3,
         "selection": [],
         "items": [],
-        "error": "no Polymarket tag binding for \"crypto\" — press Load tags and pick one"
+        "error": "no tag binding for \"crypto\" — press Load tags and pick one"
       },
       {
         "id": "economy",
@@ -291,7 +291,7 @@
         "count": 3,
         "selection": [],
         "items": [],
-        "error": "no Polymarket tag binding for \"economy\" — press Load tags and pick one"
+        "error": "no tag binding for \"economy\" — press Load tags and pick one"
       },
       {
         "id": "finance",
@@ -301,7 +301,7 @@
         "count": 3,
         "selection": [],
         "items": [],
-        "error": "no Polymarket tag binding for \"finance\" — press Load tags and pick one"
+        "error": "no tag binding for \"finance\" — press Load tags and pick one"
       }
     ],
     "updatedAt": 1792537388539,

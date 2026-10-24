@@ -272,14 +272,6 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .rail li .name { flex: 0 0 auto; font-size: 12.5px; color: var(--ink); }
-  .ports { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-soft); }
-  .port { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
-  .port b {
-    font-family: ui-monospace, 'SF Mono', Menlo, 'Cascadia Mono', Consolas, monospace;
-    font-size: 13px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums;
-  }
-  .port span { font-size: 12.5px; color: var(--ink-muted); }
-  .port em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--ink-faint); }
 
   footer {
     display: flex; align-items: center; gap: 14px;
@@ -327,7 +319,6 @@
     <dl class="counters">
       <div class="counter"><dt>Overlays</dt><dd id="c-apps">–</dd></div>
       <div class="counter"><dt>Port</dt><dd id="c-port">–</dd></div>
-      <div class="counter"><dt>Legacy</dt><dd id="c-legacy">–</dd></div>
     </dl>
   </section>
 
@@ -339,11 +330,6 @@
         <p>Drive any overlay from a Stream Deck, Companion, or <code>curl</code>.</p>
         <ul id="cmds"></ul>
       </section>
-      <section id="legacy-block">
-        <h2>Legacy ports</h2>
-        <p id="legacy"></p>
-        <div class="ports" id="ports"></div>
-      </section>
     </aside>
   </main>
 
@@ -354,7 +340,7 @@
 /*__STUDIO__*/
 
 (function () {
-  var S = window.__STUDIO__ || { origin: location.origin, apps: [], legacy: true };
+  var S = window.__STUDIO__ || { origin: location.origin, apps: [] };
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -418,7 +404,6 @@
 
   var grid = document.getElementById('grid');
   var cmds = document.getElementById('cmds');
-  var legacyPorts = [];
 
   S.apps.forEach(function (app, i) {
     var row = el('article', 'row');
@@ -453,8 +438,6 @@
     row.appendChild(body);
     grid.appendChild(row);
 
-    if (app.legacyPort) legacyPorts.push({ port: app.legacyPort, name: app.name });
-
     var li = el('li');
     var cmdUrl = S.origin + app.command;
     var cmdCode = el('code', null, short(cmdUrl));
@@ -468,27 +451,7 @@
   /* telemetry strip */
   document.getElementById('c-apps').textContent = S.apps.length;
   var portEl = document.getElementById('c-port');
-  var legacyEl = document.getElementById('c-legacy');
   portEl.textContent = S.port || '—';
-  legacyEl.textContent = S.legacy ? legacyPorts.length : 'off';
-
-  if (!S.legacy || !legacyPorts.length) {
-    var block = document.getElementById('legacy-block');
-    if (block) block.style.display = 'none';
-  } else {
-    var ports = document.getElementById('ports');
-    legacyPorts.forEach(function (p) {
-      var d = el('div', 'port');
-      d.appendChild(el('b', null, ':' + p.port));
-      d.appendChild(el('span', null, p.name));
-      d.appendChild(el('em', null, 'root path'));
-      ports.appendChild(d);
-    });
-  }
-
-  document.getElementById('legacy').textContent = S.legacy
-    ? 'The original ports still serve each overlay at its root path, so existing OBS sources keep working.'
-    : 'Legacy ports are off. Point every OBS source at the URLs on the left.';
 
   /* ---------------------------------------------------------------- theme */
   var THEME_KEY = 'obs-overlays-theme';

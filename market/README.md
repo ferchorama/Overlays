@@ -8,9 +8,9 @@ editable from the control panel. Prices come from **CoinGecko** through a cached
 proxy in the shared hub, with a **CoinPaprika** fallback for when the free tier is
 rate-limiting — see [Data](#data) below.
 
-Like the other two overlays this is plain **HTML + CSS + vanilla JS + GSAP**, with
+Like the other overlays this is plain **HTML + CSS + vanilla JS + GSAP**, with
 no build step and no npm dependencies, and it is built to sit on air: the
-entrance plays once, tab switches animate, and the board is taken off air by
+entrance plays once, tab switches animate, a newly added asset slides in on its own, a removed one collapses out, and the board is taken off air by
 hiding the OBS source rather than by animating out.
 
 There is deliberately **no auto-rotating carousel**. The board holds the category
@@ -27,23 +27,23 @@ mid-sentence. Switch tabs by clicking one, with the arrow keys, or with the
 | `index.html` | The board. Point OBS at this. |
 | `style.css` | Layout only — every colour, size and font arrives as a CSS custom property from `script.js`. |
 | `config.js` | **All defaults / design tokens** — palette, columns, categories, data policy, animation, sync. |
-| `config-merge.js` | Version-aware migration: a saved config from an older build keeps your *content* and takes the shipped *look*. |
+| `config-merge.js` | Version-aware migration that **keeps every saved setting** across a build update and fills in new options. |
 | `script.js` | Engine: fetch → normalise → format → render, the board DOM, GSAP entrance and tab transitions, the command API. |
-| `admin.html` / `admin.css` / `admin.js` | The control panel: live preview, 8 tabs of editors, export/import, raw JSON. |
+| `admin.html` / `admin.css` / `admin.js` | The control panel: live preview, 9 tabs of editors, Apply/Copy JSON, HTTP reference. |
 | `config.json` | Created by the hub when you hit **Save** — the board polls it, so OBS follows your edits live. |
 | `vendor/gsap.min.js` | Local GSAP 3.12.5 so the board works offline (the CDN is the fallback). |
 | `tests/smoke.js` | Runs the real engine in Node with a DOM shim and a stubbed proxy (3 modes). |
 | `tests/contrast.js` | WCAG AA gate over the composited panel + a colour-blind separation check. |
 | `tests/admin.js` | Control-panel runtime check: boots the real `admin.html` + `admin.js`, drives the editors, asserts what was written and posted. |
 | `tests/measure.html` | Measurement harness: loads the real board in a same-origin iframe and reports the **computed** font family and size of every text element, the vertical flow (each block's gap against the hairline above it, against a minimum the design requires) and the tab strip's active state — so a font token that fails to resolve, or a strip that has drifted onto a rule, shows up as a number rather than a vibe. |
+| `../shared/combobox.js` | The search dropdown the asset editor uses (`/shared/combobox.js`, served by the hub). |
+| `../shared/datasync.js` | The Data-tab **Update now** control and its guards (`/shared/datasync.js`). |
 | `tools/bump.js` | Raises the `?v=` cache-buster everywhere at once. |
 | `assets/crypto-wallpaper-1080p.png` | A concept test, not part of the build — `tools/package.js` excludes it. |
 | `.skills/` | Third-party SKILL.md reference documents (not loaded at runtime). |
 
-**There is no standalone `server.js` here.** Weather and topics each ship one;
-this board does not, and is only ever served by the hub — its cached market
-proxy, its `config.json` store and its command API all live in
-`Overlays/server.js`.
+The board is served only by the hub. Its cached market proxy, its `config.json`
+store and its command API all live in `Overlays/server.js`.
 
 ---
 
@@ -82,12 +82,18 @@ is, so a 1280×720 source still lines up exactly.
 |---|---|---|
 | Play the entrance | **▶ Play entrance** | `/api/command?action=in` |
 | Hide (off air) | **Hide** | `/api/command?action=hide` |
-| Re-fetch now | **↻ Refresh** | `/api/command?action=refresh` |
+| Update now — force one provider read | **Update now** (Data tab) | `/api/command?action=update` |
+| Re-read the hub cache | — (this is what the button bumps after the forced read) | `/api/command?action=refresh` |
 | Next category | **Next ›** | `/api/command?action=next` |
 | Previous category | **‹ Prev** | `/api/command?action=prev` |
 
 Keyboard in the overlay window: `←` / `→` change category, `space` replays the
 entrance.
+
+`refresh` re-reads the hub's cache and costs no provider call while that cache is
+warm. `update` forces the hub to read CoinGecko first. **Update now** does both:
+it calls `api/market` with `force=1`, then bumps `refresh` so every open board
+renders the fresh cache.
 
 ### Stream Deck / Companion
 
@@ -104,40 +110,55 @@ handler, so they cannot drift apart.
 
 ## Customizing
 
-The control panel has eight tabs:
+The control panel has nine tabs:
 
 * **Content** — title text, header/column visibility, the six column header
-  labels, max rows per category.
-* **Categories** — one editor per tab: id (also the `?category=` value), label,
-  and the comma-separated CoinGecko ids. The shipped roster is
-  `privacy` · `revenue` · `ai` · `dino` · `defi`; reorder with ⠿ or ↑/↓, remove
-  with ✕ (the last one is protected). **Add category** appends one, and
-  **clean coin lists** drops blanks and duplicates. Ids, not tickers: a ticker is
-  ambiguous across exchanges, and CoinGecko's ids are what the API takes.
-* **Look** — panel background/border/radius/opacity/padding/shadow, glass blur,
-  saturate, inner highlight and sheen; title size/weight/colour/rule/shadow; the
-  tab pills including the active fill; row height, radius, dividers, zebra and
-  the tick flash; logo size and fallback colours; the asset/price/change type.
-  Every rgba colour has a **paired alpha field**, because a native
-  `<input type="color">` cannot carry alpha and would otherwise flatten the glass
-  on the first edit.
+  labels, the footer toggle, and max rows per category.
+* **Categories** — one editor per tab: id (also the `?category=` value), label, and
+  **the assets in that section as rows**. Each row shows the coin's name, ticker and
+  provider id, with ↑/↓ to reorder, **Change** (type a name, pick from the match
+  list — the id is replaced in place) and ✕ to remove. Under the list is an add
+  search. Assets are stored by **CoinGecko id**, never by ticker, and a duplicate
+  in the same section is refused — and every save re-checks it in place, so no path can store the same asset twice. (The same asset may still appear in two different sections.) A section may be empty: the board prints
+  "No assets in this section" rather than a blank panel. **+ Add category**
+  appends a section (the last one is protected), **Remove duplicates** runs
+  `CM_MIGRATE.cleanCategories` (blanks, invalid ids and repeats all go) and
+  **Restore default assets** puts the shipped list back in every section while
+  keeping your labels, order and look. The shipped roster is
+  `privacy` · `revenue` · `ai` · `dino` · `defi`. There is no bulk paste field and
+  no comma-separated id box: the rows are the editor.
 * **Columns** — reorder, relabel, resize and hide the six columns. A hidden
-  column becomes a chip you can click to bring back. The `asset` column takes the
-  leftover width, so its width box is deliberately not editable — widen the
-  panel instead and the trend chart grows.
+  column becomes a chip you can click to bring back. Every column, `asset`
+  included, has an editable width; `columns.assetMaxWidth` (560 px shipped) caps
+  the asset column — header and cell alike — past which the trend chart takes the
+  slack.
+* **Layout** — panel width, radius, border, padding and alignment; title rule and
+  spacing; tab gap, height, padding and radius; row height, gap, radius, padding
+  and divider width; logo size and shape; sparkline size; column-header height.
 * **Type** — a typeface picker. The faces are files in `fonts/` (SIL Open Font
   License, see `fonts/OFL.txt`), plus Segoe UI, which Windows already has.
   Nothing is loaded from a CDN. Choosing a face sets the title, tabs, names and
   numbers together. Also the point sizes, weights and letter-spacing, the ticker
   tracking, name clipping, and the price/change number formats (plain vs compact,
   prefix, decimals, small-price decimals, sign, arrow).
-* **Animation** — entrance timings and ease, the sparkline stroke-draw, the tab
-  switch recipe (indicator slide / out / in), value tweening and the tick flash.
-* **Data** — refresh seconds, currency, sparkline on/off, timeout, retry delay,
-  stale threshold, cache key, and whether the last good response may be used when
-  the network fails.
-* **Advanced** — the stage size/fit/alignment, export, import, reset, raw JSON,
-  and the OBS/Stream Deck reference for this board.
+* **Colour** — panel background/border/opacity, glass blur, saturate, inner
+  highlight and sheen; title colour/rule/shadow; the tab pill palette including
+  the active fill; row dividers and zebra; logo visibility and fallback colours;
+  text and column-header colours; the sparkline stroke and fill; and the
+  direction palette (up/down/flat/rank). Every rgba colour has a **paired alpha
+  field**, because a native `<input type="color">` cannot carry alpha and would
+  otherwise flatten the glass on the first edit.
+* **Motion** — entrance timings and ease, the new-asset entrance and the row exit (duration, travel, ease), the sparkline stroke-draw, the trend
+  line's travelling glow, and the tab switch recipe (indicator slide / out / in).
+* **Data** — **Update now** (forces one provider read, with an in-flight guard, an
+  8 s cooldown, a last-updated clock and an error that keeps the previous data),
+  currency, sparkline on/off, timeout, cache key, and whether the last good
+  response may be used when the network fails. There is deliberately **no
+  refresh-interval field**: the board has no timer, and the old
+  `data.refreshSeconds` key is gone.
+* **Advanced** — the stage size/fit/alignment, raw JSON with **Apply JSON** and
+  **Copy** (there is no file export/import), and the OBS/Stream Deck HTTP
+  reference for this board.
 
 Everything is written to `localStorage` (`cm-config-v1`), pushed to the live
 preview over `postMessage`, and saved to `config.json` through the hub.
@@ -147,7 +168,6 @@ preview over `postMessage`, and saved to `config.json` through the hub.
 | Parameter | Effect |
 |---|---|
 | `?category=<id>` | Open on a specific category (`privacy`, `revenue`, `ai`, `dino`, `defi`) |
-| `?refresh=<seconds>` | Override the poll interval |
 | `?config=<base64 json>` | Apply a one-off config overlay |
 | `?fit=contain\|cover\|width\|none` | Override the scaling mode |
 | `?nosync=1` | Disable the `config.json` poll, the command poll and the OBS sync — what a screenshot or a test wants |
@@ -162,11 +182,13 @@ The board never calls CoinGecko directly first. It asks the hub:
 GET /market/api/market?ids=bitcoin,ethereum,…&currency=usd&changes=24h,7d&sparkline=1
 ```
 
-The hub caches the upstream response for **60 s** (90 s for the fallback) so ten
+The hub caches the upstream response for **90 s** (the fallback TTL is 90 s too) so ten
 browser sources still cost one upstream call, retries 5xx/timeouts/429 with
 exponential backoff **and jitter**, honours `Retry-After`, and — if CoinGecko is
 down or rate-limiting — reshapes a **CoinPaprika** ticker list into CoinGecko's
-`/coins/markets` shape so the board needs no knowledge of who answered.
+`/coins/markets` shape so the board needs no knowledge of who answered. Every
+answer carries `X-Fetched-At` (plus `X-Cache`, `X-Source` and `X-Degraded`), which
+is where the Data tab's "last updated" comes from.
 
 * **Retry policy** — 5xx, timeouts and 429 only. Any other 4xx fails fast, because
   retrying a client error just burns quota and hides the bug.
@@ -179,22 +201,35 @@ down or rate-limiting — reshapes a **CoinPaprika** ticker list into CoinGecko'
   an outage. Both behaviours are logged:
   `CoinPaprika bulk list missed 1 coin(s) — filled 1 individually (zama)`.
 * **Stale beats broken** — if both providers fail, the proxy serves the last good
-  response for up to 15 minutes with `X-Cache: STALE`, and the board labels it
-  `cached (upstream unavailable)` rather than passing old prices off as live.
-* **Degraded is visible** — when CoinPaprika answers, the board appends
-  `no trend data` to its footer note, because that provider publishes no sparkline
-  and no logos. Rows fall back to ticker initials. If the board already knew a
-  coin's real name and logo from CoinGecko, that identity is **kept** — the
-  fallback otherwise relabels `the-open-network` as "TONToken" for the duration of
-  an outage.
+  response for up to 15 minutes with `X-Cache: STALE`. The footer still only says
+  how long ago that response was fetched.
+* **Degraded is visible in the rows** — when the fallback answers, sparklines and
+  logos are absent, so rows fall back to ticker initials. The footer does not
+  say why. If the board already knew a coin's real name and logo, that identity
+  is **kept** — the fallback otherwise relabels `the-open-network` as "TONToken"
+  for the duration of an outage.
 * **Then the API directly, then the cache** — if the proxy is missing entirely
   (opened from disk) the board calls CoinGecko itself, and if that fails it uses
   the last good response in `localStorage` (`cm-cache-v1`).
 * **Honest failure** — with no cache and no network the rows keep their layout and
   show `—` everywhere; the board never invents a price.
+* **An unpriced asset is labelled, not left shimmering.** CoinGecko's search
+  indexes coins that `/coins/markets` does not price, and a refresh can time out
+  in the browser while the hub is still retrying upstream. Once a read has
+  finished, an id with no record renders a muted row (`is-missing`) showing its
+  id and `—` cells instead of a permanent loading skeleton; the board schedules
+  **one** retry five seconds later so the hub's completed (cached) answer can
+  land. That retry is per rebuild, not a polling timer. The panel refuses to add
+  or replace an asset with no market data, with a message naming the coin.
 
-Data refreshes every **120 s** by default, aborts anything in flight after 12 s,
-and the currency is switchable from the Data tab (`usd`, `eur`, …).
+**There is no refresh timer.** The board asks the hub once per load and paints the
+last good response from `localStorage` first; the hub re-reads CoinGecko only when
+its 90 s cache is cold. **Update now** (Data tab, or the `update` command) adds
+`force=1` — one provider read, joined with any request already in flight and
+refused inside a 2 s window — then bumps the `refresh` command so every open board
+re-reads the warm cache. Requests abort after 12 s, and the currency is switchable
+from the Data tab (`usd`, `eur`, …). The hub reports `GET /market/api/status` with
+`fetchedAt` / `error` / `inFlight`.
 
 ---
 
@@ -241,20 +276,31 @@ header shows the version it loaded, so you can confirm OBS is not on a stale cop
 Still seeing the old build? In OBS right-click the source → **Refresh**, or tick
 **Refresh browser when scene becomes active** in the source properties.
 
-### Saved configs are migrated, not pinned
+### Settings are persistent
 
 The panel, the overlay and the server each keep a copy of the config
-(`localStorage`, `config.json`). If that copy came from an older build it would
-otherwise win, so a palette fix would silently revert the next time the panel
-rendered.
+(`localStorage`, `config.json`). **A build update never resets what you saved.**
+`config-merge.js` runs on every load and save:
 
-`config-merge.js` fixes that: while `meta.version` is unchanged your saved
-settings win; when the version changes, the saved config keeps only your
-**content** (categories, max rows, refresh cadence, currency) and the shipped
-build supplies the whole **look** — including the endpoint URLs, because a stale
-proxy path would silently break the board. The control panel reports it in
-Advanced.
+* same `meta.version` → your saved config wins;
+* new version → every saved value the build still knows wins, new options come
+  from the shipped build, retired keys are dropped;
+* `categories`, `maxRows`, `font` and the currency/policy fields are yours;
+* the provider endpoint URLs (`data.proxyUrl`, `data.directUrl`) are the one
+  thing that always comes from the build — a stale proxy path would silently
+  break the board after an update;
+* a saved `false`, `0` or `''` survives, because only `undefined` has no copy.
 
+The control panel reports the upgrade once, e.g.
+`settings upgraded to v1.1.5 (was v1.1.1) — your settings were kept`. The
+brand line always shows which config version is loaded.
+
+`meta.schema` is separate from `meta.version`: it versions the saved **asset
+format**. Schema 2 stores each section's assets as unique CoinGecko ids, and a
+save always writes schema 2. A schema-1 — or older-build — config is upgraded on
+load through `CM_MIGRATE.cleanCategories`, which drops blank entries, bare
+tickers and duplicates while keeping the assets that are real ids. An emptied
+section stays empty rather than being refilled.
 ### Live sync only reacts to a visible change
 
 The overlay polls `config.json` every 2 s, and a config change is applied by
@@ -292,11 +338,11 @@ and `admin.js`, so a missing element or a stale config key fails the run.
 
 | Check | Result |
 |---|---|
-| Smoke, happy path (structure, formatting, sparklines, data path, placement, entrance, tab switch and its initial state, migration, live-sync rules, command API, the note's font chain) | **46/46** |
-| Smoke, `--stale` | **48/48** |
-| Smoke, `--offline` (placeholders, honest `error` state) | **41/41** |
+| Smoke, happy path (structure, formatting, sparklines, data path, placement, entrance, tab switch and its initial state, migration, live-sync rules, command API, the note's font chain, the asset-width cap, the category surviving a rebuild, **no refresh timer**, **a manual update sends force=1**, **the `update` command forces a read**, the empty-section state, **a record-less id stops shimmering and is marked missing**, **one bounded retry**, **a newly added asset animates in without replaying the board**, **a removed asset collapses out before the rebuild**) | **80/80** |
+| Smoke, `--stale` | **82/82** |
+| Smoke, `--offline` (placeholders, honest `error` state, empty footer) | **75/75** |
 | Contrast gate: 9 text tokens at the AA threshold for their size/weight, 6 colour checks | **15/15** |
-| Admin panel: boot, 189 bindings resolve, rgba alpha pairs, categories, columns, commands, debounced save, migration | **34/34** |
+| Admin panel: boot, every bound field resolves, rgba alpha pairs, the asset rows (list, reorder, delete, empty section, restore), duplicate/ticker refusal, schema-1 upgrade, columns, commands, debounced save, migration, **no POST just from opening the panel**, **the replace button is wide enough for its word**, **duplicate ids are stripped in place without replacing the array** | **62/62** |
 
 Two of the smoke checks are the reason the command API and the hide path exist at
 all: the stub answers the first `/api/state` poll with a **hide**, and the test

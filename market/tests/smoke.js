@@ -115,6 +115,12 @@ global.AbortController = function () { this.signal = {}; this.abort = () => {}; 
    window.gsap is absent, so defining this first lets the test observe the
    timeline choreography */
 const gsapLog = [];
+/* structured record of standalone tweens (an added row, a tab switch): lets a
+   test assert WHICH nodes were animated, not just that something moved */
+const tweenLog = [];
+function tweenTargets(t) {
+  return (Array.isArray(t) ? t : [t]).map((n) => (n && n.dataset ? (n.dataset.coin || n.dataset.testid || '') : '')).filter(Boolean);
+}
 /* the board is taken off air with gsap.set(panel, { opacity }) — recorded so a
    hide command can be proven to actually hide something */
 let lastPanelOpacity = null;
@@ -123,7 +129,8 @@ global.gsap = {
     const tl = { _active: false, _cbs: [] };
     ['from', 'to', 'set', 'kill', 'delay'].forEach((k) => { tl[k] = () => tl; });
     tl.add = (fn) => { if (typeof fn === 'function') tl._cbs.push(fn); return tl; };
-    tl.progress = () => 1;
+    /* chainable, like GSAP: showInstant() calls .progress(1, true).pause() */
+    tl.progress = () => tl;
     tl.duration = () => 2.0;
     tl.play = () => { gsapLog.push('play'); tl._active = true; return tl; };
     tl.pause = () => { gsapLog.push('pause'); tl._active = false; return tl; };
@@ -138,11 +145,20 @@ global.gsap = {
       }
     }
   },
-  from: (_t, v) => { if (v && v.onUpdate) v.onUpdate(); },
-  fromTo: (_t, _f, v) => { if (v && v.onUpdate) v.onUpdate(); },
+  from: (t, v) => {
+    tweenLog.push({ kind: 'from', targets: tweenTargets(t), vars: v || {} });
+    if (v && v.onUpdate) v.onUpdate();
+  },
+  fromTo: (t, f, v) => {
+    tweenLog.push({ kind: 'fromTo', targets: tweenTargets(t), vars: v || {} });
+    if (v && v.onUpdate) v.onUpdate();
+  },
   /* the tab switch hands control back through onComplete — the stub must fire
      it, or the test would silently assert against un-swapped rows */
-  to: (_t, v) => { if (v && v.onComplete) v.onComplete(); }
+  to: (t, v) => {
+    tweenLog.push({ kind: 'to', targets: tweenTargets(t), vars: v || {} });
+    if (v && v.onComplete) v.onComplete();
+  }
 };
 
 /* ------------------------------------------------------------- canned proxy */
@@ -252,7 +268,7 @@ function textOf(node, testid) {
   return hit ? hit.textContent : null;
 }
 
-setTimeout(() => {
+setTimeout(async () => {
   const results = [];
   const check = (name, pass, info) => results.push({ name, pass, info });
   const stage = ids['stage'];
@@ -383,8 +399,11 @@ setTimeout(() => {
        imply we are showing older real prices, and we are showing none at all */
     check('offline with no cache reports its true state', stage.dataset.state === 'error',
       stage.dataset.state);
-    check('offline note says so', /offline|cached/i.test(textOf(stage, 'note') || ''),
-      textOf(stage, 'note'));
+    /* The footer is the age of the last successful fetch and nothing else. With
+       no fetch at all there is no age to print, so it stays empty — the stage's
+       data-state (asserted just above) is what carries the error. */
+    check('offline leaves the footer empty instead of inventing an age',
+      (textOf(stage, 'note') || '') === '', JSON.stringify(textOf(stage, 'note')));
   }
 
   /* ------------------------------------------- skill-driven regressions */
@@ -406,7 +425,9 @@ setTimeout(() => {
     const cssText = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
     const noteRule = (cssText.match(/\.board-note\s*\{[^}]*\}/) || [''])[0];
     check('the note under the rows asks for a font token',
-      /font-family:\s*var\(--cols-font/.test(noteRule),
+      /font-family:\s*var\(--cols-font/.test(noteRule) &&
+      /font-weight:\s*var\(--cols-weight/.test(noteRule) &&
+      /font-size:\s*var\(--cols-size/.test(noteRule),
       'rule found: ' + !!noteRule);
     check('that token is published where the note can inherit it',
       panel.style.getPropertyValue('--cols-font') !== '' &&
@@ -452,14 +473,20 @@ setTimeout(() => {
   stale.meta = Object.assign({}, shipped.meta, { version: '0.0.1' });
   stale.panel = Object.assign({}, shipped.panel, { background: 'rgba(0,0,0,1)' });
   stale.categories = [{ id: 'custom', label: 'MINE', coins: ['bitcoin'] }];
+  delete stale.rows.gap;                       /* a key the saved copy predates */
   const merged = M.apply(shipped, stale);
-  check('a stale look is discarded', merged.panel.background === shipped.panel.background,
-    merged.panel.background);
+  check('a saved look survives the version bump (settings are persistent)',
+    merged.panel.background === 'rgba(0,0,0,1)', merged.panel.background);
+  check('a key the saved copy never had comes from the build',
+    merged.rows.gap === shipped.rows.gap, 'rows.gap=' + merged.rows.gap);
   check('saved categories survive migration',
     merged.categories.length === 1 && merged.categories[0].label === 'MINE',
     merged.categories.map((c) => c.label).join(','));
-  check('migration is reported', M.migrated === true && /categories were kept/.test(M.lastNote || ''),
+  check('migration is reported', M.migrated === true && /kept as saved/.test(M.lastNote || ''),
     M.lastNote);
+  check('endpoint URLs still come from the build, never from the saved copy',
+    merged.data.proxyUrl === shipped.data.proxyUrl && merged.data.directUrl === shipped.data.directUrl,
+    merged.data.proxyUrl + ' / ' + merged.data.directUrl);
 
   /* The first config poll used to rebuild the whole board, because migrating a
      saved config adds meta.migratedFrom — a metadata-only difference that the
@@ -481,6 +508,14 @@ setTimeout(() => {
     lookChange.panel.width = 1500;
     check('a look change still counts',
       global.CM.configSignature(shipped) !== global.CM.configSignature(lookChange), 'panel.width -> 1500');
+    /* __startIndex is a runtime hint set by ?category= and by next/prev, and a
+       resolved config.json never carries it — counting it forced a rebuild on
+       the first poll and reset the board to the first category. */
+    const hinted = JSON.parse(JSON.stringify(shipped));
+    hinted.__startIndex = 2;
+    check('the runtime category hint is not a visible change',
+      global.CM.configSignature(shipped) === global.CM.configSignature(hinted),
+      'start index excluded');
   }
 
   /* --------------------------------------------------------- command API
@@ -513,13 +548,16 @@ setTimeout(() => {
     const before = global.CM.engine.board;
     const hasData = Object.keys(before.data).length > 0;
     const cfgNow = JSON.parse(JSON.stringify(global.CM.getConfig()));
-    /* keep the rebuilt board on the tab we are looking at, so the rows compared
-       are the same rows */
-    cfgNow.__startIndex = before.activeIndex;
+    /* deliberately NOT setting __startIndex: the engine must carry the category
+       that is on air across the rebuild by itself (it used to snap back to the
+       first one, and this test used to patch the index in to hide that) */
+    const idxBefore = before.activeIndex;
     global.CM.engine.applyConfig(cfgNow);
     const rebuilt = global.CM.engine.board;
     check('a rebuild replaces the board', rebuilt !== before,
       rebuilt !== before ? 'new board object' : 'same object');
+    check('a rebuild keeps the category that is on air',
+      rebuilt.activeIndex === idxBefore, 'index ' + idxBefore + ' -> ' + rebuilt.activeIndex);
     if (hasData) {
       const prices = collect(stage, 'price');
       const priced = prices.filter((p) => /^\$/.test(p.textContent)).length;
@@ -547,9 +585,8 @@ setTimeout(() => {
       oldBuild.meta = { version: '0.0.1' };
       oldBuild.rows = Object.assign({}, oldBuild.rows, { gap: 99 });
       const migrated = global.CM.mergeIncoming(shipped, oldBuild);
-      check('a genuinely older build still migrates to the shipped look',
-        migrated.rows.gap === shipped.rows.gap,
-        'rows.gap=' + migrated.rows.gap + ' shipped=' + shipped.rows.gap);
+      check('an older build keeps the user setting instead of resetting it',
+        migrated.rows.gap === 99, 'rows.gap=' + migrated.rows.gap);
 
       const sameBuild = JSON.parse(JSON.stringify(shipped));
       sameBuild.rows = Object.assign({}, sameBuild.rows, { gap: 33 });
@@ -559,10 +596,12 @@ setTimeout(() => {
     }
 
     /* Widening the panel must spread the columns to fill it, and the header and
-       the rows must derive that from one place or the labels drift off the data. */
+       the rows must derive that from one place or the labels drift off the data.
+       The asset column is the one exception: it stops at columns.assetMaxWidth,
+       so the surplus grows the trend chart instead of opening a gutter. */
     {
       const row = collect(stage, 'row')[0];
-      const cells = row ? row.children.filter((c) => c.className.indexOf('row__flash') === -1) : [];
+      const cells = row ? row.children.slice() : [];
       const growers = cells.filter((c) => /^\d+(\.\d+)? 1 \d/.test(String(c.style.flex || '')));
       check('every column is a proportional grower, so widening the panel fills it',
         cells.length > 0 && growers.length === cells.length,
@@ -575,17 +614,33 @@ setTimeout(() => {
           return hf === '' || hf === String(c.style.flex || '');
         }),
         board.colsEl ? board.colsEl.children.map((h) => h.style.flex).join(' | ') : 'no header');
+
+      /* assetMaxWidth used to be documented but never applied, so the asset
+         column kept absorbing surplus and pushed the chart narrow. The shim
+         keeps classList separate from className, so both are found by position
+         in columns.order rather than by class. */
+      const assetIdx = (shipped.columns.order || []).indexOf('asset');
+      const assetCell = assetIdx === -1 ? null : cells[assetIdx];
+      const assetHead = (assetIdx === -1 || !board.colsEl) ? null : board.colsEl.children[assetIdx];
+      const cap = shipped.columns.assetMaxWidth + 'px';
+      check('assetMaxWidth caps the asset column, header and cell alike',
+        !!assetCell && !!assetHead && assetCell.style.maxWidth === cap && assetHead.style.maxWidth === cap,
+        'cell=' + (assetCell && assetCell.style.maxWidth) + ' head=' +
+        (assetHead && assetHead.style.maxWidth) + ' want=' + cap);
     }
 
-    /* The footer doubles as the board's status line (updated / cached / error /
-       degraded). Switching it off must actually clear the node, because the
-       stylesheet hides an EMPTY .board-note — text left behind would keep the
-       padding under the last row and the panel would not collapse. */
+    /* The footer is the age of the last fetch (see updateNote). Switching it off
+       must actually clear the node, because the stylesheet hides an EMPTY
+       .board-note — text left behind would keep the padding under the last row
+       and the panel would not collapse. In the offline mode there is no fetch to
+       age, so the correct text is no text at all. */
     {
       const b = global.CM.engine.board;
       const note = collect(stage, 'note')[0];
-      check('the footer carries the status line',
-        !!note && b.cfg.footer && b.cfg.footer.enabled === true && note.textContent.length > 0,
+      const hasData = MODE !== 'offline';
+      check('the footer carries the fetch age when there is data',
+        !!note && b.cfg.footer && b.cfg.footer.enabled === true &&
+        (hasData ? /^Updated /.test(note.textContent) : note.textContent === ''),
         note ? JSON.stringify(note.textContent) : 'no note node');
 
       b.cfg.footer = { enabled: false };
@@ -596,11 +651,190 @@ setTimeout(() => {
       b.cfg.footer = { enabled: true };
       b.updateNote();
       check('footer.enabled true brings it back',
-        /Updated|coingecko|cached|CoinGecko/.test(note.textContent), note.textContent);
+        hasData ? /^Updated /.test(note.textContent) : note.textContent === '',
+        note.textContent);
     }
 
-  /* ------------------------------------------------------------- report */
-  let failed = 0;
+  /* ------------------------------------------- no timer, manual force
+     The refresh interval is gone from the config and the engine. A load reads
+     the hub (which owns the provider cache); only a manual update forces a new
+     provider read, and that is visible as force=1 on the request. */
+  check('the config carries no refresh interval',
+    global.CM.getConfig().data.refreshSeconds === undefined,
+    String(global.CM.getConfig().data.refreshSeconds));
+  check('the engine has no automatic refresh timer',
+    global.CM.engine.schedule === undefined, typeof global.CM.engine.schedule);
+
+  fetchLog = [];
+  await global.CM.refresh(false);
+  const plainCall = fetchLog.filter((u) => u.indexOf('api/market') !== -1).pop() || '';
+  check('a normal load does not force the provider', plainCall.indexOf('force=1') === -1,
+    plainCall.slice(0, 90));
+
+  fetchLog = [];
+  await global.CM.refresh(true);
+  const forcedCall = fetchLog.filter((u) => u.indexOf('api/market') !== -1).pop() || '';
+  check('a manual update asks the hub for a forced read', forcedCall.indexOf('force=1') !== -1,
+    forcedCall.slice(0, 100));
+  /* The dashboard sends `update`; the handler must turn that into a forced read. */
+  fetchLog = [];
+  global.CM.handleCommand({ action: 'update', seq: 4242 });
+  await new Promise((r) => setTimeout(r, 120));
+  const cmdCall = fetchLog.filter((u) => u.indexOf('api/market') !== -1).pop() || '';
+  check('the update command forces a provider read', cmdCall.indexOf('force=1') !== -1,
+    cmdCall.slice(0, 110));
+
+  /* A section can legitimately be empty; it must say so rather than showing a
+     titled panel with nothing under it. */
+  {
+    const cfgNow = global.CM.getConfig();
+    const active = global.CM.engine.board.activeIndex;
+    const saved = cfgNow.categories[active].coins;
+    cfgNow.categories[active].coins = [];
+    global.CM.engine.board.renderRows();
+    check('an empty category renders an explicit empty state',
+      collect(stage, 'empty').length === 1, collect(stage, 'empty').length + ' empty node(s)');
+    cfgNow.categories[active].coins = saved;
+    global.CM.engine.board.renderRows();
+  }
+
+  /* A provider can answer a request for 7 ids with 6 rows (CoinGecko's search
+     indexes coins that /coins/markets does not price), and a client-side timeout
+     can leave the hub still retrying. Neither may leave a new row shimmering
+     forever: once the read has finished, an unanswered id is an explicit
+     "no market data" row, and one retry is scheduled to pick up the hub cache. */
+  {
+    const b = global.CM.engine.board;
+    const coins = b.activeCoins();
+    const victim = coins[0];
+    const saved = b.data[victim] || { id: victim, name: victim, symbol: 'XX', rank: 1, price: 1, change24h: 1, change7d: 1 };
+    delete b.data[victim];
+    b.state.loaded = true;
+    b.stage.dataset.state = 'ready';
+    if (b._retryTimer) { clearTimeout(b._retryTimer); b._retryTimer = null; }
+    b._retries = 0;
+    b.renderRows();
+
+    const row = b.rowEls.filter((r) => r.coin === victim)[0];
+    check('a payload without a record stops shimmering and marks the row missing',
+      !!row && !row.root.classList.contains('is-loading') && row.root.classList.contains('is-missing'),
+      row ? row.root.className : 'row not found');
+    check('the missing row still carries the id and dashes, not a blank hole',
+      !!row && row.cells.asset.children[1].children[0].textContent === victim &&
+      row.cells.price.textContent === '\u2014' && row.cells.change24h.textContent === '\u2014',
+      row ? JSON.stringify([row.cells.asset.children[1].children[0].textContent,
+        row.cells.price.textContent, row.cells.change24h.textContent]) : 'no row');
+
+    b.afterRefresh();
+    check('an unanswered read schedules exactly one retry',
+      !!b._retryTimer && b._retries === 1, b._retries + ' retry, timer=' + !!b._retryTimer);
+    b.afterRefresh();
+    check('the retry is not re-armed while one is pending',
+      b._retries === 1, b._retries + ' retries');
+
+    clearTimeout(b._retryTimer);
+    b._retryTimer = null;
+    b._retries = 0;
+    b.data[victim] = saved;
+    b.renderRows();
+    check('restoring the record clears the missing state',
+      b.rowEls.filter((r) => r.coin === victim)[0].root.classList.contains('is-missing') === false,
+      'restored');
+  }
+  /* An asset added while the board is on air must enter on its own, not pop in
+     with the rebuilt board. Only the new row animates; the existing prices stay
+     put (a full entrance would flash every price on air). */
+  {
+    const cfgNow = global.CM.getConfig();
+    const prevBoard = global.CM.engine.board;
+    const act = prevBoard.activeIndex;
+    if (!prevBoard.state.onAir) prevBoard.state.onAir = true;   /* showInstant path */
+    const before = tweenLog.length;
+    /* the poll hands the engine a NEW resolved object; mutating the live one in
+       place would also mutate the old board's view and hide the addition */
+    const nextCfg = JSON.parse(JSON.stringify(cfgNow));
+    nextCfg.categories[act].coins = nextCfg.categories[act].coins.concat(['cardano']);
+    global.CM.engine.applyConfig(nextCfg);
+    await new Promise((r) => setTimeout(r, 300));
+
+    const added = tweenLog.slice(before).filter((t) => t.kind === 'from' && t.targets.indexOf('cardano') !== -1);
+    check('a newly added asset animates in instead of popping in',
+      added.length === 1, added.length + ' tween(s) for cardano');
+    check('the new-row entrance is a slide + fade',
+      added.length === 1 && added[0].vars.opacity === 0 && added[0].vars.y > 0,
+      added[0] ? 'opacity=' + added[0].vars.opacity + ' y=' + added[0].vars.y : 'no tween');
+    check('only the new row animates; existing rows do not replay',
+      added.length === 1 && added[0].targets.length === 1,
+      added[0] ? 'targets=' + added[0].targets.join(',') : 'no tween');
+
+    const beforeSecond = tweenLog.length;
+    const backCfg = JSON.parse(JSON.stringify(nextCfg));
+    backCfg.categories[act].coins.pop();
+    global.CM.engine.applyConfig(backCfg);
+    await new Promise((r) => setTimeout(r, 300));
+    const rowTweens = tweenLog.slice(beforeSecond).filter((t) => t.kind === 'from');
+    check('a config edit that adds no asset does not animate any row', rowTweens.length === 0,
+      rowTweens.length + ' row tween(s)');
+  }
+  /* Removing an asset mirrors the add: the row collapses out on the OLD board,
+     then the board rebuilds without it — so the exit is visible instead of the
+     row vanishing in a wholesale re-render. */
+  {
+    const cfgNow = global.CM.getConfig();
+    const oldBoard = global.CM.engine.board;
+    const act = oldBoard.activeIndex;
+    const victim = oldBoard.activeCoins()[0];
+    const rowCount = oldBoard.rowEls.length;
+    if (!oldBoard.state.onAir) oldBoard.state.onAir = true;
+    const before = tweenLog.length;
+    const next = JSON.parse(JSON.stringify(cfgNow));
+    next.categories[act].coins = next.categories[act].coins.filter((id) => id !== victim);
+    global.CM.engine.applyConfig(next);
+
+    const out = tweenLog.slice(before).filter((t) => t.kind === 'to' && t.targets.indexOf(victim) !== -1);
+    check('removing an asset animates its row out', out.length === 1,
+      out.length + ' exit tween(s) for ' + victim);
+    check('the row exit is a collapse + fade, not a pop', out.length === 1 && out[0].vars.height === 0 &&
+      out[0].vars.opacity === 0, out[0] ? JSON.stringify(out[0].vars) : 'no tween');
+    check('the exit animates only the removed row', out.length === 1 && out[0].targets.length === 1,
+      out[0] ? 'targets=' + out[0].targets.join(',') : 'no tween');
+
+    await new Promise((r) => setTimeout(r, 600));
+    const rebuilt = global.CM.engine.board;
+    check('the board rebuilds without the removed row after the exit',
+      rebuilt.rowEls.length === rowCount - 1 && rebuilt.rowEls.every((r) => r.coin !== victim),
+      rebuilt.rowEls.length + ' rows (was ' + rowCount + ')');
+
+    const restore = JSON.parse(JSON.stringify(cfgNow));
+    global.CM.engine.applyConfig(restore);
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  /* OBS throttles rAF while the browser source is hidden, and GSAP completes
+     tweens from ticker callbacks — a collapse that never ticks must not strand
+     the board on the old config. The safety timer rebuilds regardless. */
+  {
+    const cfgNow = global.CM.getConfig();
+    const oldBoard = global.CM.engine.board;
+    const act = oldBoard.activeIndex;
+    const victim = oldBoard.activeCoins()[0];
+    if (!oldBoard.state.onAir) oldBoard.state.onAir = true;
+    const realTo = global.gsap.to;
+    global.gsap.to = () => { /* a tween that never completes */ };
+    const next = JSON.parse(JSON.stringify(cfgNow));
+    next.categories[act].coins = next.categories[act].coins.filter((id) => id !== victim);
+    global.CM.engine.applyConfig(next);
+    const stayedOnOldBoard = global.CM.engine.board === oldBoard;
+    await new Promise((r) => setTimeout(r, 1100));
+    global.gsap.to = realTo;
+    check('a throttled exit still rebuilds through the safety timer',
+      stayedOnOldBoard && global.CM.engine.board !== oldBoard &&
+      global.CM.engine.board.rowEls.every((r) => r.coin !== victim),
+      'rebuilt=' + (global.CM.engine.board !== oldBoard));
+    const restore = JSON.parse(JSON.stringify(cfgNow));
+    global.CM.engine.applyConfig(restore);
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  /* ------------------------------------------------------------- report */  let failed = 0;
   console.log('\n  digital assets market — smoke test — mode: ' + MODE + '\n  ' + '-'.repeat(58));
   results.forEach((r) => {
     if (!r.pass) failed++;

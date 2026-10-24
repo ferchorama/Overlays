@@ -1,15 +1,18 @@
 /* ============================================================================
-   Saved-config migration
+   Saved-config migration — SETTINGS ARE PERSISTENT
    ----------------------------------------------------------------------------
-   A config saved by an older build must never pin an outdated theme: the
-   browser (localStorage) and the server (config.json) both hold a full copy of
-   the config, so a stale one silently overrode every palette fix.
+   The browser (localStorage) and the server (config.json) both hold a full copy
+   of the config. When a build update changes `meta.version`, the operator's
+   saved settings must survive it: a shipped default is not a reason to undo an
+   hour of tuning. This is the promise the dashboard makes — "save once, it stays
+   saved" — and it is what the migration tests now guard.
 
-   Rule: while meta.version is unchanged, the saved config wins (your edits are
-   yours). When the version changes, the saved config keeps only its CONTENT and
-   the new build supplies the whole look.
+   Rule: the shipped build supplies new keys and any value the saved config does
+   not define; every value the operator saved wins, including `false`, `0` and
+   `''`. Keys the build no longer knows (retired settings) are dropped instead of
+   being resurrected.
 
-     node tests/admin.js   # covers this: stored v-old config → new palette, cities kept
+     node tests/admin.js   # covers this: custom palette survives a version bump
    ========================================================================== */
 (function () {
   'use strict';
@@ -41,6 +44,23 @@
     return JSON.parse(JSON.stringify(o));
   }
 
+  /* Copy every value the shipped build still knows about. Arrays (cities, font
+     lists) are taken whole; objects are walked key-by-key so a retired setting
+     cannot sneak back in; `meta` is handled separately. */
+  function mergeKnown(base, patch) {
+    if (!isObj(patch)) return clone(base);
+    var out = clone(base);
+    Object.keys(patch).forEach(function (k) {
+      if (k === 'meta') return;
+      if (!(k in base)) return;                 /* retired key: drop it */
+      var pv = patch[k], bv = base[k];
+      if (Array.isArray(pv)) out[k] = clone(pv);
+      else if (isObj(pv) && isObj(bv)) out[k] = mergeKnown(bv, pv);
+      else if (pv !== undefined) out[k] = clone(pv);
+    });
+    return out;
+  }
+
   function versionOf(c) {
     return (c && c.meta && c.meta.version) || '0.0.0';
   }
@@ -52,13 +72,12 @@
     var sv = versionOf(stored), nv = versionOf(shipped);
     if (sv === nv) return deepMerge(clone(shipped), stored);
 
-    var out = deepMerge(clone(shipped), {});
-    CONTENT_KEYS.forEach(function (k) {
-      if (stored[k] !== undefined) out[k] = clone(stored[k]);
-    });
+    /* A version bump is not permission to reset the look: keep every saved value
+       the build still understands, and let the build fill in what is new. */
+    var out = mergeKnown(clone(shipped), stored);
     out.meta = Object.assign({}, shipped.meta, { migratedFrom: sv });
 
-    var note = 'saved settings were from v' + sv + ' — your cities and units were kept, the look was updated to v' + nv;
+    var note = 'settings were from v' + sv + ' — kept as saved, new options from v' + nv + ' applied';
     API.migrated = true;
     API.migratedFrom = sv;
     API.lastNote = note;
@@ -72,6 +91,7 @@
     contentKeys: CONTENT_KEYS,
     lookKeys: LOOK_KEYS,
     deepMerge: deepMerge,
+    mergeKnown: mergeKnown,
     migrated: false,
     migratedFrom: '',
     lastNote: ''

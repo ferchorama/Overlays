@@ -188,12 +188,11 @@
     });
   }
 
-  var API = {
-    geocode: 'https://geocoding-api.open-meteo.com/v1/search',
-    forecast: 'https://api.open-meteo.com/v1/forecast'
-  };
-
-  var geoCache = {};   /* city key → { lat, lon, label, timezone } */
+  /* The hub owns the provider call now. It fetches every city in one Open-Meteo
+     request (multi-location coordinates) and caches the answer, so a reload or a
+     scene switch inside the cache window costs no provider request at all, and
+     the dashboard's Update button can force exactly one. */
+  var DATA_URL = 'api/data';
 
   function cityKey(c) {
     return (c.lat != null && c.lon != null)
@@ -208,83 +207,44 @@
       .map(cityKey).join('~') + '|' + (cfg.units && cfg.units.system) + '|' + (cfg.units && cfg.units.wind);
   }
 
-  function resolveCity(city, cfg) {
-    if (city.lat != null && city.lon != null && city.lat !== '' && city.lon !== '') {
-      return Promise.resolve({
-        /* The title is the configured label and nothing else. It used to fall
-           back to the geocoder's name, which meant the card was renamed by
-           whatever was typed before a place had been chosen — the panel now only
-           writes a label when a city is picked from the list. */
-        label: city.label || '',
-        lat: Number(city.lat),
-        lon: Number(city.lon),
-        timezone: null
-      });
-    }
-    var key = cityKey(city);
-    if (geoCache[key]) return Promise.resolve(geoCache[key]);
-
-    var q = API.geocode + '?name=' + encodeURIComponent(city.query || city.label || '') +
-      '&count=1&language=' + encodeURIComponent((cfg.units && cfg.units.locale) || 'en') + '&format=json';
-    if (city.countryCode) q += '&countryCode=' + encodeURIComponent(String(city.countryCode).toUpperCase());
-
-    return fetchJSON(q, cfg.data.timeoutMs).then(function (j) {
-      var r = (j && j.results && j.results[0]) || null;
-      if (!r) throw new Error('city not found');
-      var out = {
-        /* label from config only — see the pinned branch above for why */
-        label: city.label || '',
-        lat: r.latitude,
-        lon: r.longitude,
-        timezone: r.timezone,
-        country: r.country_code || r.country || ''
-      };
-      geoCache[key] = out;
-      return out;
-    });
-  }
-
-  function fetchWeather(resolved, cfg) {
+  function unitsQuery(cfg) {
     var u = unitsFrom(cfg);
-    var url = API.forecast +
-      '?latitude=' + resolved.lat + '&longitude=' + resolved.lon +
-      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m' +
-      '&daily=temperature_2m_max,temperature_2m_min' +
-      '&forecast_days=' + Math.max(1, Math.min(3, cfg.data.forecastDays || 1)) +
-      '&timezone=auto&temperature_unit=' + u.temperature +
-      '&wind_speed_unit=' + u.wind + '&precipitation_unit=' + u.precip;
-
-    return fetchJSON(url, cfg.data.timeoutMs).then(function (j) {
-      /* Fail fast on an unexpected payload shape so "undefined°" can never
-         reach the DOM: coords + current observation must be present. */
-      if (!j || !j.current) throw new Error('incomplete response');
-      if (j.latitude == null || j.longitude == null) throw new Error('missing coordinates');
-      if (typeof j.current.temperature_2m !== 'number') throw new Error('missing temperature');
-
-      /* normalise the API payload into the small view model the renderer uses */
-      return {
-        key: resolved.key,
-        label: resolved.label,
-        timezone: j.timezone || resolved.timezone || '',
-        observedAt: j.current.time,
-        temp: j.current.temperature_2m,
-        feels: j.current.apparent_temperature ?? null,
-        humidity: j.current.relative_humidity_2m ?? null,
-        wind: j.current.wind_speed_10m ?? null,
-        windDir: j.current.wind_direction_10m ?? null,
-        code: j.current.weather_code ?? 0,
-        isDay: j.current.is_day !== 0,
-        precip: j.current.precipitation ?? 0,
-        clouds: j.current.cloud_cover ?? null,
-        pressure: j.current.surface_pressure ?? null,
-        high: j.daily?.temperature_2m_max?.[0] ?? null,
-        low: j.daily?.temperature_2m_min?.[0] ?? null,
-        fetchedAt: Date.now(),
-        error: null
-      };
-    });
+    return { temperature: u.temperature, wind: u.wind, precipitation: u.precip };
   }
 
+  /* One hub city → the small view model the renderer uses. Kept identical to
+     what the old direct fetch produced, so the panel, the tests and the cache
+     format need no changes. */
+  function toState(entry) {
+    var j = entry && entry.forecast;
+    if (!j || !j.current || typeof j.current.temperature_2m !== 'number') return null;
+    return {
+      key: entry.key || '',
+      label: entry.label || '',
+      timezone: j.timezone || entry.timezone || '',
+      observedAt: j.current.time,
+      temp: j.current.temperature_2m,
+      feels: j.current.apparent_temperature == null ? null : j.current.apparent_temperature,
+      humidity: j.current.relative_humidity_2m == null ? null : j.current.relative_humidity_2m,
+      wind: j.current.wind_speed_10m == null ? null : j.current.wind_speed_10m,
+      windDir: j.current.wind_direction_10m == null ? null : j.current.wind_direction_10m,
+      code: j.current.weather_code == null ? 0 : j.current.weather_code,
+      isDay: j.current.is_day !== 0,
+      precip: j.current.precipitation == null ? 0 : j.current.precipitation,
+      clouds: j.current.cloud_cover == null ? null : j.current.cloud_cover,
+      pressure: j.current.surface_pressure == null ? null : j.current.surface_pressure,
+      high: (j.daily && j.daily.temperature_2m_max) ? j.daily.temperature_2m_max[0] : null,
+      low: (j.daily && j.daily.temperature_2m_min) ? j.daily.temperature_2m_min[0] : null,
+      fetchedAt: Date.now(),
+      error: null
+    };
+  }
+
+  function enabledCities(cfg) {
+    return (cfg.cities || []).filter(function (c) {
+      return c.enabled !== false && (c.query || (c.lat != null && c.lon != null));
+    }).slice(0, cfg.maxCities || 2);
+  }
   /* ----------------------------------------------------------------- cache */
   function readCache(cfg) {
     try {
@@ -631,7 +591,7 @@
           self.setText(c.range, '');
           if (c.shown.statsSig !== 'error') {
             c.shown.statsSig = 'error';
-            self.renderStatCells(c.details, [{ label: self.retryText || 'Retrying shortly', value: '—' }]);
+            self.renderStatCells(c.details, [{ label: 'PRESS R TO RETRY', value: '—' }]);
           }
         }
         return;
@@ -730,7 +690,7 @@
         bits.push((f.updatedLabel || 'Updated') + ' ' + nowClock(cfg.units.clock24) + (anyCached && !hasLive ? ' (cached)' : ''));
       }
     }
-    if (f.showSource) bits.push(f.sourceLabel || 'Open-Meteo');
+    if (f.showSource && f.sourceLabel) bits.push(f.sourceLabel);
     this.setText(this.footerText, bits.join('  ·  '));
     this.footerText.classList.toggle('footer-stale', anyError || anyCached);
 
@@ -742,7 +702,7 @@
     if (live) {
       var spoken = states.map(function (s) {
         if (!s) return 'no data';
-        if (s.error) return (s.label || 'city') + ': data unavailable' + (this.retryText ? ', ' + this.retryText : '');
+        if (s.error) return (s.label || 'city') + ': data unavailable, press R to retry';
         return (s.label || 'city') + ': ' + Math.round(s.temp) + ' degrees, ' + window.WX.describeCode(s.code).label.toLowerCase() +
           ', high ' + Math.round(s.high) + ', low ' + Math.round(s.low);
       }, this).join('. ');
@@ -940,8 +900,9 @@
     cfg: null,
     panel: null,
     states: [],
-    timer: null,
     refreshing: false,
+    lastLoadedAt: 0,
+    dataError: null,
 
     apply: function (patch, opts) {
       opts = opts || {};
@@ -952,6 +913,7 @@
       fitStage(this.cfg);
       if (!this.panel) this.panel = new Panel(this.cfg);
       this.panel.mount();
+
       this.panel.buildTimeline();
       this.panel.applyData(this.states, { silent: true });
 
@@ -959,8 +921,8 @@
       else if (wasOnAir || opts.animate === 'static') this.panel.showInstant();
       else this.panel.hideInstant();
 
-      this.schedule();
-      /* the city list or units changed → re-fetch now instead of waiting */
+      /* the city list or units changed → fetch now; the hub decides whether that
+         costs a provider call or comes from its cache */
       if (citySignature(this.cfg) !== prevCities) this.load({ silent: true });
       if (this.cfg.animation.loopPreview && /preview=1/.test(location.search)) this.startLoop();
       return this.cfg;
@@ -968,85 +930,101 @@
 
     play: function () { if (this.panel) this.panel.play(); },
     hide: function () { if (this.panel) this.panel.hideInstant(); },
-    refresh: function () { return this.load({ manual: true }); },
 
-    schedule: function (ok) {
-      var self = this, d = this.cfg.data;
-      clearTimeout(this.timer);
+    /* `refresh` re-reads the hub's cache so a dashboard-triggered update is one
+       provider call, not two. `update` forces the provider read itself (Stream
+       Deck / the overlay's own key). */
+    refresh: function (force) { return this.load({ manual: true, force: force === true }); },
 
-      if (ok === false) {
-        /* Recoverable failures (timeout, 429, 5xx, offline) retry with
-           exponential backoff + jitter, capped so we never hammer the API
-           and never go quiet for longer than 15 minutes. */
-        this.failures = (this.failures || 0) + 1;
-        var base = d.retryOnFailSeconds || 60;
-        var backoff = Math.min(base * Math.pow(2, this.failures - 1), 900);
-        var jitter = Math.round(backoff * 0.2 * Math.random());
-        var wait = backoff + jitter;
-        this.retryInSeconds = wait;
-        this.panel && (this.panel.retryText = 'RETRYING IN ' + wait + 'S');
-        this.timer = setTimeout(function () { self.load(); }, wait * 1000);
-      } else {
-        this.failures = 0;
-        this.retryInSeconds = null;
-        this.panel && (this.panel.retryText = null);
-        this.timer = setTimeout(function () { self.load(); }, (d.refreshMinutes || 10) * 60000);
+    /* What boot runs. There is deliberately no timer anywhere in this file now:
+       a widget that is left running must not keep asking the provider for data
+       nobody asked for. A cached payload younger than cacheTtlSeconds is painted
+       and left alone; an older one is painted first and refreshed in the
+       background. */
+    loadInitial: function () {
+      var d = this.cfg.data || {};
+      var ttl = Math.max(0, Number(d.cacheTtlSeconds == null ? 120 : d.cacheTtlSeconds)) * 1000;
+      var cache = readCache(this.cfg);
+      if (cache && cache.ts && ttl > 0 && Date.now() - cache.ts < ttl) {
+        return Promise.resolve(this.states);
       }
+      return this.load({ silent: true });
     },
 
     load: function (opts) {
+      opts = opts || {};
       var self = this, cfg = this.cfg;
       if (this.refreshing) return Promise.resolve(this.states);
       this.refreshing = true;
-      newRequestGroup();   /* cancel anything still in flight from the last run */
+      newRequestGroup();   /* a superseded request must not overwrite a newer one */
 
-      var items = (cfg.cities || []).filter(function (c) {
-        return c.enabled !== false && (c.query || (c.lat != null && c.lon != null));
-      }).slice(0, cfg.maxCities || 2);
+      var items = enabledCities(cfg);
+      if (!items.length) {
+        this.refreshing = false;
+        this.states = [];
+        if (this.panel) this.panel.applyData([], { silent: true });
+        return Promise.resolve([]);
+      }
 
-      var jobs = items.map(function (city) {
-        return resolveCity(city, cfg)
-          .then(function (r) {
-            r.key = cityKey(city);
-            return fetchWeather(r, cfg);
-          })
-          .catch(function (e) {
-            if (e && e.aborted) return { label: city.label, aborted: true, fetchedAt: 0 };
-            return { label: city.label, error: (e && e.message) || 'unavailable', fetchedAt: 0 };
+      var q = 'cities=' + encodeURIComponent(JSON.stringify(items.map(function (c) {
+        return {
+          label: c.label || '', query: c.query || '', countryCode: c.countryCode || '',
+          lat: c.lat == null ? null : Number(c.lat), lon: c.lon == null ? null : Number(c.lon)
+        };
+      }))) + '&units=' + encodeURIComponent(JSON.stringify(unitsQuery(cfg)));
+
+      return fetchJSON(DATA_URL + '?' + q + (opts.force ? '&force=1' : ''), cfg.data.timeoutMs)
+        .then(function (payload) {
+          self.refreshing = false;
+          var rows = (payload && payload.cities) || [];
+          var next = items.map(function (city, i) {
+            var st = toState(rows[i]);
+            return st || { key: cityKey(city), label: city.label || '', error: 'unavailable', fetchedAt: 0 };
           });
-      });
+          var failed = next.some(function (r) { return r.error; });
 
-      return Promise.all(jobs).then(function (res) {
-        self.refreshing = false;
-        if (res.every(function (r) { return r.aborted; })) return res;   /* superseded */
-        var failed = res.some(function (r) { return r.error; });
-
-        if (failed && (cfg.data.useCacheOnFailure !== false)) {
-          var cache = readCache(cfg);
-          if (cache && cache.cities && cache.cities.length === res.length) {
-            /* Mark the substituted entries so the panel can say "this is the
-               last good reading" instead of pretending it is live. */
-            res = res.map(function (r, i) {
-              return r.error
-                ? Object.assign({}, cache.cities[i], { fromCache: true, error: null, cachedAt: cache.ts })
-                : r;
+          /* One bad city must not blank the other: the cache is substituted per
+             card, and marked, so the panel can say "last good reading" instead
+             of pretending it is live. */
+          if (failed && (cfg.data.useCacheOnFailure !== false)) {
+            var cache = readCache(cfg);
+            if (cache && cache.cities && cache.cities.length === next.length) {
+              next = next.map(function (r, i) {
+                return r.error
+                  ? Object.assign({}, cache.cities[i], { fromCache: true, error: null, cachedAt: cache.ts })
+                  : r;
+              });
+            }
+          }
+          self.states = next;
+          self.lastLoadedAt = Date.now();
+          self.dataError = failed ? 'some cities could not be refreshed' : null;
+          if (next.some(function (r) { return !r.error && !r.fromCache; })) writeCache(cfg, next);
+          if (self.panel) self.panel.applyData(next, { silent: !!opts.silent });
+          return next;
+        })
+        .catch(function (e) {
+          self.refreshing = false;
+          if (e && e.aborted) return self.states;
+          console.warn('[weather] refresh failed:', e && e.message);
+          self.dataError = (e && e.message) || 'unavailable';
+          /* Keep whatever is on screen — a manual update that fails must not
+             blank the widget — and mark it cached so the footer is honest. With
+             nothing on screen yet there is no "previous" data, so the cards get
+             an explicit error state instead of loading placeholders forever. */
+          if (!self.states.length) {
+            self.states = enabledCities(cfg).map(function (c) {
+              return { key: cityKey(c), label: c.label || '', error: self.dataError, fetchedAt: 0 };
+            });
+          } else {
+            self.states = self.states.map(function (s) {
+              return Object.assign({}, s, { fromCache: true, error: null, cachedAt: s.fetchedAt || Date.now() });
             });
           }
-        }
-        self.states = res;
-        if (res.some(function (r) { return !r.error && !r.fromCache; })) writeCache(cfg, res);
-
-        self.schedule(!failed);            /* sets retryText before we render it */
-        if (self.panel) self.panel.applyData(res, { silent: !!opts && opts.silent });
-        return res;
-      }).catch(function (e) {
-        self.refreshing = false;
-        console.warn('[weather] refresh failed:', e && e.message);
-        self.schedule(false);
-        if (self.panel) self.panel.applyData(self.states, { silent: true });
-      });
+          if (self.panel) self.panel.applyData(self.states, { silent: true });
+          return self.states;
+        });
     },
-
     startLoop: function () {
       var self = this;
       if (this._loop) clearInterval(this._loop);
@@ -1064,7 +1042,9 @@
   window.WX.engine = Engine;
   window.WX.play = function () { Engine.play(); };
   window.WX.hide = function () { Engine.hide(); };
-  window.WX.refresh = function () { return Engine.refresh(); };
+  window.WX.refresh = function (force) { return Engine.refresh(force); };
+  /* exposed so the command → refresh path is testable without a live state poll */
+  window.WX.handleCommand = handleCommand;
   window.WX.getConfig = function () { return Engine.cfg; };
   window.WX.getData = function () { return Engine.states; };
   window.WX.Panel = Panel;   /* hero-fit maths is unit-tested in tests/type.js */
@@ -1081,8 +1061,13 @@
   function resolveTheme(config) {
     var forced = (String(location.search).match(/[?&]theme=(dark|light)(?:&|$)/) || [])[1];
     var want = forced || config.theme || 'light';
-    if (want !== 'dark' || !window.WX_DARK_PALETTE) return config;
-    return deepMerge(config, window.WX_DARK_PALETTE);
+    var merged = (want === 'dark' && window.WX_DARK_PALETTE)
+      ? deepMerge(config, window.WX_DARK_PALETTE)
+      : config;
+    /* expose the RESOLVED theme on the config: a `?theme=light` override on a
+       dark saved config used to leave cfg.theme="dark" behind */
+    merged.theme = want;
+    return merged;
   }
 
   function handleCommand(cmd) {
@@ -1090,7 +1075,8 @@
     switch (cmd.action) {
       case 'in': case 'play': Engine.play(); break;
       case 'out': case 'hide': Engine.hide(); break;
-      case 'refresh': case 'update': Engine.refresh(); break;
+      case 'refresh': Engine.refresh(false); break;
+      case 'update': Engine.refresh(true); break;
       case 'config': if (cmd.config) Engine.apply(resolveTheme(cmd.config)); break;
     }
   }
@@ -1164,7 +1150,7 @@
       }
       cfg = resolveTheme(cfg);
       Engine.apply(cfg, { animate: cfg.animation.autoPlay ? true : 'static' });
-      Engine.load({ silent: true });
+      Engine.loadInitial();
     }
 
     function fetchConfig() {

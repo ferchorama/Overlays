@@ -227,8 +227,8 @@
     "paddingX": 16,
     "showUpdated": true,
     "updatedLabel": "Updated",
-    "showSource": true,
-    "sourceLabel": "Open-Meteo"
+    "showSource": false,
+    "sourceLabel": ""
   },
   "maxCities": 2,
   "cities": [

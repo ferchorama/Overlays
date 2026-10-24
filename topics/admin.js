@@ -18,6 +18,10 @@
     return deepMerge(base, patch);
   }
   var saveTimer = null;
+  /* every bound input, so the panel can be re-filled after adopting
+     config.json WITHOUT re-binding (a second bind would duplicate listeners
+     and push once per keystroke) */
+  var bound = [];
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
@@ -47,16 +51,24 @@
 
   // #preset=navy etc. for quick theming
   var m = location.hash.match(/preset=([a-z]+)/);
+  var bootPreset = m ? m[1] : null;
 
   function push(animate) {
     try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ }
-    if (preview && preview.contentWindow) {
-      preview.contentWindow.postMessage({ type: 'tp:config', config: cfg }, '*');
-    }
+    postPreview();
     $('rawJson').value = JSON.stringify(cfg, null, 2);
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveToServer, 500);
     status(animate === false ? 'updated' : 'updated (live)', 'ok');
+  }
+
+  /* Message the preview without touching localStorage or the server. Boot and
+     config adoption use this: showing the panel what is on air must not be a
+     save. */
+  function postPreview() {
+    if (preview && preview.contentWindow) {
+      preview.contentWindow.postMessage({ type: 'tp:config', config: cfg }, '*');
+    }
   }
 
   function saveToServer() {
@@ -137,6 +149,7 @@
 
     /* a colour bound to an rgba() keeps its alpha; the hex input only edits RGB */
     var isColor = node.type === 'color';
+    bound.push({ node: node, get: get });
 
     var ev = (node.type === 'checkbox' || node.tagName === 'SELECT') ? 'change' : 'input';
     var handler = function () {
@@ -153,6 +166,19 @@
     };
     node.addEventListener(ev, handler);
     if (opts.side) opts.side(val);
+  }
+
+  /* Re-fill every bound control from the CURRENT cfg — used after the server
+     copy is adopted. Same coercions as bind()'s initial paint. */
+  function refreshBoundValues() {
+    bound.forEach(function (b) {
+      var v = b.get();
+      if (b.node.type === 'checkbox') b.node.checked = !!v;
+      else if (b.node.type === 'color') b.node.value = toHex(v) || '#000000';
+      else b.node.value = v == null ? '' : v;
+    });
+    var fonts = $('c_googleFonts');
+    if (fonts) fonts.value = (cfg.googleFonts || []).join('\n');
   }
 
   function syncUI() {
@@ -498,6 +524,55 @@
     });
   });
 
+  /* --------------------------------------------------- adopt config.json
+     config.json is what the OBS source actually renders; this browser's
+     localStorage is only a cache of the last edit made here. Opening the panel
+     on a fresh profile used to POST the shipped samples (or an empty browser
+     copy) over the operator's live topics and look. So the server copy is the
+     source of truth: GET it, merge it OVER the local copy with the same
+     migration the overlay uses, then re-render the panel from it. Reading must
+     never write: no push(), no POST. */
+  function loadServerConfig() {
+    fetch('api/config', { cache: 'no-store' }).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (j) {
+      /* no file yet (the hub answers "{}") or not a config — keep the local copy */
+      if (!isObj(j) || !Object.keys(j).length) {
+        status('ready · v' + APP_V + ' · no config.json on the server — using this browser\'s copy', 'warn');
+        applyBootPreset();
+        return;
+      }
+      cfg = mergeIncoming(cfg, j);
+      /* values and dynamic rows only, not syncUI(): the bindings are already
+         installed and a second bind would duplicate every listener */
+      refreshBoundValues();
+      renderTopics();
+      renderStops();
+      $('rawJson').value = JSON.stringify(cfg, null, 2);
+      postPreview();
+      var note = 'config.json loaded · v' + APP_V;
+      if (window.TP_MIGRATE && window.TP_MIGRATE.migrated) {
+        note += ' · settings upgraded to v' + APP_V + ' (was v' + window.TP_MIGRATE.migratedFrom +
+          ') — your settings were kept';
+      }
+      status(note, 'ok');
+      applyBootPreset();
+    }).catch(function () {
+      status('ready · v' + APP_V + ' · could not read config.json — using this browser\'s copy', 'err');
+      applyBootPreset();
+    });
+  }
+
+  /* #preset=sky in the URL is an explicit instruction from the operator, so it
+     is applied AFTER adoption — otherwise the panel would load the preset and
+     then immediately overwrite it with config.json. */
+  function applyBootPreset() {
+    if (!bootPreset) return;
+    var name = bootPreset;
+    bootPreset = null;
+    applyPreset(name);
+  }
+
   /* ------------------------------------------------------------------- boot */
   syncUI();
   renderTopics();
@@ -506,15 +581,17 @@
   $('obsUrl').textContent = location.protocol === 'file:'
     ? 'index.html (or http://localhost:8790/topics/index.html with Overlays/server.js)'
     : location.origin + location.pathname.replace(/admin\.html$/, 'index.html');
-  if (m) applyPreset(m[1]);
   // the iframe needs a moment before it accepts messages
-  preview.addEventListener('load', function () { push(); }, { once: true });
-  setTimeout(function () { push(); }, 400);
+  preview.addEventListener('load', function () { postPreview(); }, { once: true });
+  setTimeout(postPreview, 400);
   var APP_V = (window.TP_DEFAULT_CONFIG && window.TP_DEFAULT_CONFIG.meta && window.TP_DEFAULT_CONFIG.meta.version) || '?';
   status('ready · v' + APP_V);
   if (window.TP_MIGRATE && window.TP_MIGRATE.migrated) {
-    status('look updated to v' + APP_V + ' (was v' + window.TP_MIGRATE.migratedFrom + ') — your topics were kept', 'warn');
+    status('settings upgraded to v' + APP_V + ' (was v' + window.TP_MIGRATE.migratedFrom + ') — your settings were kept', 'warn');
   }
+  /* Read the file the OBS source actually renders. This is a GET only: the
+     panel must not write over config.json just because it was opened. */
+  loadServerConfig();
 
   /* ---------------------------------------------------------------- theme
      Shares the hub's key, so the panel and the hub can never disagree. */

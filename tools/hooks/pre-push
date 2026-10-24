@@ -1,0 +1,29 @@
+#!/bin/sh
+# Pre-push safety net for the Overlays repo.
+#
+#   1. Every push leaves a local restore tag: backup/pre-push-<UTC timestamp>
+#   2. Pushes that would rewrite the remote (non-fast-forward / force) are refused.
+#
+# Enable once per clone:
+#   git config core.hooksPath tools/hooks
+# Deliberately bypass a refusal (rare, e.g. rebasing a private branch):
+#   git push --no-verify
+status=0
+stamp=$(date -u +%Y%m%d-%H%M%S)
+tag="backup/pre-push-$stamp"
+if git tag -f "$tag" HEAD >/dev/null 2>&1; then
+  echo "[pre-push] local restore point: $tag" >&2
+  echo "[pre-push] undo locally with: git reset --hard $tag" >&2
+fi
+while read local_ref local_sha remote_ref remote_sha; do
+  # a brand-new remote branch has no previous commit to protect
+  case "$remote_sha" in
+    *0000000000000000000000000000000000) continue ;;
+  esac
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+    echo "[pre-push] BLOCKED: $remote_ref would rewrite published history." >&2
+    echo "[pre-push] Commit on top instead, or use --no-verify on purpose." >&2
+    status=1
+  fi
+done
+exit $status

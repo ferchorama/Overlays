@@ -179,6 +179,9 @@ let bootError = null;
 try {
   require(path.join(ROOT, 'config.js'));
   require(path.join(ROOT, 'config-merge.js'));
+  /* the asset picker IS the shared combobox (same component as the weather
+     city picker), and admin.js assumes it loaded first */
+  require(path.join(ROOT, '..', 'shared', 'combobox.js'));
   require(path.join(ROOT, 'admin.js'));
 } catch (e) { bootError = e; }
 
@@ -191,9 +194,9 @@ if (bootError) {
 }
 
 /* ---------------------------------------------- stale saved config --- */
-/* The bug this guards, shared with the other two overlays: a config stored by an
-   older build overrode the shipped palette, so the look flipped back to the old
-   one on the next edit. */
+/* Settings must be persistent: a build update may add new options, but it must
+   never reset the look the operator saved. The one exception is the provider
+   endpoints, which stay build-owned. */
 {
   const M = global.CM_MIGRATE;
   check('version-aware migration is loaded', !!M && typeof M.apply === 'function',
@@ -206,22 +209,26 @@ if (bootError) {
     stale.panel = Object.assign({}, shipped.panel, { background: 'rgba(0,0,0,0.9)' });
     stale.rows = JSON.parse(JSON.stringify(shipped.rows));
     stale.rows.price.color = '#ff00ff';
+    delete stale.columns.assetMaxWidth;              /* a key the saved copy predates */
     stale.categories = [{ id: 'mine', label: 'MINE', coins: ['bitcoin', 'ethereum'] }];
     stale.maxRows = 4;
-    stale.data = Object.assign({}, shipped.data, { refreshSeconds: 30, currency: 'eur', proxyUrl: 'https://evil.example/' });
+    stale.data = Object.assign({}, shipped.data, { currency: 'eur', proxyUrl: 'https://evil.example/' });
     stale.font = { id: 'plex' };
 
     const merged = M.apply(shipped, stale);
-    check('stale stored palette is discarded', merged.panel.background === shipped.panel.background,
-      merged.panel.background);
-    check('stale stored ink is discarded', merged.rows.price.color === shipped.rows.price.color,
+    check('a saved palette survives the version bump (settings are persistent)',
+      merged.panel.background === 'rgba(0,0,0,0.9)', merged.panel.background);
+    check('a saved ink survives the version bump', merged.rows.price.color === '#ff00ff',
       merged.rows.price.color);
+    check('a key the saved copy never had comes from the build',
+      merged.columns.assetMaxWidth === shipped.columns.assetMaxWidth,
+      'assetMaxWidth=' + merged.columns.assetMaxWidth);
     check('saved categories survive the migration',
       merged.categories.length === 1 && merged.categories[0].label === 'MINE',
       merged.categories.map((c) => c.label).join(','));
     check('saved content data survives the migration',
-      merged.data.refreshSeconds === 30 && merged.data.currency === 'eur',
-      merged.data.refreshSeconds + 's / ' + merged.data.currency);
+      merged.data.currency === 'eur',
+      merged.data.currency);
     /* the endpoint must always come from the build: a stale proxy path would
        silently break the board with no visible cause */
     check('a stale proxy URL is discarded', merged.data.proxyUrl === shipped.data.proxyUrl,
@@ -238,11 +245,25 @@ if (bootError) {
 /* ------------------------------------------------------------- structure */
 const boundIds = [...ADMIN_JS.matchAll(/(?:bind|bindAlpha)\('([^']+)',\s*'([^']+)'/g)].map((m) => m[2]);
 const missingIds = boundIds.filter((id) => !elements.has(id));
+/* Same bug class as topics: opening the panel used to push() — which POSTs the
+   browser's copy — over the config.json that is actually on air. Reading must
+   never write. */
+check('opening the panel reads config.json instead of saving it',
+  fetches.some((f) => f.url.includes('api/config') && f.method === 'GET') &&
+  !fetches.some((f) => f.method === 'POST'),
+  fetches.map((f) => f.method + ' ' + f.url).join(', ') || 'no requests');
 check('every bound field exists in admin.html', missingIds.length === 0,
   missingIds.join(', ') || boundIds.length + ' fields');
 
 const controls = [...elements.values()].filter((n) => ['INPUT', 'SELECT', 'TEXTAREA'].includes(n.tagName));
 check('form controls present', controls.length > 100, controls.length + ' controls');
+
+/* Controls for the tick flash, value tween and trend-colour features were
+   removed with the config keys behind them: nothing in the engine ever read
+   them, so every one of these was a switch that did nothing. */
+check('no controls remain for features that do not exist',
+  !/c_tickFlash|c_tweenValues|c_tweenDuration|c_tweenEase|c_flashOnTick|c_colSparkUp|c_colSparkDown|c_titleAutoShrink/.test(HTML),
+  'dead controls absent');
 
 /* every colour the admin edits as rgba has its own alpha field, or the native
    colour input would silently flatten the glass on the first edit */
@@ -282,13 +303,109 @@ check('a migration notice container exists', !!elements.get('versionMsg'), '#ver
 const catRows = elements.get('categoryList').children;
 const shippedCats = global.CM_DEFAULT_CONFIG.categories.length;
 check('category rows built', catRows.length === shippedCats, catRows.length + ' rows / ' + shippedCats + ' shipped');
-check('category coin list prefilled',
-  catRows.length > 0 && catRows[0].querySelector('.coins').value ===
-    global.CM_DEFAULT_CONFIG.categories[0].coins.join(', '),
-  catRows.length ? catRows[0].querySelector('.coins').value.slice(0, 48) + '…' : '-');
 check('a label editor per category',
   elements.get('categoryLabels').children.length === shippedCats,
   elements.get('categoryLabels').children.length + ' label fields');
+
+/* ---------------------------------------------------------------- assets
+   The editor lists one row per asset and stores provider ids. These drive the
+   real buttons, so a regression in the row wiring (a move that reorders the
+   wrong array, a delete that leaves a hole) fails here rather than on air. */
+{
+  const shippedCat = global.CM_DEFAULT_CONFIG.categories[0];
+  const firstCat = () => elements.get('categoryList').children[0];
+  const assetRows = () => firstCat().querySelectorAll('.asset');
+  const idsNow = () => Array.from(assetRows()).map((r) => r.dataset.id);
+  const savedCats = () => JSON.parse(store['cm-config-v1'] || '{}').categories || [];
+
+  check('category assets are listed as rows', assetRows().length === shippedCat.coins.length,
+    assetRows().length + ' rows / ' + shippedCat.coins.length + ' shipped');  /* The replace control is a word, not a glyph: it needs `.ic--wide` or the
+     shared square width clips it to "Cha" in the operator's dashboard. */
+  check('the replace button carries the wide-button class',
+    String((assetRows()[0].querySelector('.change') || {}).className || '').indexOf('ic--wide') !== -1,
+    String((assetRows()[0].querySelector('.change') || {}).className || 'missing'));
+
+  check('rows carry provider ids, never tickers',
+    idsNow().join(',') === shippedCat.coins.join(','), idsNow().join(','));
+  check('each row shows its id in the row',
+    assetRows()[0].querySelector('.asset__id').textContent === shippedCat.coins[0],
+    assetRows()[0].querySelector('.asset__id').textContent);
+
+  /* move down / move up */
+  assetRows()[0].querySelector('.down').dispatch('click');
+  const moved = savedCats()[0].coins;
+  check('move down swaps two assets in place',
+    moved[0] === shippedCat.coins[1] && moved[1] === shippedCat.coins[0],
+    moved.slice(0, 3).join(','));
+  elements.get('categoryList').children[0].querySelectorAll('.asset')[1].querySelector('.up').dispatch('click');
+  check('move up restores the order',
+    savedCats()[0].coins.join(',') === shippedCat.coins.join(','), savedCats()[0].coins.join(','));
+
+  /* delete */
+  assetRows()[0].querySelector('.del').dispatch('click');
+  check('delete removes one asset',
+    savedCats()[0].coins.length === shippedCat.coins.length - 1,
+    savedCats()[0].coins.length + ' left');
+  check('deleting does not disturb the order of the rest',
+    savedCats()[0].coins.join(',') === shippedCat.coins.slice(1).join(','), savedCats()[0].coins.join(','));
+
+  /* empty section: delete everything, then check the note and the saved shape */
+  let guard = 0;
+  while (assetRows().length && guard++ < 40) assetRows()[0].querySelector('.del').dispatch('click');
+  check('an emptied section says so instead of showing nothing',
+    firstCat().querySelector('.assets__empty').style.display === 'block',
+    firstCat().querySelector('.assets__empty').style.display);
+  check('an emptied section is saved as an empty list',
+    savedCats()[0].coins.length === 0 && Array.isArray(savedCats()[0].coins),
+    JSON.stringify(savedCats()[0].coins));
+
+  /* restore defaults */
+  elements.get('btnRestoreAssets').dispatch('click');
+  check('restore brings the shipped assets back',
+    savedCats()[0].coins.join(',') === shippedCat.coins.join(','), savedCats()[0].coins.join(','));
+  check('restore keeps every section',
+    savedCats().length === shippedCats, savedCats().length + ' sections');
+}
+
+/* asset-format rules (ids only, unique, empty allowed, schema upgrade) */
+{
+  const M = global.CM_MIGRATE;
+  const clean = M.cleanCategories([
+    { id: 'a', label: 'A', coins: ['bitcoin', 'bitcoin', '', 'BTC', 'avalanche-2'] },
+    { id: 'a', label: 'A again', coins: [] }
+  ]);
+  check('duplicate ids are removed', clean[0].coins.join(',') === 'bitcoin,avalanche-2',
+    clean[0].coins.join(','));
+  check('a ticker is refused, not guessed', clean[0].coins.indexOf('BTC') === -1, clean[0].coins.join(','));
+  check('duplicate category ids are made unique', clean[0].id !== clean[1].id,
+    clean[0].id + ' / ' + clean[1].id);
+  check('an empty section survives cleaning', clean[1].coins.length === 0, '0 assets');
+
+  /* The dashboard's live push must dedupe WITHOUT replacing the arrays: the
+     row buttons hold a reference to `cat.coins`, and a replaced array made a
+     move/delete edit the detached copy. This is the guard that makes "add the
+     same asset twice" impossible on every save path. */
+  const live = [{ id: 'privacy', label: 'PRIVACY', coins: ['bitcoin', 'bitcoin', 'monero', 'monero'] }];
+  const liveArr = live[0].coins;
+  const dropped = M.cleanInPlace(live);
+  check('the in-place guard removes duplicate asset ids', dropped === 2 && live[0].coins.join(',') === 'bitcoin,monero',
+    dropped + ' dropped · ' + live[0].coins.join(','));
+  check('the in-place guard keeps the array identity (row buttons stay live)',
+    live[0].coins === liveArr, 'same array=' + (live[0].coins === liveArr));
+  check('the same asset is still allowed once per section',
+    M.cleanInPlace([{ id: 'x', coins: ['near'] }, { id: 'y', coins: ['near'] }]) === 0,
+    'cross-section duplicates stay legal');
+
+  const shipped = JSON.parse(JSON.stringify(global.CM_DEFAULT_CONFIG));
+  const old = JSON.parse(JSON.stringify(shipped));
+  delete old.meta.schema;
+  old.meta.version = '1.0.0';
+  old.categories = [{ id: 'privacy', label: 'PRIVACY', coins: ['bitcoin', 'bitcoin', 'ETH', 'monero'] }];
+  const upgraded = M.apply(shipped, old);
+  check('a schema-1 saved config is migrated on load',
+    upgraded.categories[0].coins.join(',') === 'bitcoin,monero', upgraded.categories[0].coins.join(','));
+  check('the upgrade stamps the current asset schema', upgraded.meta.schema === 2, upgraded.meta.schema);
+}
 
 elements.get('btnAddCategory').dispatch('click');
 const cfgAfterAdd = JSON.parse(store['cm-config-v1'] || '{}');

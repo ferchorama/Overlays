@@ -48,7 +48,7 @@
      still carry the venue name that used to ship here, so it is stripped rather
      than trusted — a stale config must not be able to put a claim about where the
      numbers came from back on air. */
-  var DROPPED_SOURCES = ['polymarket'];
+  var DROPPED_SOURCES = ['polymarket', 'coingecko', 'coinpaprika', 'open-meteo', 'openmeteo', 'gamma'];
 
   function scrubSource(cfg) {
     try {
@@ -57,7 +57,6 @@
          which is why it is dropped. Once the Polymarket headline source is
          selected the number genuinely does come from Polymarket — so naming it
          is honest, and hiding it would be the dishonest choice. */
-      if (cfg && cfg.source === 'polymarket') return cfg;
       if (l && DROPPED_SOURCES.indexOf(String(l.source || '').trim().toLowerCase()) !== -1) {
         l.source = '';
       }
@@ -353,16 +352,36 @@
   window.__PM_ASSET_SERIES = assetSeries;
   var assetAskedAt = {};   /* asset id -> ms, so a failure is not retried in a loop */
 
-  function fetchAssetSeries(ids, cfg, onNew) {
+  /* Last good series, so a reload or a scene switch paints the charts before the
+     network answers. The hub also caches, so an in-TTL load costs one local
+     request and no provider call at all. */
+  var SERIES_CACHE_KEY = 'pm-asset-cache-v1';
+  function readSeriesCache() {
+    try {
+      var raw = localStorage.getItem(SERIES_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function writeSeriesCache() {
+    try {
+      localStorage.setItem(SERIES_CACHE_KEY, JSON.stringify({ ts: Date.now(), series: assetSeries }));
+    } catch (e) { /* quota / private mode */ }
+  }
+
+  function fetchAssetSeries(ids, cfg, onNew, force) {
     var d = cfg.data || {};
     if (d.enabled === false || !window.fetch) return;
     var want = ids.filter(function (id) { return id; });
     if (!want.length) return;
     want.forEach(function (id) { assetAskedAt[id] = Date.now(); });
-    var url = (d.proxyUrl || '/market/api/market') +
+    /* relative by default; PM_hubUrl is still applied so a config saved by an
+       older build (with an absolute path) keeps working */
+    var proxy = d.proxyUrl || 'api/data';
+    if (window.PM_hubUrl) proxy = window.PM_hubUrl(proxy);
+    var url = proxy +
       '?ids=' + encodeURIComponent(want.join(',')) +
       '&currency=' + encodeURIComponent(d.currency || 'usd') +
-      '&changes=24h,7d&sparkline=1';
+      '&changes=24h,7d&sparkline=1' + (force ? '&force=1' : '');
     fetch(url, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (rows) {
@@ -378,6 +397,7 @@
         });
         if (got) {
           console.info('[prediction-markets] asset history loaded for ' + Object.keys(assetSeries).join(', '));
+          writeSeriesCache();
           if (onNew) onNew();
         }
       })
@@ -706,7 +726,7 @@
        source could never be — nothing about these headlines is editorial. */
     var stamp = el('div', 'groups__stamp', this.groups);
     if (anyShown) {
-      stamp.textContent = 'polymarket \u00b7 updated ' +
+      stamp.textContent = 'updated ' +
         (p.updatedAt ? agoText(Date.now() - num(p.updatedAt, 0)) : 'never');
     } else {
       stamp.textContent = p.lastError || 'No headlines yet \u2014 press Update in the control panel';
@@ -781,17 +801,36 @@
 
   /* Ask for the price history of every asset the enabled markets reference. The
      request is shared through the hub's cache, so this costs one upstream call for
-     the whole board however many markets name an asset. */
-  Board.prototype.loadAssetData = function () {
+     the whole board however many markets name an asset.
+
+     opts.force is the manual "Update now": it ignores the local freshness check
+     and asks the hub for a fresh provider read. */
+  Board.prototype.loadAssetData = function (opts) {
+    opts = opts || {};
+    var force = opts.force === true;
     var cfg = this.cfg;
     if (!cfg.data || cfg.data.enabled === false) return;
+
+    /* hydrate once from the last good series, so a reload paints the charts
+       immediately instead of waiting on the network */
+    if (!this._seriesHydrated) {
+      this._seriesHydrated = true;
+      var cached = readSeriesCache();
+      if (cached && cached.series) {
+        Object.keys(cached.series).forEach(function (id) {
+          if (!assetSeries[id]) assetSeries[id] = cached.series[id];
+        });
+      }
+    }
+
     var ttl = Math.max(30, num(cfg.data.refreshSeconds, 300)) * 1000;
     var now = Date.now();
     var want = [];
     this.markets.forEach(function (m) {
       if (!m.asset) return;
+      if (force) delete assetAskedAt[m.asset];
       var seen = assetAskedAt[m.asset];
-      if (seen && now - seen < ttl) return;          /* fresh enough already */
+      if (!force && seen && now - seen < ttl) return;   /* fresh enough already */
       if (want.indexOf(m.asset) === -1) want.push(m.asset);
     });
     if (!want.length) return;
@@ -801,7 +840,7 @@
          arrival is not a topic change, and replaying the entrance when a fetch
          resolves would make the board twitch on its own. */
       self.renderHero(self.heroMarket());
-    });
+    }, force);
   };
 
   Board.prototype.renderList = function () {
@@ -1968,11 +2007,19 @@
     /* open one market across the whole board, and step back to the list */
     open: function (i) { return this.board ? this.board.openDetail(i) : false; },
     back: function () { return this.board ? this.board.closeDetail() : false; },
+    /* Manual asset-data update. `force` asks the hub for a fresh provider read;
+       the dashboard forces once and then sends the `refresh` command, so the
+       overlay itself normally re-reads the warm cache. */
+    refreshAssets: function (force) {
+      if (this.board) this.board.loadAssetData({ force: force === true });
+    },
     getConfig: function () { return this.cfg; },
     /* Exposed for the test suite: which headlines a category renders is pure
        config arithmetic, and asserting it directly beats inferring it from the
        rendered DOM — the selection/count interaction is where an off-by-one
        would hide. */
+    /* exposed so the command → asset-update path is testable without a state poll */
+    handleCommand: handleCommand,
     headlinesFor: categoryHeadlines,
     agoText: agoText,
     /* rotation is opt-in and OFF by default: switching topics is a manual act */
@@ -2122,6 +2169,8 @@
       case 'next': window.PM.next(); break;
       case 'prev': window.PM.prev(); break;
       case 'show': if (cmd.index != null) window.PM.show(cmd.index); break;
+      case 'refresh': window.PM.refreshAssets(false); break;
+      case 'update': window.PM.refreshAssets(true); break;
       /* the detail view, for a Stream Deck button: open index N, or go back */
       case 'open': if (cmd.index != null) window.PM.open(cmd.index); break;
       case 'back': case 'list': window.PM.back(); break;

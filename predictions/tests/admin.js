@@ -239,8 +239,8 @@ function reply(status, body) {
   };
 }
 
-/* What predictions/server.js really answers for a path it does not know: an
-   HTML 404, not a JSON error. `json()` must therefore REJECT, exactly as a
+/* What a plain static file server really answers for a path it does not know:
+   an HTML 404, not a JSON error. `json()` must therefore REJECT, exactly as a
    browser's Response.json() does on a body it cannot parse. */
 function htmlReply(status) {
   return {
@@ -631,10 +631,10 @@ check('clicking the Polymarket tab shows its panel',
     getCfg().polymarket.lastError + ' || ' + elements.get('polyBoardStatus').textContent);
 
   /* ------------------------------------------------------------- round D
-     The panel opened from predictions/server.js (8791) instead of the hub: that
-     server has no /api/polymarket route, so it answers a plain HTML 404. The
-     operator must be told which server to start — and the category must keep
-     the headlines it already has. */
+     The panel opened somewhere other than the hub (a static server, or an old
+     bookmark): that server has no /api/polymarket route, so it answers a plain
+     HTML 404. The operator must be told which server to start — and the
+     category must keep the headlines it already has. */
   const keptNamed = (catCfg('named').items || []).map((i) => i.id).join(',');
   const keptEconomy = (catCfg('economy').items || []).map((i) => i.id).join(',');
   polyState.fail = null;

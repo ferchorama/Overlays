@@ -215,6 +215,7 @@ echo "    Hub      http://localhost:$PORT/"
 echo "    Weather  http://localhost:$PORT/weather/index.html"
 echo "    Topics   http://localhost:$PORT/topics/index.html"
 echo "    Market   http://localhost:$PORT/market/index.html"
+echo "    Predictions http://localhost:$PORT/predictions/index.html"
 echo
 echo "  Press Ctrl+C to stop."
 echo "  =========================================================="

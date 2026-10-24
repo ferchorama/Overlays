@@ -211,15 +211,17 @@ if (bootError) {
     stale.header.title.text = 'STORED TITLE';
     stale.topics.items = [{ text: 'Stored topic one', enabled: true }];
     stale.topics.maxRows = 3;
+    delete stale.topics.rowHeight;                   /* a key the saved copy predates */
 
     const merged = M.apply(shipped, stale);
-    check('stale stored palette is discarded', merged.panel.background === shipped.panel.background,
-      merged.panel.background);
-    check('stale stored ink is discarded', merged.header.title.color === shipped.header.title.color,
+    check('a saved palette survives the version bump (settings are persistent)',
+      merged.panel.background === 'rgba(14,20,32,0.40)', merged.panel.background);
+    check('a saved ink survives the version bump', merged.header.title.color === '#ffffff',
       merged.header.title.color);
-    check('stale stored row gradient is discarded',
-      merged.topics.gradient[0].color === shipped.topics.gradient[0].color,
-      merged.topics.gradient[0].color);
+    check('a saved row gradient survives the version bump',
+      merged.topics.gradient[0].color === 'rgba(10,10,10,0.9)', merged.topics.gradient[0].color);
+    check('a key the saved copy never had comes from the build',
+      merged.topics.rowHeight === shipped.topics.rowHeight, 'rowHeight=' + merged.topics.rowHeight);
     check('stored title and topics survive the migration',
       merged.header.title.text === 'STORED TITLE' && merged.topics.items.length === 1 &&
       merged.topics.items[0].text === 'Stored topic one' && merged.topics.maxRows === 3,
@@ -242,6 +244,14 @@ check('form controls present', [...elements.values()].filter((n) => ['INPUT', 'S
   [...elements.values()].filter((n) => ['INPUT', 'SELECT', 'TEXTAREA'].includes(n.tagName)).length + ' controls');
 check('status line shows the build version', /v\d+\.\d+\.\d+/.test(elements.get('status').textContent), elements.get('status').textContent);
 check('on-air UI is gone', !/btnNext|c_hlColor|onair/.test(HTML), 'no highlight controls');
+
+/* The bug this guards: boot used to push() — which POSTs — so merely opening
+   the panel wrote this browser's copy (often the shipped samples) over the
+   operator's live config.json. Reading must never write. */
+check('opening the panel reads config.json instead of saving it',
+  fetches.some((f) => f.url.includes('api/config') && f.method === 'GET') &&
+  !fetches.some((f) => f.method === 'POST'),
+  fetches.map((f) => f.method + ' ' + f.url).join(', ') || 'no requests');
 
 /* rows built from innerHTML */
 const topicRows = elements.get('topicList').children;

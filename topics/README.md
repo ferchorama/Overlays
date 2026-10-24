@@ -30,9 +30,9 @@ font, size, timing and text can be changed without touching code.
 | `style.css` | Layout + themable CSS variables. |
 | `script.js` | Config merge, DOM build, GSAP entrance, sync + control API. |
 | `config.js` | **All default values / design tokens.** Edit here for permanent changes. |
+| `config-merge.js` | Version-aware migration that **keeps every saved setting** across a build update and fills in new options. |
 | `admin.html` / `admin.css` / `admin.js` | The control panel (live preview + editors + presets). |
-| `server.js` | Optional zero-dependency Node server: serves the files, stores `config.json`, exposes the command API. |
-| `config.json` | Created by the server when you hit **Save** — the overlay polls it, so OBS follows your edits live. |
+| `config.json` | Created by the hub when you hit **Save** — the overlay polls it, so OBS follows your edits live. |
 
 ---
 
@@ -45,39 +45,24 @@ font, size, timing and text can be changed without touching code.
 3. The panel animates in on load and stays.
 
 Change things permanently by editing `config.js`, or open `admin.html` directly,
-customize, hit **Export** and paste the JSON into `config.js`.
+customize, copy the raw JSON from **Presets** and paste it into `config.js`.
 
 ### 2. Recommended (live control + Stream Deck)
 
-Both overlays share **one** server — start it once and this widget is up too:
+Every overlay shares **one** hub — start it once and this widget is up too:
 
 ```bash
-cd ~/Documents/Overlays
+cd Overlays
 node server.js            # → hub at http://localhost:8790
 ```
 
 * Control panel: <http://localhost:8790/topics/admin.html>
 * OBS browser source: `http://localhost:8790/topics/index.html`
 
-The old per-app port (`http://localhost:8787/index.html`) is no longer opened by
-default. Point your OBS source at the `/topics/` URL above, or start the hub with
-`LEGACY=1` if you would rather not re-wire it.
-
-<details>
-<summary>Running this widget on its own</summary>
-
-```bash
-cd topics           # from ~/Documents/Overlays
-node server.js            # → http://localhost:8787
-```
-
-* Control panel: <http://localhost:8787/admin.html>
-* OBS browser source URL: `http://localhost:8787/index.html`
-
-</details>
-
-Now every edit in the control panel is written to `config.json` and the running
-OBS source picks it up within ~1.5 s **without replaying the entrance**.
+Opening the control panel only **reads** `config.json` and adopts the server
+copy over this browser's `localStorage`; an edit, reset, preset or Apply JSON
+then writes it back, and the running OBS source picks it up within ~1.5 s
+**without replaying the entrance**.
 
 ### 3. OBS browser-source settings
 
@@ -107,7 +92,7 @@ Keyboard (overlay window): `i` plays the entrance.
 ### Stream Deck / Companion
 
 Add a **Web Request** action pointing at
-`http://localhost:8787/api/command?action=in` etc. — that's it.
+`http://localhost:8790/topics/api/command?action=in` etc. — that's it.
 
 ---
 
@@ -133,7 +118,9 @@ The control panel has six tabs:
   greys would undo the look in a single click.
 
 Everything is written to `localStorage`, pushed to the live preview instantly,
-and (with `server.js` running) saved to `config.json`.
+and saved to `config.json` through the hub. Opening the panel does not write: it
+GETs the config once at boot, and only an edit, reset, preset or Apply JSON
+POSTs it back.
 
 ### Fonts
 
@@ -210,11 +197,11 @@ covers the entrance starting exactly once (a GSAP `.delay()` on an already-playi
 timeline re-begins it). `contrast.js` measures the row ink against the **top and
 middle** gradient stops and asserts no preset can quietly go dark. `admin.js`
 confirms the on-air highlight feature is really gone, that every bound field still
-exists, and that a config saved by an older build keeps your title, date and topics
-but takes the shipped look — the same stale-config rule the weather widget is
-guarded by.
+exists, and that a config saved by an older build keeps every saved setting —
+title, date, topics, theme and look — while new options are filled in from the
+build. That is the same persistence rule the other three widgets are guarded by.
 
-Current results: smoke **8/8**, contrast **15/15**, admin **31/31**.
+Current results: smoke **10/10**, contrast **15/15**, admin **33/33**.
 
 ---
 
@@ -250,20 +237,19 @@ Still seeing the old build? In OBS right-click the source → **Refresh**, or ti
 
 ---
 
-### Saved configs are migrated, not pinned
+### Settings are persistent
 
-The control panel and the overlay each keep a full copy of the config
-(`localStorage` and `config.json`). If that copy came from an older build it
-used to win, so a palette fix would silently revert the next time the panel
-rendered — the theme appearing to "change back" on the next edit.
+The panel and the overlay each keep a full copy of the config (`localStorage` and
+`config.json`). **A build update never resets what you saved.** `config-merge.js`
+runs on every load and save:
 
-`config-merge.js` fixes that: while `meta.version` is unchanged your saved
-settings win; when the version changes, the saved config keeps only your
-**content** (the rows, the title, the theme) and the shipped build supplies the
-whole **look**. The panel header tells you when this happened.
+* same `meta.version` → your saved config wins;
+* new version → every saved value the build still knows wins, new options come
+  from the shipped build, retired keys are dropped;
+* your title, date, theme, rows and every look value stay exactly as saved;
+* a saved `false` survives, because only `undefined` has no copy — an earlier
+  build turned a saved `false` into `{}` (truthy), which could switch
+  `subtitle.autoDate` back on after a version bump.
 
-Content is copied **by value and as-is**. An earlier build cloned with
-`JSON.parse(JSON.stringify(o || {}))`, which turned a saved `false` into an empty
-object — and `{}` is truthy, so `subtitle.autoDate: false` could come back ON after a
-version bump. Falsy values now survive a migration unchanged.
-
+The panel reports the upgrade once, e.g.
+`settings upgraded to v1.1.4 (was v1.1.1) — your settings were kept`.

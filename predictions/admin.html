@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Prediction Markets — Control</title>
-  <link rel="stylesheet" href="admin.css?v=1.3.0" />
+  <link rel="stylesheet" href="admin.css?v=1.4.1" />
 <script>
   /* The hub is the single source of truth for the theme: same origin, same
      localStorage key, so switching it there switches every panel. Resolved
@@ -50,10 +50,10 @@
           <option value="0.75">75%</option>
           <option value="1">100%</option>
         </select>
-        <a id="linkOut" class="mini" href="index.html?v=1.3.0" target="_blank">open overlay &#8599;</a>
+        <a id="linkOut" class="mini" href="index.html?v=1.4.1" target="_blank">open overlay &#8599;</a>
       </div>
       <div class="preview__stage" id="previewStage">
-        <iframe id="preview" src="index.html?preview=1&v=1.3.0" title="preview"></iframe>
+        <iframe id="preview" src="index.html?preview=1&v=1.4.1" title="preview"></iframe>
       </div>
       <p class="hint">
         In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
@@ -67,7 +67,7 @@
     <section class="editor">
       <nav class="tabs" role="tablist" aria-label="Settings sections">
         <button class="tab is-active" data-tab="content" role="tab" aria-selected="true">Content</button>
-        <button class="tab" data-tab="poly" role="tab" aria-selected="false">Polymarket</button>
+        <button class="tab" data-tab="poly" role="tab" aria-selected="false">Headlines</button>
         <button class="tab" data-tab="look" role="tab" aria-selected="false">Look</button>
         <button class="tab" data-tab="layout" role="tab" aria-selected="false">Layout</button>
         <button class="tab" data-tab="anim" role="tab" aria-selected="false">Animation</button>
@@ -91,7 +91,7 @@
             <div class="markethead" aria-hidden="true">
             <span class="mh" title="drag to reorder"></span>
             <span class="mh" title="the market question">Topic</span>
-            <span class="mh" title="CoinGecko asset id — drives the price chart and Fetch">Asset</span>
+            <span class="mh" title="asset id — drives the price chart and Fetch">Asset</span>
             <span class="mh" title="probability in percent">Prob %</span>
             <span class="mh" title="volume in dollars">Volume</span>
             <span class="mh" title="move in percentage points">Chg</span>
@@ -218,14 +218,22 @@
 
         <section class="group">
           <header class="group__head"><h2 class="group__title">Asset data</h2></header>
+          <div class="ds-row">
+            <button id="btnDataUpdate" class="btn btn--ghost" type="button">Update now</button>
+            <span id="dataStatus" class="ds-status" role="status" aria-live="polite"></span>
+          </div>
+          <p class="hint">
+            The 7-day price lines are fetched through the hub once per load; there is no timer.
+            The hub shares one CoinGecko cache with the assets board, so a price it already has is free here.
+          </p>
           <div class="row2">
             <div class="field">
               <label>Asset data feed <span class="muted">(7-day price history)</span></label>
-              <input id="c_dataProxy" type="text" placeholder="/market/api/market" />
+              <input id="c_dataProxy" type="text" placeholder="api/data" />
             </div>
             <div class="field">
               <label>Public endpoint <span class="muted">(used by Fetch if the hub is down)</span></label>
-              <input id="c_dataDirect" type="text" placeholder="https://api.coingecko.com/api/v3/coins/markets" />
+              <input id="c_dataDirect" type="text" placeholder="direct market endpoint" />
             </div>
           </div>
           <label class="check"><input type="checkbox" id="c_dataEnabled" /> fetch asset history</label>
@@ -271,11 +279,11 @@
             <label>Headline source</label>
             <select id="c_source">
               <option value="manual">manual &mdash; the hand-typed board</option>
-              <option value="polymarket">polymarket &mdash; the fetched headlines</option>
+              <option value="polymarket">headlines &mdash; the fetched board</option>
             </select>
           </div>
           <p class="hint">
-            <b>manual</b> is the board typed in the Content tab. <b>polymarket</b> is the fetched
+            <b>manual</b> is the board typed in the Content tab. <b>headlines</b> is the fetched
             headlines grouped by category &mdash; selecting it is what puts them on air.
           </p>
         </section>
@@ -479,8 +487,9 @@
     </section>
   </main>
 
-  <script src="config.js?v=1.3.0"></script>
-  <script src="config-merge.js?v=1.3.0"></script>
-  <script src="admin.js?v=1.3.0"></script>
+  <script src="../shared/datasync.js?v=1.4.1"></script>
+  <script src="config.js?v=1.4.1"></script>
+  <script src="config-merge.js?v=1.4.1"></script>
+  <script src="admin.js?v=1.4.1"></script>
 </body>
 </html>

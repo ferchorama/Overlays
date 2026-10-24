@@ -46,6 +46,9 @@
     var out = (M && typeof M.apply === 'function' && patch && patch.meta && patch.meta.version)
       ? M.apply(SHIPPED, patch)
       : deepMerge(base, patch);
+    /* one door for assets, whatever route the config arrived by: a raw-JSON
+       Apply cannot introduce a duplicate, a blank or a ticker */
+    if (M && typeof M.cleanCategories === 'function') out.categories = M.cleanCategories(out.categories);
     if (window.CM_applyFont) window.CM_applyFont(out);
     return out;
   }
@@ -90,27 +93,52 @@
 
   var pendingSave = false;
 
+  /* Message the live preview without saving. Boot and server-config adoption use
+     this: opening the panel (or adopting the file that is on air) must never
+     write config.json. */
+  function postPreview() {
+    if (preview && preview.contentWindow) {
+      preview.contentWindow.postMessage({ type: 'cm:config', config: cfg }, '*');
+    }
+  }
+
   function push() {
     stamp();
+    /* Record the asset format, not just the list: schema 2 = unique provider ids.
+       The arrays themselves are NOT replaced here — the row buttons hold a
+       reference to `cat.coins`, and swapping the array out from under them made
+       a move/delete edit a detached copy (the click looked like a no-op). */
+    cfg.meta.schema = (window.CM_MIGRATE && SHIPPED.meta && SHIPPED.meta.schema) || 2;
+    /* one asset id per section, always: every save and every live push passes
+       through this, so no path can store the same asset twice */
+    var dupes = (window.CM_MIGRATE && CM_MIGRATE.cleanInPlace)
+      ? CM_MIGRATE.cleanInPlace(cfg.categories) : 0;
     pendingSave = true;
     try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ }
     $('rawJson').value = JSON.stringify(cfg, null, 2);
     syncVersion();
     /* the overlay rebuilds on every config message, so coalesce keystrokes */
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(function () {
-      if (preview && preview.contentWindow) {
-        preview.contentWindow.postMessage({ type: 'cm:config', config: cfg }, '*');
-      }
-    }, 120);
+    pushTimer = setTimeout(postPreview, 120);
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveToServer, 600);
-    status('updated (live)', 'ok');
+    if (dupes) status(dupes + ' duplicate asset entr' + (dupes === 1 ? 'y' : 'ies') + ' removed', 'warn');
+    else status('updated (live)', 'ok');
+  }
+
+  /* What is written to disk is cleaned (duplicates, blanks, tickers) on a copy,
+     so the editor keeps the exact arrays its handlers point at. */
+  function cleanForSave(config) {
+    var out = JSON.parse(JSON.stringify(config));
+    if (window.CM_MIGRATE && CM_MIGRATE.cleanCategories) out.categories = CM_MIGRATE.cleanCategories(out.categories);
+    out.meta = out.meta || {};
+    out.meta.schema = (window.CM_MIGRATE && SHIPPED.meta && SHIPPED.meta.schema) || 2;
+    return out;
   }
 
   function saveToServer() {
     stamp();
-    var body = JSON.stringify(cfg);
+    var body = JSON.stringify(cleanForSave(cfg));
     return fetch('api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -258,16 +286,6 @@
   }
 
   /* ============================================================== categories */
-  function splitCoins(text) {
-    var seen = {};
-    return String(text || '').split(/[\s,]+/).map(function (s) { return s.trim(); })
-      .filter(function (id) {
-        if (!id || seen[id]) return false;
-        seen[id] = true;
-        return true;
-      });
-  }
-
   function renderCategoryLabels() {
     DYN.cats = DYN.cats.filter(function (e) { return e.path.indexOf('categories.') !== 0; });
     var wrap = $('categoryLabels');
@@ -295,6 +313,256 @@
     }
   }
 
+  /* ================================================================ assets
+     The list of assets inside one section. Stored and edited as PROVIDER IDS:
+     typing searches CoinGecko by name through the hub and only the picked
+     result's id is saved, so a ticker can never become the stored value.
+     Duplicates are refused in the section that already holds them; an empty
+     section is a valid state (the board renders an explicit empty message). */
+  var ASSET_META_KEY = 'cm-asset-meta-v1';
+  var assetMeta = {};
+  try { assetMeta = JSON.parse(localStorage.getItem(ASSET_META_KEY) || '{}') || {}; } catch (e) { assetMeta = {}; }
+  var metaAskedAt = {};
+
+  function saveAssetMeta() {
+    try { localStorage.setItem(ASSET_META_KEY, JSON.stringify(assetMeta)); } catch (e) { /* quota */ }
+  }
+  function rememberCoins(list) {
+    (list || []).forEach(function (c) {
+      if (!c || !c.id) return;
+      var prev = assetMeta[c.id] || {};
+      assetMeta[c.id] = {
+        name: c.name || prev.name || c.id,
+        symbol: c.symbol || prev.symbol || ''
+      };
+    });
+    saveAssetMeta();
+  }
+  function labelOf(id) { var m = assetMeta[id]; return (m && m.name) ? m.name : id; }
+  function symbolOf(id) { var m = assetMeta[id]; return (m && m.symbol) ? m.symbol : ''; }
+
+  /* names for ids the operator has not searched for yet (a shipped list, a
+     config typed by hand). Reads the hub's cache — no provider call unless the
+     cache is cold — and then repaints just the names. */
+  function ensureAssetMeta(ids, done) {
+    var now = Date.now(), want = [];
+    (ids || []).forEach(function (id) {
+      if (!id || assetMeta[id]) return;
+      if (metaAskedAt[id] && now - metaAskedAt[id] < 600000) return;
+      if (want.indexOf(id) === -1) want.push(id);
+    });
+    if (!want.length) { if (done) done(); return; }
+    want.forEach(function (id) { metaAskedAt[id] = now; });
+    fetch('api/market?ids=' + encodeURIComponent(want.join(',')) + '&sparkline=0&changes=24h', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) { if (Array.isArray(rows)) rememberCoins(rows); })
+      .catch(function () { /* the id is still a usable label */ })
+      .then(function () { if (done) done(); });
+  }
+
+  function iconBtn(text, title, fn, extra) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ic' + (extra ? ' ' + extra : '');
+    b.title = title;
+    b.innerHTML = text;
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function createAssetCombo(input, list, onPick) {
+    return window.createCombobox({
+      input: input,
+      list: list,
+      minChars: 1,
+      debounceMs: 220,
+      cacheMs: 5 * 60 * 1000,
+      itemClass: 'asset-opt',
+      nameClass: 'asset-opt__name',
+      whereClass: 'asset-opt__where',
+      emptyText: 'no matching assets',
+      fetchResults: function (q, signal) {
+        return fetch('api/search?q=' + encodeURIComponent(q), signal ? { signal: signal } : {})
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { return (j && j.coins) || []; });
+      },
+      itemKey: function (c) { return c.id; },
+      optionAttrs: function (c) { return { 'data-id': c.id }; },
+      renderOption: function (c) {
+        return { label: c.name, note: (c.symbol ? c.symbol + ' · ' : '') + c.id, data: c };
+      },
+      onPick: function (c) {
+        rememberCoins([c]);
+        onPick(c);
+      },
+      onError: function () { status('asset search unavailable — is the hub running?', 'err'); }
+    });
+  }
+
+  function renderAssets(cat, host, emptyEl, countEl) {
+    host.innerHTML = '';
+    var coins = cat.coins || (cat.coins = []);
+    emptyEl.style.display = coins.length ? 'none' : 'block';
+    countEl.textContent = coins.length + ' asset' + (coins.length === 1 ? '' : 's');
+
+    coins.forEach(function (id, idx) {
+      var row = document.createElement('div');
+      row.className = 'asset';
+      row.dataset.id = id;
+
+      var main = document.createElement('div');
+      main.className = 'asset__main';
+      var nm = document.createElement('span');
+      nm.className = 'asset__name';
+      nm.textContent = labelOf(id);
+      var sym = document.createElement('span');
+      sym.className = 'asset__sym';
+      sym.textContent = symbolOf(id);
+      var idEl = document.createElement('span');
+      idEl.className = 'asset__id';
+      idEl.textContent = id;
+      main.appendChild(nm);
+      main.appendChild(sym);
+      main.appendChild(idEl);
+      row.appendChild(main);
+
+      row.appendChild(iconBtn('&#8593;', 'move up', function () {
+        if (idx === 0) return;
+        coins.splice(idx - 1, 0, coins.splice(idx, 1)[0]);
+        push(); renderCategories();
+      }, 'up'));
+      row.appendChild(iconBtn('&#8595;', 'move down', function () {
+        if (idx === coins.length - 1) return;
+        coins.splice(idx + 1, 0, coins.splice(idx, 1)[0]);
+        push(); renderCategories();
+      }, 'down'));
+      row.appendChild(iconBtn('Change', 'replace this asset', function () {
+        openAssetReplace(row, cat, idx, coins);
+      }, 'change ic--wide'));
+      row.appendChild(iconBtn('&#10005;', 'remove this asset', function () {
+        coins.splice(idx, 1);
+        push(); renderCategories();
+      }, 'del'));
+
+      host.appendChild(row);
+    });
+
+    /* names arrive later; repaint the labels only, so a focus ring inside the
+       section is not thrown away */
+    ensureAssetMeta(coins, function () {
+      host.querySelectorAll('.asset').forEach(function (row) {
+        var id = row.dataset.id;
+        var nm = row.querySelector('.asset__name');
+        var sym = row.querySelector('.asset__sym');
+        if (nm) nm.textContent = labelOf(id);
+        if (sym) sym.textContent = symbolOf(id);
+      });
+    });
+  }
+
+  /* An asset the provider cannot price would render as an empty row forever, so
+     ask the hub before committing it to the board. A failed/absent answer is not
+     a refusal: only a definite "no record for this id" blocks the add. */
+  function withMarketData(coin, onYes, onNo) {
+    fetch('api/market?ids=' + encodeURIComponent(coin.id) + '&sparkline=0&changes=24h', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) {
+        if (!Array.isArray(rows)) return onYes();
+        if (rows.some(function (c) { return c && c.id === coin.id; })) return onYes();
+        onNo();
+      })
+      .catch(function () { onYes(); });
+  }
+  /* "Change asset": the row turns into a search box; picking a match replaces
+     the id IN PLACE, so order is preserved. */
+  function openAssetReplace(row, cat, idx, coins) {
+    var original = coins[idx];
+    row.classList.add('is-editing');
+    row.innerHTML = '';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'asset-add';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'asset-search';
+    input.placeholder = 'search a replacement by name…';
+    input.autocomplete = 'off';
+    var list = document.createElement('ul');
+    list.className = 'asset-list';
+    list.id = 'asset-replace-' + idx + '-' + Math.random().toString(36).slice(2, 7);
+    list.hidden = true;
+    wrap.appendChild(input);
+    wrap.appendChild(list);
+
+    var cancel = iconBtn('&#10005;', 'cancel', function () { renderCategories(); });
+    row.appendChild(wrap);
+    row.appendChild(cancel);
+
+    createAssetCombo(input, list, function (coin) {
+      if (coin.id === original) { renderCategories(); return; }
+      if (coins.indexOf(coin.id) !== -1) {
+        status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');
+        renderCategories();
+        return;
+      }
+      withMarketData(coin, function () {
+        if (coins.indexOf(coin.id) !== -1) {
+          status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');
+          renderCategories();
+          return;
+        }
+        coins[idx] = coin.id;
+        push();
+        renderCategories();
+        status('replaced ' + original + ' with ' + coin.name + ' (' + coin.id + ')', 'ok');
+      }, function () {
+        renderCategories();
+        status('no market data for "' + (coin.name || coin.id) + '" — pick another asset', 'err');
+      });
+    });
+
+    input.focus();
+  }
+
+  /* Add-to-section search box below the list. */
+  function mountAssetSearch(host, cat, catIndex, assetsEl, emptyEl, countEl) {
+    host.innerHTML = '';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'asset-search';
+    input.placeholder = 'add an asset by name…';
+    input.autocomplete = 'off';
+    var list = document.createElement('ul');
+    list.className = 'asset-list';
+    list.id = 'asset-add-' + catIndex;
+    list.hidden = true;
+    host.appendChild(input);
+    host.appendChild(list);
+
+    var combo = createAssetCombo(input, list, function (coin) {
+      if ((cat.coins || []).indexOf(coin.id) !== -1) {
+        status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');
+        return;
+      }
+      withMarketData(coin, function () {
+        /* the validation is async, so re-check the section before appending */
+        if ((cat.coins || []).indexOf(coin.id) !== -1) {
+          status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');
+          return;
+        }
+        cat.coins = cat.coins || [];
+        cat.coins.push(coin.id);
+        push();
+        renderCategories();
+        status('added ' + coin.name + ' (' + coin.id + ')', 'ok');
+      }, function () {
+        status('no market data for "' + (coin.name || coin.id) + '" — pick another asset', 'err');
+      });
+    });
+
+    input.addEventListener('input', combo.schedule);
+    ensureAssetMeta(cat.coins, function () { renderAssets(cat, assetsEl, emptyEl, countEl); });
+  }
   function renderCategories() {
     var list = $('categoryList');
     list.innerHTML = '';
@@ -356,28 +624,29 @@
       head.appendChild(down);
       head.appendChild(del);
 
-      var coins = document.createElement('textarea');
-      coins.className = 'coins';
-      coins.rows = 3;
-      coins.spellcheck = false;
-      coins.placeholder = 'bitcoin, ethereum, solana …';
-      coins.value = (cat.coins || []).join(', ');
-      coins.addEventListener('input', function () {
-        cat.coins = splitCoins(coins.value);
-        count.textContent = cat.coins.length + ' coin id' + (cat.coins.length === 1 ? '' : 's');
-        push();
-      });
-
       var meta = document.createElement('div');
       meta.className = 'cat__meta';
       var count = document.createElement('span');
       count.className = 'count';
-      count.textContent = (cat.coins || []).length + ' coin id' + ((cat.coins || []).length === 1 ? '' : 's');
+      count.textContent = (cat.coins || []).length + ' asset' + ((cat.coins || []).length === 1 ? '' : 's');
       meta.appendChild(count);
 
+      var assets = document.createElement('div');
+      assets.className = 'assets';
+      var empty = document.createElement('p');
+      empty.className = 'assets__empty';
+      empty.textContent = 'No assets in this section — the board says so on air.';
+      var add = document.createElement('div');
+      add.className = 'asset-add';
+
       row.appendChild(head);
-      row.appendChild(coins);
+      row.appendChild(assets);
+      row.appendChild(empty);
+      row.appendChild(add);
       row.appendChild(meta);
+
+      renderAssets(cat, assets, empty, count);
+      mountAssetSearch(add, cat, i, assets, empty, count);
 
       row.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', String(i)); });
       row.addEventListener('dragover', function (e) { e.preventDefault(); });
@@ -418,19 +687,40 @@
   }
 
   function trimCoins() {
-    var removed = 0;
-    (cfg.categories || []).forEach(function (cat) {
-      var clean = splitCoins((cat.coins || []).join(','));
-      removed += (cat.coins || []).length - clean.length;
-      cat.coins = clean;
-    });
+    var before = 0;
+    (cfg.categories || []).forEach(function (cat) { before += (cat.coins || []).length; });
+    if (window.CM_MIGRATE && CM_MIGRATE.cleanCategories) cfg.categories = CM_MIGRATE.cleanCategories(cfg.categories);
+    var after = 0;
+    (cfg.categories || []).forEach(function (cat) { after += (cat.coins || []).length; });
     afterReorder();
-    status(removed ? 'removed ' + removed + ' blank / duplicate coin id(s)' : 'coin lists are already clean', 'ok');
+    status(before > after
+      ? 'removed ' + (before - after) + ' blank / duplicate / invalid id(s)'
+      : 'no duplicates or invalid ids', 'ok');
+  }
+
+  /* Restore the hardcoded assets per section. This is a per-section reset of the
+     list only — labels, order and the whole look are the operator's and stay. */
+  function restoreDefaultAssets() {
+    if (!confirm('Restore every section\'s asset list to the shipped defaults?\n\n' +
+                 'Labels, order and look are kept; only the assets inside each section change.')) return;
+    var defaults = (SHIPPED.categories || []);
+    var byId = {};
+    defaults.forEach(function (d) { byId[d.id] = d; });
+    var changed = 0;
+    (cfg.categories || []).forEach(function (cat) {
+      var d = byId[cat.id] || defaults[0];
+      cat.coins = d ? (d.coins || []).slice() : [];
+      changed++;
+    });
+    if (window.CM_MIGRATE && CM_MIGRATE.cleanCategories) cfg.categories = CM_MIGRATE.cleanCategories(cfg.categories);
+    afterReorder();
+    status('restored the default asset lists in ' + changed + ' section(s)', 'ok');
   }
 
   $('btnAddCategory').addEventListener('click', addCategory);
   $('btnAddCategory2').addEventListener('click', addCategory);
   $('btnSortCoins').addEventListener('click', trimCoins);
+  $('btnRestoreAssets').addEventListener('click', restoreDefaultAssets);
   $('btnGoCategories').addEventListener('click', function () { showTab('categories'); });
 
   /* ================================================================= columns */
@@ -697,16 +987,12 @@
     bind('rows.divider.width', 'c_divW');
     bind('rows.zebraColor', 'c_zebraColor');
     bindAlpha('rows.zebraColor', 'c_zebraColorA');
-    bind('rows.tickFlash', 'c_tickFlash');
-    bindAlpha('rows.tickFlash', 'c_tickFlashA');
-    bind('rows.tickFlashMs', 'c_tickFlashMs');
     bind('rows.divider.enabled', 'c_divOn');
     bind('rows.zebra', 'c_zebra');
 
     /* ---- Look · logo ---- */
     bind('rows.logo.size', 'c_logoSize');
     bind('rows.logo.radius', 'c_logoRadius');
-    bind('rows.logo.show', 'c_logoShow');
     bind('rows.logo.fallbackBackground', 'c_logoFallbackBg');
     bindAlpha('rows.logo.fallbackBackground', 'c_logoFallbackBgA');
     bind('rows.logo.fallbackColor', 'c_logoFallbackC');
@@ -723,8 +1009,6 @@
     bind('colors.down', 'c_colDown');
     bind('colors.flat', 'c_colFlat');
     bind('colors.rankColor', 'c_colRank');
-    bind('colors.sparkUp', 'c_colSparkUp');
-    bind('colors.sparkDown', 'c_colSparkDown');
 
     /* ---- Columns ---- */
     bind('columns.height', 'c_colsH');
@@ -764,7 +1048,6 @@
     bind('rows.change.weight', 'c_f_changeWeight');
     bind('rows.asset.tickerLetterSpacing', 'c_assetTickerTrack');
     bind('rows.asset.nameMaxChars', 'c_assetNameMax');
-    bind('header.autoShrink', 'c_titleAutoShrink');
     bind('tabs.uppercase', 'c_tabsUpper2');
     bind('columns.uppercase', 'c_colsUpper2');
 
@@ -779,10 +1062,6 @@
     /* ---- Animation ---- */
     bind('animation.autoPlay', 'c_autoPlay');
     bind('animation.autoPlayDelay', 'c_autoPlayDelay');
-    bind('animation.tweenValues', 'c_tweenValues');
-    bind('animation.tweenDuration', 'c_tweenDuration');
-    bind('animation.tweenEase', 'c_tweenEase');
-    bind('animation.flashOnTick', 'c_flashOnTick');
 
     bind('animation.headerDuration', 'c_headerDuration');
     bind('animation.headerFrom', 'c_headerFrom');
@@ -793,6 +1072,11 @@
     bind('animation.rowStagger', 'c_rowStagger');
     bind('animation.rowStart', 'c_rowStart');
     bind('animation.rowFrom', 'c_rowFrom');
+    bind('animation.newRowDuration', 'c_newRowDuration');
+    bind('animation.newRowFrom', 'c_newRowFrom');
+    bind('animation.newRowEase', 'c_newRowEase');
+    bind('animation.removeRowDuration', 'c_removeRowDuration');
+    bind('animation.removeRowEase', 'c_removeRowEase');
     bind('animation.sparklineDraw', 'c_sparkDraw');
 
     /* trend line glow — travel, rest, repeat */
@@ -816,12 +1100,9 @@
     bind('animation.tabInEase', 'c_tabInEase');
 
     /* ---- Data ---- */
-    bind('data.refreshSeconds', 'c_refresh');
     bind('data.currency', 'c_currency');
     bind('data.sparkline', 'c_sparkData');
     bind('data.timeoutMs', 'c_timeout');
-    bind('data.retryOnFailSeconds', 'c_retry');
-    bind('data.showStaleAfterSeconds', 'c_stale');
     bind('data.cacheKey', 'c_cacheKey');
     bind('data.useCacheOnFailure', 'c_useCache');
 
@@ -839,10 +1120,34 @@
   $('btnHide').addEventListener('click', function () { command({ type: 'cm:command', action: 'hide' }); status('hide requested…', 'warn'); });
   $('btnPrev').addEventListener('click', function () { command({ type: 'cm:command', action: 'prev' }); });
   $('btnNext').addEventListener('click', function () { command({ type: 'cm:command', action: 'next' }); });
-  $('btnRefresh').addEventListener('click', function () {
-    command({ type: 'cm:command', action: 'refresh' });
-    status('refresh requested…', 'warn');
-  });
+
+  /* ---------------------------------------------------------- manual update
+     Force the hub to re-read CoinGecko, then bump the command the board already
+     polls so it renders the fresh cache. The board has no timer of its own. */
+  function dataUrl(force) {
+    var ids = [];
+    (cfg.categories || []).forEach(function (cat) {
+      (cat.coins || []).forEach(function (id) {
+        if (ids.indexOf(id) === -1) ids.push(id);
+      });
+    });
+    if (!ids.length) throw new Error('this board has no assets yet — add one in the Categories tab');
+    var q = 'ids=' + encodeURIComponent(ids.join(',')) +
+      '&currency=' + encodeURIComponent((cfg.data && cfg.data.currency) || 'usd') +
+      '&changes=24h,7d' +
+      '&sparkline=' + ((cfg.data && cfg.data.sparkline === false) ? '0' : '1');
+    return 'api/market?' + q + (force ? '&force=1' : '');
+  }
+  if (window.DataSync && $('btnRefresh') && $('dataStatus')) {
+    window.DataSync.mount({
+      app: 'market',
+      button: $('btnRefresh'),
+      status: $('dataStatus'),
+      buildUrl: dataUrl,
+      commandUrl: 'api/command?action=refresh',
+      cooldownMs: 8000
+    });
+  }
 
   $('btnReset').addEventListener('click', function () {
     if (!confirm('Reset every setting to the factory defaults?\n\n' +
@@ -975,11 +1280,13 @@
     ? 'index.html (or http://localhost:8790/market/index.html via Overlays/server.js)'
     : location.origin + location.pathname.replace(/admin\.html$/, 'index.html');
 
+  /* Opening the panel must not write over config.json: read-first adoption below
+     is what decides what is on air. */
   preview.addEventListener('load', function () {
-    push();
+    postPreview();
     status('ready · v' + ((cfg.meta && cfg.meta.version) || APP_V), 'ok');
   }, { once: true });
-  setTimeout(function () { push(); }, 400);
+  setTimeout(postPreview, 400);
   status('ready · v' + APP_V);
   loadFromServer();
 

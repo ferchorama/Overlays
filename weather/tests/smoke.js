@@ -141,20 +141,38 @@ const GEO_OK = {
   }]
 };
 
+/* The overlay no longer talks to Open-Meteo: it asks the hub for every city in
+   one payload. The payload shape below is exactly what /weather/api/data
+   returns (see server.js createWeatherData). */
+function hubPayload() {
+  return {
+    fetchedAt: Date.now(),
+    source: 'open-meteo',
+    cities: [
+      { key: 'll:40.7128,-74.0060', label: 'New York', lat: 40.7128, lon: -74.006,
+        timezone: 'America/New_York', forecast: FORECAST_OK },
+      { key: 'll:25.7617,-80.1918', label: 'Miami', lat: 25.7617, lon: -80.1918,
+        timezone: 'America/New_York', forecast: FORECAST_OK }
+    ]
+  };
+}
+
 let fetchCount = 0;
+let dataFetches = 0;
 global.fetch = (url) => {
   fetchCount++;
   const u = String(url);
   if (u.indexOf('config.json') !== -1) {
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   }
-  if (MODE === 'fail' || MODE === 'no-cache') {
-    return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
+  if (u.indexOf('api/data') !== -1) {
+    dataFetches++;
+    if (MODE === 'fail' || MODE === 'no-cache') {
+      return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(hubPayload()) });
   }
-  if (u.indexOf('geocoding-api') !== -1) {
-    return Promise.resolve({ ok: true, json: () => Promise.resolve(GEO_OK) });
-  }
-  return Promise.resolve({ ok: true, json: () => Promise.resolve(FORECAST_OK) });
+  return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
 };
 
 /* seed a cache for the --fail case ---------------------------------------- */
@@ -172,7 +190,7 @@ if (MODE === 'fail') {
     fetchedAt: Date.now() - 60000, error: null
   });
   store[key] = JSON.stringify({
-    ts: Date.now() - 60000,
+    ts: Date.now() - 10 * 60 * 1000,   /* older than cacheTtlSeconds */
     cities: [cached('New York', 80.2), cached('Miami', 84.2)].slice(0, cityCount)
   });
 }
@@ -245,7 +263,7 @@ setTimeout(() => {
     check('footer timestamp', /Updated/i.test(updated || ''), updated);
     check('state = ready', state === 'ready', state);
     check('aria-live announced', /84 degrees/.test(live), live.slice(0, 60));
-    check('fetch reached the API', fetchCount >= 3, 'fetches=' + fetchCount);
+    check('one hub data request on load', dataFetches === 1, dataFetches + ' api/data request(s)');
     /* shapes must not rely on the SVG default fill (black) */
     var sunSvg = global.WX.icon('clear', true, 'Clear');
     check('sun disc carries a fill', /<circle class="wx-sun" fill=/.test(sunSvg),
@@ -300,18 +318,35 @@ setTimeout(() => {
   } else {
     check('cached value kept on failure', MODE === 'fail' ? /^80°$/.test(temps[0] || '') : true, temps[0]);
     check('honest placeholder without cache', MODE === 'no-cache' ? /– –/.test(temps[0] || '') : true, temps[0]);
-    check('retry message shown', MODE === 'no-cache' ? /RETRYING IN \d+S/i.test(statLabels[0] || '') : true, statLabels[0]);
+    check('no-data cells say how to retry', MODE === 'no-cache' ? /PRESS R TO RETRY/i.test(statLabels[0] || '') : true, statLabels[0]);
     check('state reported honestly', MODE === 'fail' ? state === 'stale' : state === 'error', state);
     check('cached run is marked in the footer', MODE === 'fail' ? /cached/i.test(updated || '') : true, updated);
   }
 
-  let failed = 0;
-  console.log('\n  weather overlay smoke test — mode: ' + MODE + '\n  ' + '-'.repeat(46));
-  results.forEach((r) => {
-    if (!r.pass) failed++;
-    console.log('  ' + (r.pass ? 'PASS' : 'FAIL') + '  ' + r.name + (r.info ? '   [' + r.info + ']' : ''));
-  });
-  console.log('  ' + '-'.repeat(46));
-  console.log('  ' + (results.length - failed) + '/' + results.length + ' checks passed\n');
-  process.exit(failed ? 1 : 0);
+  /* "No periodic refresh" is a timing claim, so it gets a timing assertion:
+     let the config/state pollers run for a couple of seconds and require that
+     the provider-facing request count has not moved. */
+  setTimeout(function () {
+    check('nothing polls the provider while idle', dataFetches === 1,
+      dataFetches + ' api/data request(s) after ~2.2s');
+
+    /* The dashboard's Update now bumps the `refresh` command; the overlay's
+       command handler must re-read the hub. The HTTP + state-file half of that
+       chain is covered by tests/server.js and tests/datasync.js. */
+    global.WX.handleCommand({ action: 'refresh', seq: 999 });
+    setTimeout(function () {
+      check('the refresh command re-reads the hub', dataFetches === 2,
+        dataFetches + ' api/data request(s) after the command');
+
+      let failed = 0;
+    console.log('\n  weather overlay smoke test — mode: ' + MODE + '\n  ' + '-'.repeat(46));
+    results.forEach((r) => {
+      if (!r.pass) failed++;
+      console.log('  ' + (r.pass ? 'PASS' : 'FAIL') + '  ' + r.name + (r.info ? '   [' + r.info + ']' : ''));
+    });
+    console.log('  ' + '-'.repeat(46));
+      console.log('  ' + (results.length - failed) + '/' + results.length + ' checks passed\n');
+      process.exit(failed ? 1 : 0);
+    }, 200);
+  }, 2200);
 }, 700);

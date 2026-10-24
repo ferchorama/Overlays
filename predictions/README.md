@@ -60,8 +60,10 @@ Everything from here to that section describes the hand-typed layout.
   There is deliberately **no progress/loading bar**: the topic changes when you
   change it, so a bar filling on a timer would advertise an auto-advance that does
   not exist.
-* **No provider, no API key, no dependencies.** Every market is typed by hand. If
-  GSAP is blocked, nothing else on the board needs the network except the fonts.
+* **No API key and no dependencies.** Every market is typed by hand. The only
+  network paths are the optional 7-day price series read through the hub and the
+  Polymarket headlines the panel fetches when you ask it to; if GSAP is blocked,
+  the board still renders.
 
 ---
 
@@ -74,8 +76,7 @@ Everything from here to that section describes the hand-typed layout.
 | `script.js` | Config merge, market normalising/sorting, the SVG probability line, GSAP transitions, sync + control API. |
 | `config.js` | **All default values** — the eight sample markets and every design token. Edit here for permanent changes. |
 | `admin.html` / `admin.css` / `admin.js` | The control panel (markets editor, live preview, presets, raw JSON). |
-| `config-merge.js` | Saved-config migration: a version bump keeps your markets and takes the shipped look. |
-| `server.js` | Optional zero-dependency server for running this app **on its own** (port 8791). |
+| `config-merge.js` | Saved-config migration that **keeps every saved setting** across a build update and fills in new options. |
 | `config.json` | Written automatically on every edit — the overlay polls it, so OBS follows your edits live. |
 | `assets/` | The Rollup logo and the optional NYC banner band. |
 | `vendor/gsap.min.js` | Local GSAP so the overlay works offline inside OBS. |
@@ -83,6 +84,7 @@ Everything from here to that section describes the hand-typed layout.
 | `tests/board.js` | Headless test of the headline board + the click/keyboard regressions. |
 | `tests/detail.html` | Browser harness: measures the split view vs the opened detail view in real Chrome. |
 | `tests/glow.html` | Browser harness: measures the chart's travelling glow (dash geometry, loop, reduced motion). |
+| `../shared/datasync.js` | The Asset-data **Update now** control and its guards (`/shared/datasync.js`). |
 
 ---
 
@@ -90,10 +92,10 @@ Everything from here to that section describes the hand-typed layout.
 
 ### 1. Recommended — the shared hub
 
-One server runs every overlay:
+One hub runs every overlay:
 
 ```bash
-cd ~/Documents/Overlays
+cd Overlays
 node server.js            # → hub at http://localhost:8790
 ```
 
@@ -116,22 +118,8 @@ server.
 Transparency is automatic. The overlay designs on a fixed 1920×1080 stage and scales
 itself to the source size, so a 1280×720 source still lines up exactly.
 
-### 3. Running this app on its own
-
-```bash
-cd predictions
-node server.js            # → http://localhost:8791
-```
-
-* Control panel: <http://localhost:8791/admin.html>
-* Overlay: `http://localhost:8791/index.html`
-
-The Polymarket fetch is **hub-only**. `predictions/server.js` serves the board and
-the panel, but the `/api/polymarket` proxy lives in `Overlays/server.js` — it needs
-the hub's cache, retry and error-shaping machinery, and there is no sense in
-duplicating the Gamma adapter. Running this app standalone, the board still works in
-**manual** mode; **Update** reports that the proxy is not being served. Use the hub
-for the headline source.
+The Polymarket fetch is **hub-only**. The `/api/polymarket` proxy lives in
+`Overlays/server.js`. Open the panel from the hub URL above.
 
 ---
 
@@ -179,10 +167,11 @@ the OBS source follows it within ~1.5 s, so writing a lookup straight into the c
 would put a bad number on air the moment it arrived. Nothing is written until you
 press Apply.
 
-The lookup tries the hub proxy first (`/market/api/market`, already cached upstream)
-and falls back to the public endpoint in `data.directUrl`, which is what makes Fetch
-work when the panel is opened without a hub. Results are cached in the page for
-2 minutes, so re-opening the panel for the same asset costs no request.
+The lookup tries the hub first — `api/data`, this app's own prefix, which reads
+the **same** CoinGecko cache as the Digital Assets board — and falls back to the
+public endpoint in `data.directUrl`, which is what makes Fetch work when the panel
+is opened without a hub. Results are cached in the page for 2 minutes, so
+re-opening the panel for the same asset costs no request.
 
 ---
 
@@ -341,13 +330,14 @@ one-line change. Nothing else about the feature is unproven.
 | Play the entrance | **▶ Play entrance** | `/api/command?action=in` |
 | Hide instantly | **Hide** | `/api/command?action=out` |
 | **Fetch the top headlines** | **Update headlines** | — (control panel only) |
+| **Update the 7-day price lines** | **Update now** (Asset data) | `/api/command?action=update` forces the provider read · `?action=refresh` re-reads the hub cache |
 | **Show a specific market** | **click its row** | — (in-page) |
 | **Next topic** | arrow keys / `→` | `/api/command?action=next` |
 | **Previous topic** | arrow keys / `←` | `/api/command?action=prev` |
 | Jump to a topic | `1`–`9` | `/api/command?action=show&index=2` |
 
-The dashboard deliberately carries only **Play entrance · Hide · Export · Reset**
-plus the theme switch. Next/Prev live on the overlay's own keys and on the HTTP API,
+The dashboard deliberately carries only **Play entrance · Hide · Reset** plus the
+theme switch. Next/Prev live on the overlay's own keys and on the HTTP API,
 and there is **no Save button** — every edit is written automatically (debounced
 500 ms), so a change can never be left unsaved by forgetting to click.
 
@@ -458,8 +448,8 @@ the hero advances every `rotate.ms`.
 * **Presets** — four dark editorial palettes (**Graphite** as shipped, **Terminal**,
   **Blueprint**, **Broadcast**) plus raw JSON editing.
 
-Everything is written to `localStorage`, pushed to the live preview instantly and,
-with a server running, saved to `config.json`.
+Everything is written to `localStorage`, pushed to the live preview instantly and
+saved to `config.json` through the hub.
 
 ### URL parameters
 
@@ -521,14 +511,35 @@ animation, with the safety net below covering a timeline that never finishes.
 | `manual` | whatever integers you put in the market's `history` array |
 
 `asset` mode asks the shared hub for the series:
-`/market/api/market?ids=…&sparkline=1` — the Digital Assets board's own cached proxy,
-so one upstream CoinGecko call serves both overlays. That matters: measured from this
-machine, **10 of 12 rapid keyless CoinGecko calls returned 429**, and the assets
-board's server carries a CoinPaprika fallback for exactly that reason.
+`/predictions/api/data?ids=…&currency=usd&changes=24h,7d&sparkline=1` — the same
+CoinGecko build and the **same server cache** the Digital Assets board reads, so a
+series already fetched for the board is free here. That matters: measured from
+this machine, **10 of 12 rapid keyless CoinGecko calls returned 429**, and the
+assets board's server carries a CoinPaprika fallback for exactly that reason. The
+proxy path is resolved against the page's mount by `window.PM_hubUrl` in
+`config-merge.js`, so the chart still reaches the hub when it is served behind a
+base path instead of at the server root.
 
 Because a price series is not a percentage, the y-range is padded relatively instead
 of being clamped to 0–100, and the axis prints money instead of `%`. A probability
 series is still clamped and still prints `%`.
+
+### Asset data: one read per load, no timer
+
+The chart's series is asked for **once when the board loads**, never on an
+interval: the overlay paints what is already in `localStorage`
+(`pm-asset-cache-v1`) and then lets the hub confirm it. The hub answers from its
+90 s cache, so a reload or a scene switch inside that window costs no provider
+call. `data.refreshSeconds` (300) is only the page's own freshness window for a
+series — not a refresh timer.
+
+**Update now** on the Asset data panel calls `api/data` with `force=1` (one
+provider read; the hub joins an in-flight request and refuses two forced reads
+inside 2 s with `429 cooldown`), then bumps the `refresh` command so every open
+board redraws from the warm cache. `update` over HTTP is the same from a Stream
+Deck; `refresh` asks the hub again (subject to the page's freshness window)
+without a forced provider read. A failed update changes nothing on screen — the
+last good line stays, and the panel says so.
 
 ### The 7-day chart is drawn, not faded in
 
@@ -639,9 +650,9 @@ measuring against a fallback font picks the wrong size.
   `start.command` and handles finding Node and a free port.
 * **Config writes retry.** A rename over a file another process holds open fails on
   Windows with `EPERM`/`EBUSY`/`EACCES` — an antivirus scanner, or our own read
-  stream still draining a previous poll. Both this app's `server.js` and the shared
-  hub retry with real async delays, then fall back to writing in place; a save that
-  silently does nothing on air is the worse failure.
+  stream still draining a previous poll. The hub retries with real async delays,
+  then falls back to writing in place; a save that silently does nothing on air
+  is the worse failure.
 * **No POSIX assumptions.** All paths go through `path.join`/`path.resolve`, the
   traversal guard compares against the directory boundary, and there is no `exec`,
   `chmod`, symlink or hard-coded POSIX path anywhere in the app.
@@ -671,7 +682,10 @@ animation never reports completion — that the graphic appears for an asset mar
 and is withheld for a rate decision, that `showWhenNotAsset` overrides that, and that
 the hero fits itself without overflowing, that a real asset series is plotted with
 price labels and never clamped to percentages, and that markets carry their asset id
-through normalising (the slip that silently disabled the whole asset path).
+through normalising (the slip that silently disabled the whole asset path). The
+asset-data path is pinned too: the series is read through this app's own prefix,
+a manual update sends `force=1`, and a plain refresh inside the freshness window
+asks for nothing.
 The detail view is covered as a measurable claim rather than a screenshot: a click
 marks the board `is-detail`, hides the list from assistive tech, sets the headline and
 the number larger than the split view does, puts the Back button in the tab order, and
@@ -692,7 +706,7 @@ the market **on that row** under every sort mode, space on a focused row selects
 row without then skipping past it, and the venue name is kept only when Polymarket
 really is the source.
 
-Current results: **84/84** (smoke) · **41/41** (board) · **74/74** (panel).
+Current results: **94/94** (smoke) · **41/41** (board) · **74/74** (panel).
 
 The two layout claims that no DOM shim can make — that an opened market really takes
 both columns, and that Back really gives the list its column back — are measured in
@@ -759,22 +773,25 @@ node tools/bump.js --check  # report only, change nothing
 Still seeing the old build? In OBS right-click the source → **Refresh**, or tick
 **Refresh browser when scene becomes active**.
 
-### Saved configs are migrated, not pinned
+### Settings are persistent
 
 The panel and the overlay each keep a full copy of the config (`localStorage` and
-`config.json`). If that copy came from an older build it used to win, so a palette fix
-would appear to revert itself on the next render.
+`config.json`). **A build update never resets what you saved.** `config-merge.js`
+runs on every load and save:
 
-`config-merge.js` fixes that: while `meta.version` is unchanged your saved settings
-win; when the version changes, the saved config keeps only your **content** — the
-markets above all, which cannot be regenerated — and the shipped build supplies the
-whole **look**.
+* same `meta.version` → your saved config wins;
+* new version → every saved value the build still knows wins, new options come
+  from the shipped build, retired keys are dropped;
+* the markets, the headline setup and every look/size value stay exactly as you
+  left them; `data.proxyUrl` / `data.directUrl` remain build-owned;
+* a saved `false`, `0` or `''` survives, because only `undefined` has no copy.
 
-Content is copied **by value**. That matters for the booleans: an earlier build
-cloned with `JSON.parse(JSON.stringify(o || {}))`, so a saved `false` came through a
-migration as `{}` — and `{}` is truthy. `rotate.enabled: false` therefore came back
-as `{}`, the board saw a truthy flag and started cycling through the markets on its
-own. Content is copied verbatim now (only `undefined` has no copy), and a flag can
-only arm a timer when it is exactly `true`.
+The panel reports the upgrade once, e.g.
+`settings upgraded to v1.4.1 (was v1.3.0) — your settings were kept`.
 
-
+That last bullet matters for the booleans: an earlier build cloned with
+`JSON.parse(JSON.stringify(o || {}))`, so a saved `false` came through a
+migration as `{}` — and `{}` is truthy. `rotate.enabled: false` therefore came
+back as `{}`, the board saw a truthy flag and started cycling through the markets
+on its own. Values are copied verbatim now (only `undefined` has no copy), and a
+flag can only arm a timer when it is exactly `true`.

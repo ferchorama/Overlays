@@ -2,8 +2,8 @@
    Digital Assets Market — default configuration
    ----------------------------------------------------------------------------
    A dark trading-terminal board. Four columns (asset / price / 24h / 7d) and
-   category tabs that can auto-rotate, so one panel covers the whole market
-   without a scrollbar.
+   category tabs that are stepped BY HAND (click, arrow keys, next/prev) — there
+   is deliberately no auto-rotate, so the board never changes under the operator.
 
    Everything here can be overridden at runtime (admin panel, server
    config.json, or localStorage). Prices come from CoinGecko's free API via a
@@ -132,7 +132,11 @@ window.CM_applyFont = function (cfg) {
 var CM_FACE = window.CM_fontStack(window.CM_FONTS[0]);
 
 window.CM_DEFAULT_CONFIG = {
-  meta: { name: 'Digital Assets Market', version: '1.0.13' },
+  /* `schema` is the saved-CATEGORY format, independent of the build version:
+     schema 2 means each category's `coins` is a list of unique CoinGecko ids
+     (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
+     before it is written. A config.json from schema 1 is upgraded on load. */
+  meta: { name: 'Digital Assets Market', version: '1.1.8', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -190,8 +194,7 @@ window.CM_DEFAULT_CONFIG = {
     rule: true,                // the hairline under the title
     ruleColor: 'rgba(150,178,214,0.34)',
     ruleWidth: 1,
-    shadow: 'none',
-    autoShrink: true
+    shadow: 'none'
   },
 
   /* ---------------- Category tabs ---------------- */
@@ -263,10 +266,8 @@ window.CM_DEFAULT_CONFIG = {
   },
 
   /* ---------------- Footer ---------------- */
-  /* The status line under the rows: "Updated just now · CoinGecko". Turn it off
-     for a clean broadcast face. Note that it is also where the board reports a
-     cached response, a fetch error and a degraded (no trend data) state, so
-     switching it off hides those too. */
+  /* One line under the rows: "Updated just now" / "Updated 2m ago". Nothing
+     else is written there. Turn it off for a clean broadcast face. */
   footer: {
     enabled: true
   },
@@ -280,13 +281,9 @@ window.CM_DEFAULT_CONFIG = {
     divider: { enabled: true, color: 'rgba(150,178,214,0.11)', width: 1 },
     zebra: false,
     zebraColor: 'rgba(255,255,255,0.018)',
-    /* a soft wash behind a row the moment its price ticks */
-    tickFlash: 'rgba(92,225,166,0.13)',
-    tickFlashMs: 900,
     radius: 10,
 
     logo: {
-      show: true,
       size: 58,
       radius: 'circle',        // circle | rounded
       fallbackBackground: 'rgba(255,255,255,0.08)',
@@ -369,9 +366,7 @@ window.CM_DEFAULT_CONFIG = {
     up: '#3ddc84',             // gain
     down: '#ff5b6e',           // loss
     flat: '#8ea3c0',           // no move / no data
-    rankColor: '#9aa8bd',          // muted tier — 4.55:1 over bright video
-    sparkUp: '#3ddc84',
-    sparkDown: '#ff5b6e'
+    rankColor: '#9aa8bd'           // muted tier — 4.55:1 over bright video
   },
 
   /* ---------------- Categories ----------------
@@ -426,10 +421,10 @@ window.CM_DEFAULT_CONFIG = {
     directUrl: 'https://api.coingecko.com/api/v3/coins/markets',
     currency: 'usd',
     sparkline: true,           // 7d series for the trend column — same request
-    refreshSeconds: 120,
+    /* No refresh interval: the board asks the hub once per load, and the hub
+       answers from its own 90s cache. A manual update comes from the dashboard's
+       Update now button (or the `update` command). */
     timeoutMs: 12000,
-    retryOnFailSeconds: 45,
-    showStaleAfterSeconds: 600,
     useCacheOnFailure: true,
     cacheKey: 'cm-cache-v1'
   },
@@ -457,6 +452,14 @@ window.CM_DEFAULT_CONFIG = {
     rowStart: 0.26,
     rowFrom: 20,               // "slide up 20px + fade"
     fadeRows: true,
+    /* a row that was just added in the dashboard (active category, board on air)
+       enters on its own instead of popping in with the rebuilt board */
+    newRowDuration: 0.55,
+    newRowFrom: 18,
+    newRowEase: 'power2.out',
+    /* a row removed in the dashboard collapses out before the board rebuilds */
+    removeRowDuration: 0.28,
+    removeRowEase: 'power2.inOut',
     sparklineDraw: 0.9,        // stroke-draw for the 7d trend line
 
     /* tab switching — the skill's Tab Switch recipe at 0 / 100 / 150ms */
@@ -466,13 +469,7 @@ window.CM_DEFAULT_CONFIG = {
     tabSwitchDuration: 0.2,    // new content in, ease-out
     tabSwitchStagger: 0.04,
     tabEase: 'power2.inOut',
-    tabInEase: 'power2.out',
-
-    /* live values */
-    tweenValues: true,
-    tweenDuration: 0.9,
-    tweenEase: 'power2.out',
-    flashOnTick: true
+    tabInEase: 'power2.out'
   },
 
   /* ---------------- Sync / control server ----------------

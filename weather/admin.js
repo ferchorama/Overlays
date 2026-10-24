@@ -194,8 +194,6 @@
     bind('card.body.range.show', 'c_showRange');
 
     /* data */
-    bind('data.refreshMinutes', 'c_refresh');
-    bind('data.retryOnFailSeconds', 'c_retry');
     bind('data.timeoutMs', 'c_timeout');
     bind('data.showStaleAfterMinutes', 'c_stale');
     bind('data.useCacheOnFailure', 'c_useCache');
@@ -360,180 +358,74 @@
   var GEO_COUNT = 10;
   var geoResultCache = {};   /* "query|country" -> { at, results } */
 
-  function geoSearchUrl(q, countryCode) {
-    var u = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) +
-      '&count=' + GEO_COUNT +
-      '&language=' + encodeURIComponent((cfg.units && cfg.units.locale) || 'en') +
-      '&format=json';
-    if (countryCode) u += '&countryCode=' + encodeURIComponent(String(countryCode).toUpperCase());
-    return u;
-  }
-
-  /* Wire one row's search-name box to its dropdown. Returns the handle the row
-     uses to kick a search off (the input listener lives in renderCities, next to
-     the other field handlers). */
+  /* Wire one row's search-name box to its dropdown. The mechanics (debounce,
+     abort, keyboard, ARIA, cache) live in the shared combobox, so the market
+     asset picker behaves identically; this function only knows what a CITY is. */
   function attachCityLookup(o) {
     var city = o.city, input = o.query, list = o.list;
-    var items = [], active = -1, timer = null, ctrl = null, reqId = 0, lastPaint = '';
 
-    function close() {
-      list.hidden = true;
-      input.setAttribute('aria-expanded', 'false');
-      if (input.removeAttribute) input.removeAttribute('aria-activedescendant');
-      items = [];
-      active = -1;
+    function searchUrl(q) {
+      var u = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) +
+        '&count=' + GEO_COUNT +
+        '&language=' + encodeURIComponent((cfg.units && cfg.units.locale) || 'en') +
+        '&format=json';
+      if (city.countryCode) u += '&countryCode=' + encodeURIComponent(String(city.countryCode).toUpperCase());
+      return u;
     }
 
-    function paint(results) {
-      list.innerHTML = '';
-      items = [];
-      active = -1;
-      lastPaint = results.length ? results.map(function (r) { return r.id; }).join(',') : 'none';
-
-      results.forEach(function (r, n) {
-        var el = document.createElement('li');
-        el.className = 'geo-item';
-        el.id = list.id + '-opt-' + n;
-        el.setAttribute('role', 'option');
-        el.setAttribute('aria-selected', 'false');
-        el.setAttribute('data-lat', r.latitude);
-        el.setAttribute('data-lon', r.longitude);
-
-        var name = document.createElement('span');
-        name.className = 'geo-item__name';
-        name.textContent = String(r.name || '');
-        el.appendChild(name);
-
-        /* the state is the whole point: two "Springfield"s are told apart by it */
-        var where = document.createElement('span');
-        where.className = 'geo-item__where';
-        where.textContent = [r.admin1, r.country].filter(Boolean).join(', ');
-        el.appendChild(where);
-
-        /* keep focus in the input so the click is not eaten by the blur handler */
-        el.addEventListener('mousedown', function (e) { if (e && e.preventDefault) e.preventDefault(); });
-        el.addEventListener('click', function () { pick(r); });
-
-        list.appendChild(el);
-        items.push({ el: el, data: r });
-      });
-
-      if (!items.length) {
-        var none = document.createElement('li');
-        none.className = 'geo-item geo-item--none';
-        none.setAttribute('role', 'presentation');
-        none.textContent = 'no matching places';
-        list.appendChild(none);
-      }
-      list.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
-    }
-
-    function pick(r) {
-      var lat = Math.round(Number(r.latitude) * 1e6) / 1e6;
-      var lon = Math.round(Number(r.longitude) * 1e6) / 1e6;
-      if (!isFinite(lat) || !isFinite(lon)) return;
-
-      city.lat = lat;
-      city.lon = lon;
-      city.query = String(r.name || input.value);
-      input.value = city.query;
-      o.lat.value = lat;
-      o.lon.value = lon;
-      /* Choosing a place IS the rename: this is the only thing that changes the
-         card's title, which is why typing alone must not touch it. A title typed
-         by hand is replaced here too — the operator just chose a different city,
-         and can edit the title again afterwards. */
-      city.label = String(r.name || input.value);
-      o.label.value = city.label;
-      close();
-      o.enable();
-      push();
-      status('pinned ' + [r.name, r.admin1, r.country].filter(Boolean).join(', ') +
-        ' \u2014 ' + lat + ', ' + lon, 'ok');
-    }
-
-    function setActive(n) {
-      if (!items.length) return;
-      active = ((n % items.length) + items.length) % items.length;
-      items.forEach(function (it, k) {
-        var on = k === active;
-        it.el.setAttribute('aria-selected', on ? 'true' : 'false');
-        it.el.classList.toggle('is-active', on);
-        if (on) input.setAttribute('aria-activedescendant', it.el.id);
-      });
-      if (items[active].el.scrollIntoView) {
-        try { items[active].el.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older browsers */ }
-      }
-    }
-
-    function search() {
-      var q = String(input.value || '').trim();
-      if (q.length < GEO_MIN_CHARS) { close(); return; }
-      var cc = String(city.countryCode || '').toUpperCase();
-      var key = q.toLowerCase() + '|' + cc;
-      var now = Date.now();
-      var hit = geoResultCache[key];
-      if (hit && now - hit.at < GEO_CACHE_MS) { paint(hit.results); return; }
-
-      var my = ++reqId;
-      if (ctrl && ctrl.abort) { try { ctrl.abort(); } catch (e) { /* already done */ } }
-      ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
-      var opts = ctrl ? { signal: ctrl.signal } : {};
-      fetch(geoSearchUrl(q, cc), opts)
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          if (my !== reqId) return;                     /* a newer query won */
-          var results = ((j && j.results) || []).filter(function (x) {
-            return x && x.latitude != null && x.longitude != null && x.name;
+    return window.createCombobox({
+      input: input,
+      list: list,
+      minChars: GEO_MIN_CHARS,
+      debounceMs: GEO_DEBOUNCE_MS,
+      cacheMs: GEO_CACHE_MS,
+      itemClass: 'geo-item',
+      nameClass: 'geo-item__name',
+      whereClass: 'geo-item__where',
+      emptyText: 'no matching places',
+      cacheKey: function (q) {
+        return q.toLowerCase() + '|' + String(city.countryCode || '').toUpperCase();
+      },
+      itemKey: function (r) { return String(r.id || r.name || ''); },
+      optionAttrs: function (r) { return { 'data-lat': r.latitude, 'data-lon': r.longitude }; },
+      fetchResults: function (q, signal) {
+        return fetch(searchUrl(q), signal ? { signal: signal } : {})
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            return ((j && j.results) || []).filter(function (x) {
+              return x && x.latitude != null && x.longitude != null && x.name;
+            });
           });
-          geoResultCache[key] = { at: Date.now(), results: results };
-          paint(results);
-        })
-        .catch(function () { if (my === reqId) close(); });
-    }
+      },
+      renderOption: function (r) {
+        return {
+          label: r.name,
+          note: [r.admin1, r.country].filter(Boolean).join(', '),
+          data: r
+        };
+      },
+      onPick: function (r) {
+        var lat = Math.round(Number(r.latitude) * 1e6) / 1e6;
+        var lon = Math.round(Number(r.longitude) * 1e6) / 1e6;
+        if (!isFinite(lat) || !isFinite(lon)) return;
 
-    function schedule() {
-      clearTimeout(timer);
-      timer = setTimeout(search, GEO_DEBOUNCE_MS);
-    }
-
-    input.setAttribute('aria-controls', list.id);
-    input.addEventListener('focus', function () {
-      if (String(input.value || '').trim().length >= GEO_MIN_CHARS) search();
-    });
-    input.addEventListener('blur', function () {
-      /* after the browser has had a chance to deliver the option's click */
-      setTimeout(close, 120);
-    });
-    input.addEventListener('keydown', function (e) {
-      var k = e && e.key;
-      if (k === 'ArrowDown' || k === 'ArrowUp') {
-        if (list.hidden) { search(); return; }
-        if (e.preventDefault) e.preventDefault();
-        setActive(active + (k === 'ArrowDown' ? 1 : -1));
-        return;
+        city.lat = lat;
+        city.lon = lon;
+        city.query = String(r.name || input.value);
+        input.value = city.query;
+        o.lat.value = lat;
+        o.lon.value = lon;
+        /* Choosing a place IS the rename: this is the only thing that changes the
+           card's title, which is why typing alone must not touch it. */
+        city.label = String(r.name || input.value);
+        o.label.value = city.label;
+        o.enable();
+        push();
+        status('pinned ' + [r.name, r.admin1, r.country].filter(Boolean).join(', ') +
+          ' \u2014 ' + lat + ', ' + lon, 'ok');
       }
-      if (k === 'Enter') {
-        if (!list.hidden && active >= 0 && items[active]) {
-          if (e.preventDefault) e.preventDefault();
-          pick(items[active].data);
-        }
-        return;
-      }
-      if (k === 'Escape') { if (!list.hidden) { if (e.preventDefault) e.preventDefault(); close(); } return; }
-      if (k === 'Tab') close();
     });
-
-    return {
-      schedule: schedule,
-      search: search,
-      close: close,
-      isOpen: function () { return !list.hidden; },
-      lastPaint: function () { return lastPaint; }
-    };
   }
-
   function renderCities() {
     var list = $('cityList');
     list.innerHTML = '';
@@ -848,7 +740,7 @@
       postPreview();
       var note = 'config.json loaded · v' + APP_V;
       if (migratedAtBoot) {
-        note += ' · look updated to v' + APP_V + ' (was v' + window.WX_MIGRATE.migratedFrom + ') — your cities were kept';
+        note += ' · settings upgraded to v' + APP_V + ' (was v' + window.WX_MIGRATE.migratedFrom + ') — your settings were kept';
       }
       if (healed) note += ' · repaired ' + healed + ' placeholder city title' + (healed === 1 ? '' : 's');
       status(note, healed ? 'warn' : 'ok');
@@ -869,7 +761,7 @@
   $('rawJson').value = JSON.stringify(cfg, null, 2);
   /* Where OBS should point. Over http this page's sibling is the overlay (the
      hub path comes for free). Opened from disk there is no origin to build a
-     URL from, so recommend the shared hub instead of the legacy per-app port. */
+     URL from, so recommend the hub. */
   $('obsUrl').textContent = location.protocol === 'file:'
     ? 'index.html or http://localhost:8790/weather/index.html (recommended — run the hub with node server.js)'
     : location.origin + location.pathname.replace(/admin\.html$/, 'index.html');
@@ -882,9 +774,47 @@
     : ''), healedCities ? 'warn' : '');
   var migratedAtBoot = !!(window.WX_MIGRATE && window.WX_MIGRATE.migrated);
   if (migratedAtBoot) {
-    status('look updated to v' + APP_V + ' (was v' + window.WX_MIGRATE.migratedFrom + ') — your cities were kept', 'warn');
+    status('settings upgraded to v' + APP_V + ' (was v' + window.WX_MIGRATE.migratedFrom + ') — your settings were kept', 'warn');
   }
   loadServerConfig();
+
+  /* ---------------------------------------------------------- manual update
+     One provider read per press. The hub does the fetching — it is the only
+     context a normal browser and an OBS browser source share — then the overlay
+     is told to re-read the now-fresh cache. See shared/datasync.js. */
+  function unitsForDataUrl() {
+    var sys = (cfg.units && cfg.units.system) || 'imperial';
+    var imperial = sys !== 'metric';
+    return {
+      temperature: (cfg.units && cfg.units.temperature) || (imperial ? 'fahrenheit' : 'celsius'),
+      wind: (cfg.units && cfg.units.wind) || (imperial ? 'mph' : 'kmh'),
+      precipitation: imperial ? 'inch' : 'mm'
+    };
+  }
+  function dataUrl(force) {
+    var cities = (cfg.cities || []).filter(function (c) {
+      return c.enabled !== false && (c.query || (c.lat != null && c.lon != null));
+    }).slice(0, cfg.maxCities || 2).map(function (c) {
+      return {
+        label: c.label || '', query: c.query || '', countryCode: c.countryCode || '',
+        lat: c.lat == null ? null : Number(c.lat), lon: c.lon == null ? null : Number(c.lon)
+      };
+    });
+    if (!cities.length) throw new Error('no cities are enabled — turn one on in Cities');
+    var q = 'cities=' + encodeURIComponent(JSON.stringify(cities)) +
+      '&units=' + encodeURIComponent(JSON.stringify(unitsForDataUrl()));
+    return 'api/data?' + q + (force ? '&force=1' : '');
+  }
+  if (window.DataSync && $('btnDataUpdate') && $('dataStatus')) {
+    window.DataSync.mount({
+      app: 'weather',
+      button: $('btnDataUpdate'),
+      status: $('dataStatus'),
+      buildUrl: dataUrl,
+      commandUrl: 'api/command?action=refresh',
+      cooldownMs: 8000
+    });
+  }
 
   /* ---------------------------------------------------------------- theme
      Shares the hub's key, so the panel and the hub can never disagree. */

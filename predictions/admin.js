@@ -67,11 +67,10 @@
      Polymarket, so naming it is honest and removing it would be the lie. Both
      halves of the app test `cfg.source` the same way, so they can never end up
      disagreeing about what is on air. */
-  var DROPPED_SOURCES = ['polymarket'];
+  var DROPPED_SOURCES = ['polymarket', 'coingecko', 'coinpaprika', 'open-meteo', 'openmeteo', 'gamma'];
 
   function scrubSource(c) {
     try {
-      if (c && c.source === 'polymarket') return c;
       var l = c && c.footer && c.footer.left;
       if (l && DROPPED_SOURCES.indexOf(String(l.source || '').trim().toLowerCase()) !== -1) {
         l.source = '';
@@ -456,7 +455,7 @@
       asset.className = 'mk-asset';
       asset.placeholder = 'asset';
       asset.value = item.asset || '';
-      asset.title = 'CoinGecko asset id, e.g. bitcoin or ethereum — used for the real 7-day price line';
+      asset.title = 'asset id, e.g. bitcoin or ethereum — used for the real 7-day price line';
       fieldFor(item, 'asset', asset);
 
       var probability = fieldFor(item, 'probability', mkNumInput(item.probability, '1'));
@@ -690,12 +689,12 @@
   function polySelection(cat) { return (cat && Array.isArray(cat.selection)) ? cat.selection.map(String) : []; }
   function polyLabel(cat) { return String((cat && (cat.label || cat.id)) || 'category'); }
 
-  /* The proxy lives in Overlays/server.js, the shared hub. predictions/server.js
-     — the standalone server on 8791 — has no such route and answers a plain HTML
-     404. That is the single likeliest way this panel fails in the real world and
-     it is not an upstream problem, so it gets a message that names the fix
-     instead of a status code. */
-  var POLY_PROXY_HINT = 'the Polymarket proxy is served by Overlays/server.js — start the hub ' +
+  /* The proxy lives in Overlays/server.js. A static file server, or any process
+     that is not the hub, answers this path with a plain HTML 404. That is the
+     single likeliest way this panel fails in the real world and it is not an
+     upstream problem, so it gets a message that names the fix instead of a
+     status code. */
+  var POLY_PROXY_HINT = 'the headline proxy is served by Overlays/server.js — start the hub ' +
     '(node server.js) and open the panel from http://localhost:8790/predictions/admin.html';
 
   function clampFetched(v) {
@@ -884,7 +883,7 @@
     if (polyTags && polyTags.length) {
       pick = document.createElement('select');
       pick.className = 'poly-tag';
-      pick.title = 'the Polymarket tag this category fetches';
+      pick.title = 'the tag this category fetches';
       var blank = document.createElement('option');
       blank.value = '';
       blank.textContent = 'tag\u2026';
@@ -905,7 +904,7 @@
       pick.type = 'text';
       pick.className = 'poly-tagid';
       pick.placeholder = 'tag id';
-      pick.title = 'the Polymarket tag id — press Load tags to pick from the live list';
+      pick.title = 'the tag id — press Load tags to pick from the live list';
       pick.value = cat.tagId == null ? '' : String(cat.tagId);
       pick.addEventListener('input', function () {
         cat.tagId = String(pick.value).trim();
@@ -1040,7 +1039,7 @@
         polyTags = tags;
         renderCategories();
         polyProgress(tags.length + ' tags loaded — pick one per category', false);
-        status(tags.length + ' Polymarket tags loaded', 'ok');
+        status(tags.length + ' tags loaded', 'ok');
       })
       .catch(function () {
         polyProgress('the tag list failed to load', true);
@@ -1069,12 +1068,11 @@
       if (res.ok) return res;
       var m = res.body && res.body.error && res.body.error.message;
       /* A 404, or any reply that is not JSON, almost always means this panel was
-         opened from predictions/server.js (port 8791) instead of the shared hub:
-         the /api/polymarket proxy lives in Overlays/server.js only, and the
-         standalone server answers that path with a plain HTML 404. "HTTP 404"
-         would send the operator looking at Polymarket when the problem is the
-         server they opened the panel from. A real upstream 404 still arrives as
-         JSON with a message, so it keeps its own wording. */
+         not opened from the hub: the /api/polymarket proxy lives in
+         Overlays/server.js only. "HTTP 404" would send the operator looking at
+         Polymarket when the problem is the server they opened the panel from.
+         A real upstream 404 still arrives as JSON with a message, so it keeps
+         its own wording. */
       if (!m && (res.status === 404 || res.notJson)) m = POLY_PROXY_HINT;
       if (!m) m = res.status ? ('HTTP ' + res.status) : res.why;
       res.message = String(m || 'the fetch failed');
@@ -1106,7 +1104,7 @@
       polyProgress('fetching ' + label + '\u2026');
       var bind = resolveTagBinding(cat);
       if (!bind) {
-        cat.error = 'no Polymarket tag binding for "' + String(cat.tagSlug || cat.id || '') +
+        cat.error = 'no tag binding for "' + String(cat.tagSlug || cat.id || '') +
           '" \u2014 press Load tags and pick one';
         failed.push(cat);
         renderCategories();
@@ -1302,7 +1300,9 @@
     var out = [];
     if (d.enabled !== false && d.proxyUrl) {
       out.push({
-        url: d.proxyUrl + '?ids=' + encodeURIComponent(asset) + '&currency=' + cur + '&sparkline=1',
+        /* same mount resolution the overlay uses (see PM_hubUrl) */
+        url: (window.PM_hubUrl ? window.PM_hubUrl(d.proxyUrl) : d.proxyUrl) +
+             '?ids=' + encodeURIComponent(asset) + '&currency=' + cur + '&sparkline=1',
         label: 'hub proxy'
       });
     }
@@ -1310,7 +1310,7 @@
       out.push({
         url: d.directUrl + '?vs_currency=' + cur + '&ids=' + encodeURIComponent(asset) +
              '&price_change_percentage=7d',
-        label: 'CoinGecko'
+        label: 'direct'
       });
     }
     return out;
@@ -1424,7 +1424,7 @@
     var note = $('fetchNote');
     if (note) {
       note.textContent = 'Probability is not fetched \u2014 it is your editorial call. ' +
-        'Volume is CoinGecko\u2019s 24-hour dollar volume, shown as such.';
+        'Volume is the 24-hour dollar volume.';
     }
     panel.hidden = false;
     status('reviewing fetched values for market ' + (index + 1), 'ok');
@@ -1494,6 +1494,32 @@
          autosaving edits into a config that no longer exists */
       renderCategories();
       push({ msg: 'reset to defaults' });
+    });
+  }
+
+  /* ---------------------------------------------------------- manual update
+     The 7-day price lines come from the hub's shared CoinGecko cache. Pressing
+     this forces one provider read, then tells the board to redraw from it. The
+     overlay has no timer of its own. */
+  function assetDataUrl(force) {
+    var ids = [];
+    ((cfg.markets && cfg.markets.items) || []).forEach(function (m) {
+      if (m && m.asset && ids.indexOf(m.asset) === -1) ids.push(m.asset);
+    });
+    if (!ids.length) throw new Error('this board names no assets yet — add an asset id to a market');
+    var q = 'ids=' + encodeURIComponent(ids.join(',')) +
+      '&currency=' + encodeURIComponent((cfg.data && cfg.data.currency) || 'usd') +
+      '&changes=24h,7d&sparkline=1';
+    return 'api/data?' + q + (force ? '&force=1' : '');
+  }
+  if (window.DataSync && $('btnDataUpdate') && $('dataStatus')) {
+    window.DataSync.mount({
+      app: 'predictions',
+      button: $('btnDataUpdate'),
+      status: $('dataStatus'),
+      buildUrl: assetDataUrl,
+      commandUrl: 'api/command?action=refresh',
+      cooldownMs: 8000
     });
   }
 
@@ -1570,7 +1596,7 @@
   var APP_V = (SHIPPED.meta && SHIPPED.meta.version) || '?';
   status(readyNote());
   if (window.PM_MIGRATE && window.PM_MIGRATE.migrated) {
-    status('look updated to v' + APP_V + ' (was v' + window.PM_MIGRATE.migratedFrom + ') — your markets were kept', 'warn');
+    status('settings upgraded to v' + APP_V + ' (was v' + window.PM_MIGRATE.migratedFrom + ') — your settings were kept', 'warn');
   }
   /* last, and after the first status: reading config.json is what makes this a
      faithful mirror of what is on air, and it must not overwrite the migration

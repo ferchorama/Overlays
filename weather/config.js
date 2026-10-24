@@ -90,7 +90,7 @@ window.WX_DARK_PALETTE = {
 window.WX_DEFAULT_CONFIG = {
   /* 'light' | 'dark' — see WX_DARK_PALETTE above */
   theme: 'light',
-  meta: { name: 'Vertical Weather Widget', version: '3.1.8' },
+  meta: { name: 'Vertical Weather Widget', version: '3.2.5' },
 
   /* ---------------- Stage = the widget (portrait 1080p) ---------------- */
   stage: {
@@ -264,8 +264,8 @@ window.WX_DEFAULT_CONFIG = {
     paddingX: 16,
     showUpdated: true,
     updatedLabel: 'Updated',
-    showSource: true,
-    sourceLabel: 'Open-Meteo'
+    showSource: false,
+    sourceLabel: ''
   },
 
   /* ---------------- Cities ---------------- */
@@ -284,30 +284,22 @@ window.WX_DEFAULT_CONFIG = {
     clock24: false
   },
 
-  /* ---------------- Data fetching ---------------- */
+  /* ---------------- Data fetching ----------------
+     There is no refresh timer. The widget asks the hub for data once when it
+     loads; the hub answers from its own cache unless that is older than
+     cacheTtlSeconds. A manual update (dashboard button, or the `update` command
+     from a Stream Deck) forces a fresh provider read.
+     `cities` are sent to the hub as-is; the hub geocodes only the ones without
+     pinned coordinates and fetches every city in ONE Open-Meteo request. */
   data: {
-    refreshMinutes: 10,
+    cacheTtlSeconds: 120,
     timeoutMs: 9000,
-    retryOnFailSeconds: 60,
+    /* After this long without a successful read the footer dims its timestamp:
+       a display cue, not a refresh policy. */
     showStaleAfterMinutes: 30,
     forecastDays: 1,
     useCacheOnFailure: true,
-    cacheKey: 'wx-cache-v2'
-  },
-
-  /* ---------------- Fonts (Apple stack + Figtree fallback) ---------------- */
-  googleFonts: ['Figtree:wght@400;500;600;700'],
-
-  /* ---------------- Animated SVG colours (full-colour, no greys) ---------- */
-  iconColors: {
-    sun: '#ff9500',
-    moon: '#4f5fe8',
-    cloud: '#ffffff',
-    cloudDark: '#6fa8e0',
-    rain: '#0a5fd0',
-    snow: '#ffffff',
-    bolt: '#ffb300',
-    fog: '#4f93c9'
+    cacheKey: 'wx-cache-v3'
   },
 
   /* ---------------- Animation (entrance only — OBS hides the source) ------- */

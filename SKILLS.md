@@ -46,9 +46,10 @@ distinct from it shipped.
 
 ## Bringing the control panels with it
 
-The three control panels (`weather/`, `topics/`, `market/`) were dark, blue-accented,
-and carried a `box-shadow: 0 0 12px` glow on the brand dot — a tell the taste skill
-bans by name. They now share the hub's palette and craft:
+The three original control panels (`weather/`, `topics/`, `market/`) were dark,
+blue-accented, and carried a `box-shadow: 0 0 12px` glow on the brand dot — a tell
+the taste skill bans by name. They now share the hub's palette and craft, and
+`predictions/` — added after this pass — reads the same shared theme key:
 
 - **One source of truth for the theme.** The panels read the same
   `obs-overlays-theme` key from `localStorage`. Same origin, so switching the hub
@@ -56,7 +57,7 @@ bans by name. They now share the hub's palette and craft:
 - **Kept the variable names, swapped the values.** `--bg`, `--bg-2`, `--txt`,
   `--muted` and friends are unchanged in name, so all ~550 lines of existing rules
   kept working. Only the tokens and the hardcoded strays changed — verified at
-  **0 colours outside the palettes** in all three files.
+  **0 colours outside the palettes** across those stylesheets.
 - **Glow removed**, insets added, and the topbar now shares the hub's hairline.
 - **Inter dropped.** It was loaded from Google Fonts and is banned by the taste
   skill; the panels now use the hub's system stack. Montserrat was being fetched

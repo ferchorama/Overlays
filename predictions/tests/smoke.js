@@ -105,7 +105,11 @@ global.innerWidth = 1920;
 global.innerHeight = 1080;
 global.addEventListener = () => {};
 global.getComputedStyle = () => ({ lineHeight: '20px' });
-global.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+var fetchLog = [];
+global.fetch = (url) => {
+  fetchLog.push(String(url));
+  return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+};
 global.URLSearchParams = global.URLSearchParams || require('url').URLSearchParams;
 global.document.createElementNS = documentShim.createElementNS;
 
@@ -191,6 +195,35 @@ setTimeout(async () => {
 
   const results = [];
   const check = (name, pass, info) => results.push({ name, pass, info });
+
+  /* ------------------------------------------- hub-relative asset endpoints
+     The asset chart is served by the ASSETS board's proxy, so its default is a
+     root-absolute path ('/market/api/market'). That is only correct while the
+     hub sits at the server root; behind a base path the chart used to sit on
+     its placeholder forever. The resolver must add the prefix, leave a relative
+     value alone, and stay out of the way when the page is opened from disk. */
+  {
+    const hubUrl = global.PM_hubUrl;
+    check('PM_hubUrl is exported by config-merge', typeof hubUrl === 'function', typeof hubUrl);
+    const savedPath = global.location.pathname;
+    const savedProto = global.location.protocol;
+    const at = (pathname, protocol) => {
+      global.location.pathname = pathname;
+      global.location.protocol = protocol;
+      return hubUrl('/market/api/market');
+    };
+    const root = at('/predictions/index.html', 'http:');
+    const based = at('/studio/predictions/admin.html', 'http:');
+    const file = at('/predictions/index.html', 'file:');
+    const rel = hubUrl('api/market');
+    global.location.pathname = savedPath;
+    global.location.protocol = savedProto;
+    check('hub at the root leaves the path alone', root === '/market/api/market', root);
+    check('hub behind a base path keeps the prefix', based === '/studio/market/api/market', based);
+    check('opened from disk there is no hub to resolve', file === '/market/api/market', file);
+    check('a relative endpoint is never rewritten', rel === 'api/market', rel);
+  }
+
   /* A hero switch runs on a real GSAP timeline, so it lands a moment later. Wait
      for it: asserting synchronously would test the stub's scheduling, not the
      engine's behaviour. */
@@ -633,8 +666,8 @@ setTimeout(async () => {
   check('migration keeps the typed markets',
     (merged.markets.items || []).length === 1 && merged.markets.items[0].topic === 'A kept market',
     JSON.stringify((merged.markets.items || []).map((m) => m.topic)));
-  check('migration takes the look from the build, not the saved config',
-    merged.palette.ink !== '#ff0000', 'ink=' + merged.palette.ink);
+  check('migration keeps the saved look (settings are persistent)',
+    merged.palette.ink === '#ff0000', 'ink=' + merged.palette.ink);
 
   /* and the timer itself refuses a flag that is not a real true */
   const liveRotate = PM.cfg.rotate;
@@ -652,6 +685,34 @@ setTimeout(async () => {
   check('Back hands rotation back only because it was running', !!PM._rot, '_rot=' + String(PM._rot));
   PM.stopRotate();
   PM.cfg.rotate = liveRotate;
+
+  /* ---- manual asset update: no timer, one forced read on demand ---- */
+  {
+    const assets = ((PM.cfg.markets && PM.cfg.markets.items) || []).map((m) => m.asset).filter(Boolean);
+    check('the shipped board names assets for the chart', assets.length > 0, assets.slice(0, 3).join(','));
+
+    fetchLog.length = 0;
+    PM.refreshAssets(true);
+    await waitFor(() => fetchLog.some((u) => u.indexOf('api/data') !== -1), 900);
+    const forcedUrl = fetchLog.filter((u) => u.indexOf('api/data') !== -1)[0] || '';
+    check('a manual update forces the shared asset cache', /force=1/.test(forcedUrl), forcedUrl.slice(0, 110));
+    check('asset data is read through this app\'s own prefix',
+      /(^|\/)api\/data/.test(forcedUrl) && forcedUrl.indexOf('/market/') === -1, forcedUrl.slice(0, 110));
+
+    /* dashboard → OBS: the panel bumps `update`, the handler forces the read */
+    fetchLog.length = 0;
+    PM.handleCommand({ action: 'update', seq: 4242 });
+    await waitFor(() => fetchLog.some((u) => u.indexOf('api/data') !== -1 && /force=1/.test(u)), 900);
+    check('the update command forces the shared asset cache',
+      fetchLog.some((u) => u.indexOf('api/data') !== -1 && /force=1/.test(u)),
+      (fetchLog.filter((u) => u.indexOf('api/data') !== -1)[0] || '').slice(0, 110));
+
+    const beforeIdle = fetchLog.length;
+    PM.refreshAssets(false);
+    await new Promise((r) => setTimeout(r, 180));
+    check('a plain refresh inside the TTL asks for nothing', fetchLog.length === beforeIdle,
+      (fetchLog.length - beforeIdle) + ' extra request(s)');
+  }
 
   /* ---- empty board is a real state ---- */
   PM.apply({ markets: { items: [] }, markets2: undefined }, { animate: false });
