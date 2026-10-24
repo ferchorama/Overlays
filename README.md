@@ -300,6 +300,12 @@ No helper wraps that; `update.bat` exists only for the *other* machines.
 
 ## Undo / rollback
 
+Named versions are annotated tags: `v2026.10.24.1` (original suite) through
+`v2026.10.24.5` (public-repo note). `git tag --list 'v*'` lists them, the
+[tags page](https://github.com/ferchorama/Overlays/tags) downloads any of them as
+a source zip, and `git checkout v2026.10.24.2` looks at that state. Tags come
+with a normal fetch, so `update.bat` on another machine fetches them too.
+
 The repo ships a pre-push hook (`tools/hooks/pre-push`). Enable it once per
 clone:
 
