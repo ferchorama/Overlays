@@ -10,8 +10,9 @@ rem
 rem  Empty folder  -> git clone            (first install)
 rem  Clone         -> git pull --ff-only   (fast-forward only, never rewrites)
 rem  Zip copy      -> git init + checkout  (becomes a clone in place)
-rem  No Git        -> winget, then chocolatey, then the official installer;
-rem                   if none of those is possible, --zip needs no Git at all.
+rem  No Git        -> winget install Git.Git; if winget is not there, the script
+rem                   stops and prints the Git for Windows download link.
+rem                   --zip needs no Git at all.
 rem
 rem  Your settings live in {app}/config.json. They are copied aside and put back
 rem  after the files are replaced, and a dirty working tree is stashed and
@@ -106,14 +107,11 @@ if not errorlevel 1 goto :git_found
 call :find_installed_git
 where git >nul 2>nul
 if not errorlevel 1 goto :git_found
-echo         not on this computer - installing it
+echo         not on this computer - trying winget
 call :install_git
 where git >nul 2>nul
 if not errorlevel 1 goto :git_found
-echo.
-echo         Git could not be installed automatically.
-echo         Falling back to the branch zip, which needs no Git at all.
-goto :mode_files
+goto :fail_no_git
 :git_skipped
 echo         skipped - --zip was given
 goto :mode_files
@@ -201,35 +199,11 @@ exit /b 0
 
 :install_git
 where winget >nul 2>nul
-if errorlevel 1 goto :install_choco
-echo         trying winget
+if errorlevel 1 exit /b 0
+echo         installing Git with winget
 winget install --id Git.Git -e --source winget --accept-source-agreements --accept-package-agreements
+rem A fresh install is not on this shell's PATH yet.
 call :find_installed_git
-where git >nul 2>nul
-if not errorlevel 1 exit /b 0
-echo         winget route did not complete
-
-:install_choco
-where choco >nul 2>nul
-if errorlevel 1 goto :install_msi
-echo         trying chocolatey
-choco install git -y
-call :find_installed_git
-where git >nul 2>nul
-if not errorlevel 1 exit /b 0
-echo         chocolatey route did not complete
-
-:install_msi
-echo         falling back to the official installer
-call :install_git_msi
-call :find_installed_git
-exit /b 0
-
-rem One PowerShell call does the whole job: find the newest release, pick the
-rem asset for this CPU, download it and run it. A single command avoids the
-rem nested-quote and pipe-escaping traps a for /f around PowerShell would create.
-:install_git_msi
-powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; $ProgressPreference='SilentlyContinue'; $arch='x64'; if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { $arch='arm64' }; $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/git-for-windows/git/releases/latest' -Headers @{ 'User-Agent'='overlays-updater' }; $pattern = if ($arch -eq 'arm64') { 'arm64\.exe$' } else { '64-bit\.exe$' }; $asset = @($rel.assets | Where-Object { $_.name -notmatch 'Portable' -and $_.name -match $pattern })[0]; if (-not $asset) { Write-Host '         no installer found in the latest release'; exit 1 }; $out = Join-Path $env:TEMP 'git-installer.exe'; Write-Host ('         downloading ' + $asset.name); Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $out; Write-Host '         installing - may prompt for administrator rights'; Start-Process -FilePath $out -ArgumentList '/VERYSILENT','/NORESTART','/NOCANCEL','/SP-' -Wait; exit 0"
 exit /b 0
 
 rem --------------------------------------------------------------- settings
@@ -393,6 +367,24 @@ echo   Could not create the folder:
 echo     !TARGET!
 echo.
 echo   Pick a folder you are allowed to write to, then run update.bat again.
+pause
+endlocal
+exit /b 1
+
+:fail_no_git
+echo.
+echo   Git is required to download the overlays, and it is not installed.
+echo.
+echo   Install Git for Windows from:
+echo.
+echo       https://git-scm.com/download/win
+echo.
+echo   Accept the default options, close this window, then run update.bat
+echo   again. If winget was available it was already tried and did not work.
+echo.
+echo   No permission to install anything? Run update.bat --zip instead: it
+echo   downloads the same files without Git.
+echo.
 pause
 endlocal
 exit /b 1

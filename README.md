@@ -269,8 +269,8 @@ What it does depends on what it finds:
 | empty, or only `update.bat` | `git clone` the repository into it |
 | a clone | `git fetch` + `git merge --ff-only origin/main` |
 | files but no `.git` (a zip copy) | `git init`, fetch and check out, so it becomes a clone in place |
-| Git is missing | installs Git with winget, then chocolatey, then the official installer |
-| none of that is possible | downloads the branch zip instead — no Git, no admin |
+| Git is missing | tries `winget install Git.Git`; if winget is not available it stops and prints the Git for Windows download link |
+| `--zip` is given | downloads the branch zip instead — no Git, no admin |
 
 `update.bat [folder]` targets another folder, `--zip` skips Git entirely, and
 `--start` runs `start.bat` when the update is done.
