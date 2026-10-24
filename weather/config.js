@@ -92,7 +92,7 @@ window.WX_DARK_PALETTE = {
 window.WX_DEFAULT_CONFIG = {
   /* 'light' | 'dark' — see WX_DARK_PALETTE above */
   theme: 'light',
-  meta: { name: 'Vertical Weather Widget', version: '3.2.7' },
+  meta: { name: 'Vertical Weather Widget', version: '3.2.8' },
 
   /* ---------------- Stage = the widget (portrait 1080p) ---------------- */
   stage: {

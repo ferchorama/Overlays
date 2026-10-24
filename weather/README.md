@@ -253,7 +253,9 @@ snow showers) get the `-day`/`-night` variant. A missing file falls back to
 The panel drops its flat tint and the plate becomes the surface: two layers
 crossfade when the condition changes and drift sideways with
 `background-position: 0% → 100%` (ping-pong; `prefers-reduced-motion` disables
-the drift). The scrim keeps the ink legible over the image.
+the drift). The scrim keeps the ink legible over the image, and a full hairline
+ring replaces the partial accent stripe so the rounded outline stays continuous
+over dark and bright parts of the plate.
 
 Look tab → **Scrolling backdrop**: enable, day/night variants, opacity, blur, pan
 seconds, scrim tint (`rgba`). The same values live in `config.js` under

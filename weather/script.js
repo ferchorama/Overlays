@@ -281,6 +281,7 @@
     this.root = el('div', 'wx-backdrop', panel);
     this.layers = [el('div', 'wx-backdrop__layer', this.root), el('div', 'wx-backdrop__layer', this.root)];
     this.scrim = el('div', 'wx-backdrop__scrim', this.root);
+    this.ring = el('div', 'wx-backdrop__ring', this.root);
     this.root.hidden = true;
     this.index = 0;
     this.key = '';
