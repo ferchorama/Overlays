@@ -89,10 +89,16 @@ window.WX_DARK_PALETTE = {
   backdrop: { tint: 'rgba(14,14,14,0.60)' }
 };
 
+window.WX_BACKDROPS = [
+  'clear-day', 'mainly-clear-day', 'partly-cloudy-day', 'overcast', 'fog',
+  'drizzle', 'rain', 'freezing-rain', 'showers-day', 'snow',
+  'snow-showers-day', 'thunder', 'thunder-hail'
+];
+
 window.WX_DEFAULT_CONFIG = {
   /* 'light' | 'dark' — see WX_DARK_PALETTE above */
   theme: 'light',
-  meta: { name: 'Vertical Weather Widget', version: '3.2.8' },
+  meta: { name: 'Vertical Weather Widget', version: '3.3.1' },
 
   /* ---------------- Stage = the widget (portrait 1080p) ---------------- */
   stage: {
@@ -108,16 +114,16 @@ window.WX_DEFAULT_CONFIG = {
 
   /* ------------- Scrolling backdrop (black-and-white plates) -------------
      The 4:3 plates in backdrops/ drift sideways under the reading layer with a
-     scrim on top, so the ink keeps its contrast over any frame. dayNight picks
-     the -day/-night variant where one exists (clear, mainly clear, partly
-     cloudy, showers, snow showers). Set enabled:false for the old transparent
-     look; the panel falls back to its glass tint. */
+     scrim on top, so the ink keeps its contrast over any frame. The plate is an
+     editorial choice from the Background tab, not a live-weather mapping. Set
+     enabled:false for the old transparent look; the panel falls back to its
+     glass tint. */
   backdrop: {
     enabled: true,
+    image: 'partly-cloudy-day', // a file stem from backdrops/
     opacity: 0.9,          // 0..1 strength of the plate under the scrim
     blur: 0,                // px blur on the plate itself
     panSeconds: 120,        // one left→right sweep, then back (ping-pong)
-    dayNight: true,
     tint: 'rgba(235,246,255,0.62)'   // light-theme scrim; WX_DARK_PALETTE overrides
   },
 

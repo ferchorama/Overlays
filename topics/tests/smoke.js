@@ -147,6 +147,35 @@ setTimeout(() => {
     'topics keys: ' + Object.keys(cfg.topics).join(','));
   check('no active-row class emitted', byClass(stage, 'row--active').length === 0, 'ok');
 
+  /* the moving plate reuses the weather widget's files, never a copied set */
+  const bdRoot = byClass(stage, 'tp-backdrop')[0];
+  const bdLayer = byClass(stage, 'tp-backdrop__layer')
+    .filter((n) => n.style.backgroundImage)[0];
+  const panel = byClass(stage, 'panel')[0];
+  check('weather backdrop mounted behind the panel',
+    !!bdRoot && bdRoot.hidden === false && panel.classList.contains('has-backdrop'), 'has-backdrop');
+  check('backdrop points at the weather plate',
+    !!bdLayer && String(bdLayer.style.backgroundImage).indexOf('../weather/backdrops/' + cfg.backdrop.image + '.webp') !== -1,
+    bdLayer ? bdLayer.style.backgroundImage : 'missing');
+  check('backdrop drift is configured',
+    bdRoot && bdRoot.style['--bd-pan'] === cfg.backdrop.panSeconds + 's',
+    bdRoot ? bdRoot.style['--bd-pan'] : 'missing');
+
+  /* a live config poll remounts the panel. The fresh layers must get the image
+     again — the fade-in-then-blank regression. */
+  global.TP.apply({});
+  const bdRemount = byClass(stage, 'tp-backdrop__layer')
+    .filter((n) => n.style.backgroundImage)[0];
+  check('backdrop survives a config re-apply / remount',
+    !!bdRemount && String(bdRemount.style.backgroundImage).indexOf('../weather/backdrops/' + cfg.backdrop.image + '.webp') !== -1,
+    bdRemount ? bdRemount.style.backgroundImage : 'missing');
+
+  global.TP.apply({ backdrop: { enabled: false } });
+  const bdOff = byClass(stage, 'tp-backdrop')[0];
+  check('backdrop can be switched off for the plain glass panel',
+    !!bdOff && bdOff.hidden === true && !byClass(stage, 'panel')[0].classList.contains('has-backdrop'),
+    'disabled');
+
   /* the saved-config merge must not turn a saved `false` into a truthy `{}` —
      that is what silently re-enabled subtitle.autoDate after a version bump */
   const merged = global.TP_MIGRATE.apply(cfg, {

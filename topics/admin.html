@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Talking Points Panel — Control</title>
-  <link rel="stylesheet" href="admin.css?v=1.1.4" />
+  <link rel="stylesheet" href="admin.css?v=1.2.1" />
 <script>
   /* The hub is the single source of truth for the theme: same origin, same
      localStorage key, so switching it there switches every panel. Resolved
@@ -50,10 +50,10 @@
           <option value="0.75">75%</option>
           <option value="1">100%</option>
         </select>
-        <a id="linkOut" class="mini" href="index.html?v=1.1.4" target="_blank">open overlay &#8599;</a>
+        <a id="linkOut" class="mini" href="index.html?v=1.2.1" target="_blank">open overlay &#8599;</a>
       </div>
       <div class="preview__stage" id="previewStage">
-        <iframe id="preview" src="index.html?preview=1&v=1.1.4" title="preview"></iframe>
+        <iframe id="preview" src="index.html?preview=1&v=1.2.1" title="preview"></iframe>
       </div>
       <p class="hint">
         In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
@@ -68,6 +68,7 @@
       <nav class="tabs">
         <button class="tab is-active" data-tab="content">Content</button>
         <button class="tab" data-tab="look">Look</button>
+        <button class="tab" data-tab="background">Background</button>
         <button class="tab" data-tab="fonts">Fonts</button>
         <button class="tab" data-tab="layout">Layout</button>
         <button class="tab" data-tab="anim">Animation</button>
@@ -176,6 +177,24 @@
         <div class="row2">
           <label class="check"><input type="checkbox" id="c_glossHeader" /> header gloss</label>
           <label class="check"><input type="checkbox" id="c_glossRows" /> row gloss overlay</label>
+        </div>
+      </div>
+
+      <!-- BACKGROUND -->
+      <div class="panel-body" data-panel="background">
+        <div class="row2">
+          <label class="check"><input type="checkbox" id="c_backdropOn" /> moving background</label>
+          <div class="field"><label>Scrim tint (rgba)</label><input id="c_backdropTint" type="text" /></div>
+        </div>
+
+        <label class="section-label">Weather plates <span class="muted">(choose from the 13 in the weather overlay)</span></label>
+        <div class="backdrop-grid" id="backdropGrid" role="group" aria-label="Weather backdrop"></div>
+        <p class="hint">The 4:3 black-and-white plates live in <code>weather/backdrops/</code> and are shared, not copied. The chosen plate drifts sideways behind the panel; the scrim above it keeps the ink legible. Turn the background off for the plain sky glass.</p>
+
+        <div class="row3">
+          <div class="field"><label>Opacity 0–1</label><input id="c_backdropOpacity" type="number" min="0" max="1" step="0.05" /></div>
+          <div class="field"><label>Blur (px)</label><input id="c_backdropBlur" type="number" min="0" max="40" /></div>
+          <div class="field"><label>Pan seconds</label><input id="c_backdropPan" type="number" min="10" max="600" /></div>
         </div>
       </div>
 
@@ -340,8 +359,8 @@
     </section>
   </main>
 
-  <script src="config.js?v=1.1.4"></script>
-  <script src="config-merge.js?v=1.1.4"></script>
-  <script src="admin.js?v=1.1.4"></script>
+  <script src="config.js?v=1.2.1"></script>
+  <script src="config-merge.js?v=1.2.1"></script>
+  <script src="admin.js?v=1.2.1"></script>
 </body>
 </html>

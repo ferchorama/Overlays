@@ -211,6 +211,12 @@
     bind('header.gloss', 'c_glossHeader');
     bind('topics.gloss', 'c_glossRows');
 
+    bind('backdrop.enabled', 'c_backdropOn', { after: renderBackdropGallery });
+    bind('backdrop.opacity', 'c_backdropOpacity');
+    bind('backdrop.blur', 'c_backdropBlur');
+    bind('backdrop.panSeconds', 'c_backdropPan');
+    bind('backdrop.tint', 'c_backdropTint');
+
     bind('googleFonts', 'c_googleFonts', { transform: function (v) { return String(v).split('\n').map(function (s) { return s.trim(); }).filter(Boolean); } });
     $('c_googleFonts').value = (cfg.googleFonts || []).join('\n');
     bind('header.title.fontFamily', 'c_titleFont');
@@ -370,6 +376,71 @@
     renderStops(); push();
   });
 
+  /* ------------------------------------------------------- backdrop picker */
+  /* The plates belong to the weather widget. Read its manifest when the hub is
+     serving us so a newly generated plate appears here automatically; the
+     copied list in config.js is the offline fallback. */
+  var backdropIds = (window.TP_BACKDROPS || []).slice();
+
+  function backdropLabel(id) {
+    return String(id).replace(/-/g, ' ').replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function backdropOn() {
+    return cfg.backdrop && cfg.backdrop.enabled !== false && !!cfg.backdrop.image;
+  }
+
+  function renderBackdropGallery() {
+    var grid = $('backdropGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var selected = cfg.backdrop && cfg.backdrop.image;
+    var live = backdropOn();
+
+    backdropIds.forEach(function (id) {
+      var tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'backdrop-tile' + (live && selected === id ? ' is-active' : '');
+      tile.setAttribute('aria-pressed', live && selected === id ? 'true' : 'false');
+      tile.title = 'Use ' + backdropLabel(id).toLowerCase();
+
+      var img = document.createElement('img');
+      img.src = '../weather/backdrops/' + id + '.webp';
+      img.alt = '';
+      img.loading = 'lazy';
+
+      var label = document.createElement('span');
+      label.textContent = backdropLabel(id);
+
+      tile.appendChild(img);
+      tile.appendChild(label);
+      tile.addEventListener('click', function () {
+        if (!isObj(cfg.backdrop)) cfg.backdrop = {};
+        cfg.backdrop.image = id;
+        cfg.backdrop.enabled = true;
+        var on = $('c_backdropOn');
+        if (on) on.checked = true;
+        renderBackdropGallery();
+        push();
+      });
+      grid.appendChild(tile);
+    });
+  }
+
+  function loadBackdropList() {
+    fetch('../weather/backdrops/_manifest.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!Array.isArray(j)) return;
+        var ids = j.map(function (row) { return Array.isArray(row) ? row[0] : row; })
+          .filter(function (id) { return typeof id === 'string' && /^[a-z0-9-]+$/.test(id); });
+        if (!ids.length) return;
+        backdropIds = ids;
+        renderBackdropGallery();
+      })
+      .catch(function () { /* offline: keep the shipped list */ });
+  }
+
   /* ---------------------------------------------------------------- presets */
   /* Every preset is LIGHT. The dark/grey originals were replaced when this
      overlay moved to the weather widget's sky-glass theme: a preset that
@@ -446,6 +517,8 @@
     location.hash = '';
     renderTopics();
     renderStops();
+    renderBackdropGallery();
+    refreshBoundValues();
     push();
     // update field values in place
     var map = [
@@ -548,6 +621,7 @@
       refreshBoundValues();
       renderTopics();
       renderStops();
+      renderBackdropGallery();
       $('rawJson').value = JSON.stringify(cfg, null, 2);
       postPreview();
       var note = 'config.json loaded · v' + APP_V;
@@ -577,6 +651,8 @@
   syncUI();
   renderTopics();
   renderStops();
+  renderBackdropGallery();
+  loadBackdropList();
   $('rawJson').value = JSON.stringify(cfg, null, 2);
   $('obsUrl').textContent = location.protocol === 'file:'
     ? 'index.html (or http://localhost:8790/topics/index.html with Overlays/server.js)'

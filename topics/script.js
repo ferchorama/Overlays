@@ -91,6 +91,13 @@
     return 'linear-gradient(' + (angle == null ? 180 : angle) + 'deg, ' + list + ')';
   }
 
+  /* The plates live with the weather widget; referencing them there means one
+     copy on disk and the two overlays can never drift into different art. */
+  function backdropUrl(image) {
+    var id = String(image || '').replace(/[^a-z0-9-]/gi, '');
+    return '../weather/backdrops/' + (id || 'overcast') + '.webp';
+  }
+
   function injectStyle(id, css) {
     var s = document.getElementById(id);
     if (!s) { s = document.createElement('style'); s.id = id; document.head.appendChild(s); }
@@ -126,6 +133,11 @@
     this.stage = document.getElementById('stage');
     this.panel = null;
     this.tl = null;
+    this.bd = null;
+    this.bdLayers = [];
+    this.bdIndex = 0;
+    this.bdKey = '';
+    this.bdSeq = 0;
     this.state = { playing: false, onAir: false, built: false };
   }
 
@@ -140,6 +152,14 @@
     this.stage.style.setProperty('--stage-h', cfg.stage.height + 'px');
     this.stage.style.setProperty('--stage-bg', cfg.stage.background);
     this.stage.innerHTML = '';
+
+    /* A remount (every live config edit) replaces the backdrop layers. The
+       image key has to be cleared with them, or applyBackdrop() sees the same
+       file, returns early, and leaves the fresh layers empty — the plate fades
+       in, the next poll remounts, and the background vanishes. */
+    this.bdKey = '';
+    this.bdIndex = 0;
+    this.bdSeq = (this.bdSeq || 0) + 1;
 
     /* ---- panel ---- */
     var panel = el('div', 'panel', this.stage);
@@ -160,6 +180,16 @@
     panel.style.setProperty('--panel-sat', (p.saturate == null ? 175 : p.saturate) + '%');
     panel.style.setProperty('--panel-sheen', p.sheen || 'none');
     panel.style.setProperty('--accent-c', p.accentColor || '#0a84ff');
+
+    /* ---- moving plate (weather backdrops) ----
+       Two layers crossfade when the chosen plate changes. z-index:-1 paints it
+       above the panel's own background and below every band/row. */
+    var bd = el('div', 'tp-backdrop', panel);
+    this.bd = bd;
+    this.bdLayers = [el('div', 'tp-backdrop__layer', bd), el('div', 'tp-backdrop__layer', bd)];
+    el('div', 'tp-backdrop__scrim', bd);
+    el('div', 'tp-backdrop__ring', bd);
+    bd.hidden = true;
 
     /* ---- bands ---- */
     var header = el('header', 'band band--header valign-' + (cfg.header.title.valign || 'middle'), panel);
@@ -182,6 +212,52 @@
     return this;
   };
 
+  /* Pick up the current plate and (re)start its drift. A failed image falls
+     back to the plain glass panel: a transparent shell with no picture would
+     otherwise put the text straight onto live video. */
+  Panel.prototype.applyBackdrop = function () {
+    var self = this;
+    var b = this.cfg.backdrop || {};
+    var root = this.bd;
+    if (!root) return;
+
+    var on = b.enabled !== false && !!b.image;
+    root.hidden = !on;
+    this.panel.classList.toggle('has-backdrop', on);
+    if (!on) { this.bdKey = ''; return; }
+
+    root.style.setProperty('--bd-op', b.opacity == null ? 0.88 : b.opacity);
+    root.style.setProperty('--bd-blur', (b.blur || 0) + 'px');
+    root.style.setProperty('--bd-pan', (b.panSeconds || 90) + 's');
+    root.style.setProperty('--bd-tint', b.tint || 'transparent');
+
+    var file = backdropUrl(b.image);
+    if (file === this.bdKey) return;
+    this.bdKey = file;
+    var token = ++this.bdSeq;
+
+    var commit = function () {
+      if (token !== self.bdSeq) return;
+      var next = self.bdLayers[self.bdIndex ^ 1];
+      var prev = self.bdLayers[self.bdIndex];
+      next.style.backgroundImage = 'url("' + file + '")';
+      next.classList.add('is-on');
+      prev.classList.remove('is-on');
+      self.bdIndex ^= 1;
+    };
+
+    if (typeof Image !== 'function') { commit(); return; }
+    var probe = new Image();
+    probe.onload = commit;
+    probe.onerror = function () {
+      if (token !== self.bdSeq) return;
+      self.bdKey = '';
+      root.hidden = true;
+      self.panel.classList.remove('has-backdrop');
+    };
+    probe.src = file;
+  };
+
   /* Re-theme + rebuild without touching config source */
   Panel.prototype.apply = function () {
     var cfg = this.cfg, self = this;
@@ -189,6 +265,8 @@
 
     var p = cfg.panel, h = cfg.header, s = cfg.subtitle, t = cfg.topics, a = cfg.animation;
     var panel = this.panel;
+
+    this.applyBackdrop();
 
     /* gloss gradient shared by header / rows — light only, never black */
     panel.style.setProperty('--gloss-gradient',

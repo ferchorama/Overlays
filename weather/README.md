@@ -8,6 +8,9 @@ Live data comes from **[Open-Meteo](https://open-meteo.com)** — free, **no API
 key**, no signup. The widget reads it through the shared hub, which makes one
 batched forecast request for both cities and caches the answer; the widget itself
 has no refresh timer. One or two cities, fully customisable from a control panel.
+Each card shows the city's own wall clock — New York and Miami read Eastern time,
+a Pacific city reads Pacific time — recomputed every 15 s from the IANA zone
+(not the provider's rounded observation timestamp).
 
 The entrance animates once and the widget then **stays on screen** — there is
 deliberately no exit animation (in OBS you hide the source).
@@ -58,7 +61,7 @@ that background.
 | `../shared/combobox.js` | The city-picker search dropdown (`/shared/combobox.js`, served by the hub). |
 | `../shared/datasync.js` | The Data-tab **Update now** control and its guards (`/shared/datasync.js`). |
 | `vendor/gsap.min.js` | Local GSAP so the widget works offline (CDN is the fallback). |
-| `backdrops/` | 18 black-and-white 4:3 plates, one per WMO group (plus day/night where the icon set differs); the scrolling backdrop reads them. |
+| `backdrops/` | 13 black-and-white 4:3 plates (day + all-weather groups); the scrolling backdrop reads them. |
 | `.skills/` | The 15 SKILL.md documents this build applied (reference only). |
 
 ---
@@ -243,23 +246,23 @@ stops), `forced-colors` fallbacks, and `data-testid` / `data-state` hooks.
 
 ### Scrolling backdrop
 
-`backdrops/` holds 18 generated 1024×768 black-and-white plates named after the
-overlay's WMO groups (`clear-day.webp`, `partly-cloudy-night.webp`,
-`overcast.webp`, …). The first enabled city's condition picks the plate; the five
-groups whose icon differs day/night (clear, mainly clear, partly cloudy, showers,
-snow showers) get the `-day`/`-night` variant. A missing file falls back to
-`overcast.webp`.
+`backdrops/` holds 13 generated 1024×768 black-and-white plates
+(`clear-day.webp`, `partly-cloudy-day.webp`, `overcast.webp`, …). **The plate is
+an editorial choice, not a weather mapping:** the operator picks it from the
+Look tab and it stays put while the conditions change. Night variants are not
+offered. A missing file falls back to `overcast.webp`.
 
 The panel drops its flat tint and the plate becomes the surface: two layers
-crossfade when the condition changes and drift sideways with
+crossfade when the chosen plate changes and drift sideways with
 `background-position: 0% → 100%` (ping-pong; `prefers-reduced-motion` disables
 the drift). The scrim keeps the ink legible over the image, and a full hairline
 ring replaces the partial accent stripe so the rounded outline stays continuous
 over dark and bright parts of the plate.
 
-Look tab → **Scrolling backdrop**: enable, day/night variants, opacity, blur, pan
-seconds, scrim tint (`rgba`). The same values live in `config.js` under
-`backdrop`. Set `enabled: false` for the old plain glass slab.
+Look tab → **Scrolling backdrop** → the thumbnail picker, then enable, opacity,
+blur, pan seconds and scrim tint (`rgba`). The same values live in `config.js`
+under `backdrop` (`image` is the file stem). Set `enabled: false` for the old
+plain glass slab.
 
 
 ### Type sizes (measured at 460x1080, two cities)

@@ -44,15 +44,28 @@ window.TP_DARK_PALETTE = {
     ],
     separator: { color: 'rgba(255,255,255,0.16)' },
     text: { color: '#ededed' }
+  },
+  /* The plates are black-and-white, so dark mode needs its own scrim. */
+  backdrop: {
+    tint: 'rgba(18,20,24,0.74)'
   }
 };
+
+/* The plates are generated and owned by the weather widget — this list mirrors
+   weather/backdrops/_manifest.json and is only the offline fallback for the
+   admin gallery. Files are referenced at runtime, never copied. */
+window.TP_BACKDROPS = [
+  'clear-day', 'mainly-clear-day', 'partly-cloudy-day', 'overcast', 'fog',
+  'drizzle', 'rain', 'freezing-rain', 'showers-day', 'snow',
+  'snow-showers-day', 'thunder', 'thunder-hail'
+];
 
 window.TP_DEFAULT_CONFIG = {
   /* 'light' | 'dark' — see TP_DARK_PALETTE above */
   theme: 'light',
   meta: {
     name: 'Talking Points Panel',
-    version: '1.1.4'
+    version: '1.2.1'
   },
 
   /* ---------------- Stage (design canvas) ---------------- */
@@ -62,6 +75,20 @@ window.TP_DEFAULT_CONFIG = {
     fit: 'contain',            // contain | cover | width | none
     alignX: 'left',            // left | center | right   (where the panel sits)
     background: 'transparent'  // transparent for OBS
+  },
+
+  /* ------------- Moving backdrop (weather plates) -------------
+     Reuses the black-and-white 4:3 plates generated for the Vertical Weather
+     widget (../weather/backdrops/). The chosen plate drifts left→right behind
+     the panel and a scrim sits over it so the navy ink stays legible. Set
+     enabled:false for the plain sky-glass panel. */
+  backdrop: {
+    enabled: true,
+    image: 'partly-cloudy-day', // a file stem from ../weather/backdrops/
+    opacity: 0.92,              // 0..1 strength of the plate under the scrim
+    blur: 0,                    // px blur on the plate itself
+    panSeconds: 90,             // one sweep, then back (ping-pong)
+    tint: 'rgba(235,246,255,0.68)' // light scrim; TP_DARK_PALETTE overrides
   },
 
   /* ---------------- Panel shell ---------------- */

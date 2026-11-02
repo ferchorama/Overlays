@@ -286,6 +286,19 @@ const controls = [...elements.values()].filter((n) => ['INPUT', 'SELECT', 'TEXTA
 check('form controls present', controls.length > 60, controls.length + ' controls');
 check('no dead preset selector left', !/class="preset"/.test(HTML), 'presets removed');
 
+/* the plate is chosen by the operator, so the picker must be present at boot */
+{
+  const grid = elements.get('backdropGrid');
+  const tiles = grid ? grid.children : [];
+  const active = tiles.filter((t) => /is-active/.test(t.className))[0];
+  const thumb = active && active.querySelector('img');
+  check('backdrop selector lists every plate', tiles.length === 13, tiles.length + ' tiles');
+  check('the shipped plate is selected', !!active &&
+    /partly cloudy day/i.test(active.title), active ? active.title : 'none');
+  check('thumbnails use the local plates', !!thumb && thumb.src === 'backdrops/partly-cloudy-day.webp',
+    thumb ? thumb.src : 'no image');
+}
+
 /* Every number input must be able to REPRESENT its own configured default.
    The icon size shipped as 250px while its input capped at 220 — so opening the
    panel silently clamped the design. This catches that whole class of drift. */
@@ -422,6 +435,17 @@ function runInteractions() {
   check('edit is pushed to the preview iframe',
     messages.some((m) => m.type === 'wx:config' && m.config.header.text === 'TODAY FROM THE DESK'),
     messages.length + ' messages');
+
+  /* picking a plate is an editorial edit; it must not wait for a condition */
+  const plate = elements.get('backdropGrid').children.filter((t) => /thunder hail/i.test(t.title))[0];
+  if (plate) plate.dispatch('click');
+  const picked = JSON.parse(store['wx-config-v1'] || '{}');
+  check('choosing a backdrop plate writes an explicit config image',
+    !!picked.backdrop && picked.backdrop.image === 'thunder-hail' && picked.backdrop.enabled === true,
+    picked.backdrop ? picked.backdrop.image : 'missing');
+  check('the chosen plate is highlighted',
+    elements.get('backdropGrid').children.filter((t) => /is-active/.test(t.className)).length === 1,
+    'one active tile');
 
   elements.get('c_tempSize').value = '190';
   elements.get('c_tempSize').dispatch('input');

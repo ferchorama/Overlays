@@ -84,6 +84,70 @@ html, body {
   z-index: 50;
 }
 
+/* --------------------------------------------------- moving backdrop ----- */
+/* The 4:3 plates are wider than this portrait panel, so they drift sideways
+   behind the reading layer. The panel background steps aside, the scrim carries
+   the tint that keeps the navy ink legible over a black-and-white photograph. */
+.panel.has-backdrop { background: transparent; }
+
+/* the bands are the surfaces here; let the plate show through all of them */
+.panel.has-backdrop .band,
+.panel.has-backdrop .row { background: transparent !important; }
+
+/* over a photograph the partial accent stripe reads as a broken outline, so
+   draw the full ring on the plate instead */
+.panel.has-backdrop::after { display: none; }
+
+.tp-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.tp-backdrop[hidden] { display: none; }
+
+.tp-backdrop__layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  filter: blur(var(--bd-blur, 0px));
+  animation: tp-backdrop-pan var(--bd-pan, 90s) ease-in-out infinite alternate;
+  will-change: background-position, opacity;
+}
+
+.tp-backdrop__layer.is-on { opacity: var(--bd-op, .88); }
+
+@keyframes tp-backdrop-pan {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+
+.tp-backdrop__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--bd-tint, rgba(235, 246, 255, .80));
+}
+
+.tp-backdrop__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .42),
+              inset 0 0 0 2px rgba(0, 0, 0, .10);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-backdrop__layer { animation: none; }
+}
+
 /* ----------------------------------------------------------------- bands -- */
 .band {
   position: relative;

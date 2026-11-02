@@ -122,6 +122,37 @@ TOKENS.forEach(([label, colorStr, min, bgs]) => {
     worst.r.toFixed(1) + ':1 on ' + worst.k + ' (min ' + min + ':1)');
 });
 
+/* The moving plate strips the band/row surfaces, so the ink now lands on the
+   scrim over a black-and-white photograph. Measure the two photo extremes over
+   the two video extremes; the scrim must carry the contrast on its own. */
+const bd = cfg.backdrop || {};
+const scrim = parse(bd.tint);
+const plateOver = (gray, video) => over({ r: gray, g: gray, b: gray, a: bd.opacity }, video);
+const backdropBg = (gray, video) => over(scrim, plateOver(gray, video));
+const BD_BG = {
+  'black plate / black video': backdropBg(0, BLACK),
+  'black plate / white video': backdropBg(0, WHITE),
+  'white plate / black video': backdropBg(255, BLACK),
+  'white plate / white video': backdropBg(255, WHITE)
+};
+[
+  ['row text over backdrop', cfg.topics.text.color, 4.5],
+  ['title over backdrop', cfg.header.title.color, 3.0],
+  ['subtitle over backdrop', cfg.subtitle.color, 4.5]
+].forEach(([label, colorStr, min]) => {
+  const ink = parse(colorStr);
+  const worst = Object.keys(BD_BG)
+    .map((k) => ({ k, r: ratio(ink, BD_BG[k]) }))
+    .sort((a, b) => a.r - b.r)[0];
+  check(label + ' meets AA', worst.r >= min,
+    worst.r.toFixed(1) + ':1 on ' + worst.k + ' (min ' + min + ':1)');
+});
+check('backdrop scrim is opaque enough to carry the ink',
+  !!scrim && scrim.a >= 0.66, scrim ? 'alpha ' + scrim.a : 'missing');
+check('backdrop plate is strong but still translucent',
+  typeof bd.opacity === 'number' && bd.opacity >= 0.8 && bd.opacity < 1, 'opacity ' + bd.opacity);
+check('backdrop pan is a positive duration', bd.panSeconds >= 10, bd.panSeconds + 's');
+
 /* --------------------------------------------- vibe: light and colourful */
 const slabDay = BG.slabBlack;
 const slabHsl = hsl(slabDay);

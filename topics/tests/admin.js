@@ -261,6 +261,19 @@ const firstInput = topicRows[0] && topicRows[0].querySelector('input[type="text"
 check('topic text prefilled', !!(firstInput && firstInput.value === items[0].text), firstInput && firstInput.value);
 check('topic row has no on-air button', !!(topicRows[0] && topicRows[0].querySelector('.onair') === null), 'removed');
 
+/* the background picker reuses the weather plates, no copies */
+{
+  const grid = elements.get('backdropGrid');
+  const tiles = grid ? grid.children : [];
+  const active = tiles.filter((t) => /is-active/.test(t.className))[0];
+  const thumb = active && active.querySelector('img');
+  check('weather backdrop selector lists every plate', tiles.length === 13, tiles.length + ' tiles');
+  check('the shipped weather plate is selected', !!active &&
+    /partly cloudy day/i.test(active.title), active ? active.title : 'none');
+  check('thumbnails point at the weather files',
+    !!thumb && thumb.src === '../weather/backdrops/partly-cloudy-day.webp', thumb ? thumb.src : 'no image');
+}
+
 const stopRows = (elements.get('stops') || { children: [] }).children;
 check('gradient stops rendered', stopRows.length >= 2, stopRows.length + ' stops');
 check('stop colour is a hex value',
@@ -331,6 +344,16 @@ check('number field coerces', Number(JSON.parse(store['tp-config-v1']).topics.te
 
 check('config is pushed to the preview iframe',
   messages.some((m) => m.type === 'tp:config' && m.config.header.title.text === 'EVENING BRIEF'), messages.length + ' messages');
+
+const plate = elements.get('backdropGrid').children.filter((t) => /thunder hail/i.test(t.title))[0];
+if (plate) plate.dispatch('click');
+const picked = JSON.parse(store['tp-config-v1'] || '{}');
+check('choosing a weather plate writes an explicit image',
+  !!picked.backdrop && picked.backdrop.image === 'thunder-hail' && picked.backdrop.enabled === true,
+  picked.backdrop ? picked.backdrop.image : 'missing');
+check('the chosen plate is highlighted',
+  elements.get('backdropGrid').children.filter((t) => /is-active/.test(t.className)).length === 1,
+  'one active tile');
 
 const before = fetches.length;
 elements.get('btnOut').dispatch('click');

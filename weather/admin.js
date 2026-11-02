@@ -204,8 +204,7 @@
     bind('animation.tweenDuration', 'c_tweenDuration');
 
     /* look */
-    bind('backdrop.enabled', 'c_backdropOn');
-    bind('backdrop.dayNight', 'c_backdropDayNight');
+    bind('backdrop.enabled', 'c_backdropOn', { after: renderBackdropGallery });
     bind('backdrop.opacity', 'c_backdropOpacity');
     bind('backdrop.blur', 'c_backdropBlur');
     bind('backdrop.panSeconds', 'c_backdropPan');
@@ -601,6 +600,67 @@
   }
   function refreshStopsOnly() { /* colours only — ranges unchanged */ }
 
+  /* ------------------------------------------------------- backdrop picker */
+  /* A plate is an editorial choice, not a live-weather mapping. Read the
+     manifest so a newly generated plate shows up without an admin edit; the
+     shipped list is the offline fallback. */
+  var backdropIds = (window.WX_BACKDROPS || []).slice();
+
+  function backdropLabel(id) {
+    return String(id).replace(/-/g, ' ').replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function renderBackdropGallery() {
+    var grid = $('backdropGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var selected = cfg.backdrop && cfg.backdrop.image;
+    var live = cfg.backdrop && cfg.backdrop.enabled !== false && !!selected;
+
+    backdropIds.forEach(function (id) {
+      var tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'backdrop-tile' + (live && selected === id ? ' is-active' : '');
+      tile.setAttribute('aria-pressed', live && selected === id ? 'true' : 'false');
+      tile.title = 'Use ' + backdropLabel(id).toLowerCase();
+
+      var img = document.createElement('img');
+      img.src = 'backdrops/' + id + '.webp';
+      img.alt = '';
+      img.loading = 'lazy';
+
+      var label = document.createElement('span');
+      label.textContent = backdropLabel(id);
+
+      tile.appendChild(img);
+      tile.appendChild(label);
+      tile.addEventListener('click', function () {
+        if (!isObj(cfg.backdrop)) cfg.backdrop = {};
+        cfg.backdrop.image = id;
+        cfg.backdrop.enabled = true;
+        var on = $('c_backdropOn');
+        if (on) on.checked = true;
+        renderBackdropGallery();
+        push();
+      });
+      grid.appendChild(tile);
+    });
+  }
+
+  function loadBackdropList() {
+    fetch('backdrops/_manifest.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!Array.isArray(j)) return;
+        var ids = j.map(function (row) { return Array.isArray(row) ? row[0] : row; })
+          .filter(function (id) { return typeof id === 'string' && /^[a-z0-9-]+$/.test(id); });
+        if (!ids.length) return;
+        backdropIds = ids;
+        renderBackdropGallery();
+      })
+      .catch(function () { /* offline: keep the shipped list */ });
+  }
+
   /* Re-read every bound control from cfg WITHOUT re-running syncUI(): bind()
      adds one listener per control, so a second syncUI() would double-bind every
      edit. Used when config.json replaces the config under the panel. */
@@ -615,6 +675,7 @@
     renderCities();
     renderStops();
     renderFields();
+    renderBackdropGallery();
     refreshBoundValues();
     push();
   }
@@ -740,6 +801,7 @@
       renderCities();
       renderStops();
       renderFields();
+      renderBackdropGallery();
       refreshBoundValues();
       syncPreviewRatio();
       $('rawJson').value = JSON.stringify(cfg, null, 2);
@@ -764,6 +826,8 @@
   renderCities();
   renderStops();
   renderFields();
+  renderBackdropGallery();
+  loadBackdropList();
   $('rawJson').value = JSON.stringify(cfg, null, 2);
   /* Where OBS should point. Over http this page's sibling is the overlay (the
      hub path comes for free). Opened from disk there is no origin to build a

@@ -113,15 +113,35 @@
     return dirs[Math.round(((deg % 360) / 22.5)) % 16];
   }
 
-  function clockFromIso(iso, use24) {
-    if (!iso) return '';
-    var m = String(iso).match(/T(\d{2}):(\d{2})/);
-    if (!m) return '';
-    var h = parseInt(m[1], 10), mi = m[2];
-    if (use24) return h + ':' + mi;
+  /* The card clock is the CITY's wall clock, not the operator's and not the
+     provider's observation timestamp (which can be up to 15 minutes old and
+     would freeze between refreshes). Prefer the IANA zone from Open-Meteo; fall
+     back to its UTC offset, then to the host clock if a zone is unusable. */
+  function clockInZone(timeZone, utcOffsetSeconds, use24, date) {
+    var d = date || new Date();
+    var h = null, mi = null;
+    if (timeZone && typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+      try {
+        var parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: timeZone, hour: 'numeric', minute: '2-digit', hourCycle: 'h23'
+        }).formatToParts(d);
+        for (var i = 0; i < parts.length; i++) {
+          if (parts[i].type === 'hour') h = parseInt(parts[i].value, 10);
+          if (parts[i].type === 'minute') mi = parseInt(parts[i].value, 10);
+        }
+      } catch (e) { h = null; mi = null; }
+    }
+    if (h == null && typeof utcOffsetSeconds === 'number' && isFinite(utcOffsetSeconds)) {
+      var shifted = new Date(d.getTime() + utcOffsetSeconds * 1000);
+      h = shifted.getUTCHours();
+      mi = shifted.getUTCMinutes();
+    }
+    if (h == null) { h = d.getHours(); mi = d.getMinutes(); }
+    if (mi == null) mi = 0;
+    if (use24) return h + ':' + String(mi).padStart(2, '0');
     var ap = h >= 12 ? 'PM' : 'AM';
     var h12 = h % 12 === 0 ? 12 : h % 12;
-    return h12 + ':' + mi + ' ' + ap;
+    return h12 + ':' + String(mi).padStart(2, '0') + ' ' + ap;
   }
 
   function nowClock(use24) {
@@ -222,6 +242,7 @@
       key: entry.key || '',
       label: entry.label || '',
       timezone: j.timezone || entry.timezone || '',
+      utcOffsetSeconds: j.utc_offset_seconds == null ? entry.utcOffsetSeconds : j.utc_offset_seconds,
       observedAt: j.current.time,
       temp: j.current.temperature_2m,
       feels: j.current.apparent_temperature == null ? null : j.current.apparent_temperature,
@@ -263,16 +284,11 @@
   /* ------------------------------------------------------------- backdrop --
      The 4:3 black-and-white plates are wider than the portrait stage, so they
      drift sideways behind the glass. Two stacked layers crossfade when the
-     condition changes; a scrim keeps the ink legible. Files live in
-     backdrops/<group>[-day|-night].webp. */
-  var BACKDROP_VARIANTS = { 'clear': 1, 'mainly-clear': 1, 'partly-cloudy': 1, 'showers': 1, 'snow-showers': 1 };
-  var BACKDROP_GROUPS = ['clear', 'mainly-clear', 'partly-cloudy', 'overcast', 'fog', 'drizzle',
-    'rain', 'freezing-rain', 'snow', 'showers', 'snow-showers', 'thunder', 'thunder-hail'];
-
-  function backdropFile(group, isDay, dayNight) {
-    if (BACKDROP_GROUPS.indexOf(group) === -1) group = 'overcast';
-    var variant = dayNight !== false && BACKDROP_VARIANTS[group];
-    return 'backdrops/' + group + (variant ? (isDay ? '-day' : '-night') : '') + '.webp';
+     operator picks another plate; a scrim keeps the ink legible. The choice is
+     editorial, not weather-driven: files live in backdrops/<name>.webp. */
+  function backdropFile(image) {
+    var id = String(image || '').replace(/[^a-z0-9-]/gi, '');
+    return 'backdrops/' + (id || 'overcast') + '.webp';
   }
 
   function Backdrop(panel, cfg) {
@@ -305,12 +321,12 @@
     this.panel.classList.add('has-backdrop');
   };
 
-  Backdrop.prototype.show = function (group, isDay) {
+  Backdrop.prototype.show = function (image) {
     var self = this;
-    var file = backdropFile(group, isDay, this.cfg.dayNight);
+    var file = backdropFile(image);
     if (file === this.key) return;
     var token = ++this.seq;
-    var fallback = function () { return 'backdrops/overcast.webp'; };
+    var fallback = function () { return backdropFile('overcast'); };
     if (typeof Image !== 'function') { this.commit(file); return; }
     var probe = new Image();
     probe.onload = function () { if (token === self.seq) self.commit(file); };
@@ -371,6 +387,7 @@
 
   Panel.prototype.mount = function () {
     var self = this, cfg = this.cfg;
+    this.stopClock();
     document.body.classList.toggle('debug', !!cfg.debug);
 
     this.stage.style.setProperty('--stage-w', cfg.stage.width + 'px');
@@ -384,6 +401,9 @@
     this.panel = panel;
     var bdCfg = cfg.backdrop || {};
     this.backdrop = (bdCfg.enabled !== false) ? new Backdrop(panel, cfg) : null;
+    /* the plate is an editorial choice, so it is committed on mount instead of
+       waiting for a city's condition to arrive */
+    if (this.backdrop) this.backdrop.show(bdCfg.image);
     panel.classList.toggle('no-ambient', !cfg.animation.ambient);
     panel.style.setProperty('--panel-x', p.x + 'px');
     panel.style.setProperty('--panel-w', p.width + 'px');
@@ -578,7 +598,8 @@
       self.cardEls.push({
         root: card, bodyEl: body, icon: icon, readout: readout, name: cityName, time: cityTime,
         temp: temp, cond: cond, range: range, details: details, errBar: errBar,
-        city: city, index: i, shown: { temp: null, cond: null, range: null, details: null, statsSig: '—' }
+        city: city, index: i, timeZone: '', utcOffsetSeconds: null,
+        shown: { temp: null, cond: null, range: null, details: null, statsSig: '—' }
       });
     });
 
@@ -661,12 +682,14 @@
       c.errBar.style.display = 'none';
       c.root.classList.toggle('is-stale', st.fetchedAt && (Date.now() - st.fetchedAt) > (cfg.data.showStaleAfterMinutes || 30) * 60000);
 
-      /* city name / local clock */
+      /* city name / local clock — use the city's zone, not the observation time */
       var label = st.label || c.city.label || '';
       if (cfg.card.cityBand.showCountry && st.country) label += ' · ' + st.country;
       self.setText(c.name, cfg.card.cityBand.uppercase ? label.toUpperCase() : label);
+      c.timeZone = st.timezone || c.timeZone || '';
+      c.utcOffsetSeconds = st.utcOffsetSeconds == null ? c.utcOffsetSeconds : st.utcOffsetSeconds;
       c.time.style.display = cfg.card.cityBand.showLocalTime ? 'block' : 'none';
-      self.setText(c.time, clockFromIso(st.observedAt, cfg.units.clock24));
+      self.setText(c.time, clockInZone(c.timeZone, c.utcOffsetSeconds, cfg.units.clock24));
 
       /* temperature (tweened) */
       var target = num(st.temp);
@@ -738,17 +761,6 @@
       self.fitHero();
     });
 
-    /* the first live city drives the backdrop plate and its day/night variant */
-    if (this.backdrop) {
-      var primary = null;
-      for (var bi = 0; bi < states.length; bi++) {
-        if (states[bi] && !states[bi].error) { primary = states[bi]; break; }
-      }
-      if (primary) {
-        this.backdrop.show(window.WX.describeCode(primary.code).group, primary.isDay);
-      }
-    }
-
     /* footer */
     var f = cfg.footer;
     var bits = [];
@@ -778,6 +790,31 @@
           ', high ' + Math.round(s.high) + ', low ' + Math.round(s.low);
       }, this).join('. ');
       if (live.textContent !== spoken) live.textContent = spoken;
+    }
+    this.startClock();
+  };
+
+  /* Keep the city clocks ticking between data refreshes, in each city's zone. */
+  Panel.prototype.updateClocks = function () {
+    var self = this, cfg = this.cfg;
+    if (!cfg.card.cityBand.showLocalTime) return;
+    this.cardEls.forEach(function (c) {
+      if (!c.timeZone) return;
+      self.setText(c.time, clockInZone(c.timeZone, c.utcOffsetSeconds, cfg.units.clock24));
+    });
+  };
+
+  Panel.prototype.startClock = function () {
+    var self = this;
+    this.stopClock();
+    this.updateClocks();
+    this.clockTimer = setInterval(function () { self.updateClocks(); }, 15000);
+  };
+
+  Panel.prototype.stopClock = function () {
+    if (this.clockTimer) {
+      clearInterval(this.clockTimer);
+      this.clockTimer = null;
     }
   };
 
@@ -1119,6 +1156,7 @@
   window.WX.getConfig = function () { return Engine.cfg; };
   window.WX.getData = function () { return Engine.states; };
   window.WX.Panel = Panel;   /* hero-fit maths is unit-tested in tests/type.js */
+  window.WX.clockInZone = clockInZone;   /* zone clock is unit-tested in tests/smoke.js */
 
   /* ------------------------------------------------------------------ boot */
   /* Dark is merged over the resolved config, so the admin keeps editing the

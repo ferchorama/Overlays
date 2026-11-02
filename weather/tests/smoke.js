@@ -261,6 +261,24 @@ setTimeout(() => {
     check('stat values rendered', /5 MPH/.test(statValues[0] || '') && /75%/.test(statValues[1] || ''), statValues.join(' | '));
     check('stat labels rendered', /Wind/i.test(statLabels[0] || '') && /Humidity/i.test(statLabels[1] || ''), statLabels.join(' | '));
     check('footer timestamp', /Updated/i.test(updated || ''), updated);
+    /* city clocks must be wall clocks in the CITY's zone, not the host's and not
+       the provider's observation timestamp (which is rounded to 15 minutes) */
+    const fixed = new Date('2026-11-02T18:05:00Z');
+    check('New York clock is Eastern time',
+      global.WX.clockInZone('America/New_York', -18000, false, fixed) === '1:05 PM',
+      global.WX.clockInZone('America/New_York', -18000, false, fixed));
+    check('a Pacific city is three hours behind at the same instant',
+      global.WX.clockInZone('America/Los_Angeles', -28800, false, fixed) === '10:05 AM',
+      global.WX.clockInZone('America/Los_Angeles', -28800, false, fixed));
+    check('the clock honours the 24-hour setting',
+      global.WX.clockInZone('America/New_York', -18000, true, fixed) === '13:05',
+      global.WX.clockInZone('America/New_York', -18000, true, fixed));
+    check('the UTC-offset fallback works when Intl cannot resolve a zone',
+      global.WX.clockInZone('', -28800, false, fixed) === '10:05 AM',
+      global.WX.clockInZone('', -28800, false, fixed));
+    const cardClock = global.WX.engine.panel.cardEls[0].time.textContent;
+    check('the card clock is live, not the 12:00 observation',
+      /\d{1,2}:\d{2} (AM|PM)/.test(cardClock) && cardClock !== '12:00 PM', cardClock);
     check('state = ready', state === 'ready', state);
     check('aria-live announced', /84 degrees/.test(live), live.slice(0, 60));
     check('one hub data request on load', dataFetches === 1, dataFetches + ' api/data request(s)');
@@ -280,13 +298,13 @@ setTimeout(() => {
     /* ------------------------------------------------------- scrolling plate
        The black-and-white plate lives inside the panel behind the reading
        layer: the panel drops its flat glass tint, the active layer points at
-       the condition/day variant, and the scrim comes from config. */
+       the chosen file, and the scrim comes from config. */
     var bdRoot = panelNode && (panelNode.children || []).filter(function (n) { return n.className === 'wx-backdrop'; })[0];
     var bdLayers = bdRoot ? (bdRoot.children || []).filter(function (n) { return n.className === 'wx-backdrop__layer'; }) : [];
     var bdShown = bdLayers.filter(function (n) { return n.classList.contains('is-on'); })[0];
     var bdCfg = global.WX.getConfig().backdrop || {};
     check('backdrop plate mounted', !!bdRoot && bdLayers.length === 2, bdLayers.length + ' layers');
-    check('backdrop shows the partly-cloudy day plate',
+    check('backdrop shows the chosen plate',
       !!bdShown && String(bdShown.style.backgroundImage).indexOf('partly-cloudy-day.webp') !== -1,
       bdShown ? bdShown.style.backgroundImage : 'none');
     check('backdrop makes the panel background transparent',

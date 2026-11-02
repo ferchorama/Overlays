@@ -4,6 +4,63 @@ All notable changes to the overlays hub. The four widgets ship independently —
 each has its own `meta.version` and cache-buster — so versions are listed per
 app. This entry describes the current working tree (nothing is tagged yet).
 
+## 2026-11-02
+
+### Versions
+
+| App | Version | Saved configs found in the wild |
+|---|---|---|
+| Vertical Weather | **3.3.1** | 3.1.7 |
+| Digital Assets Market | **1.1.8** | 1.0.13 |
+| Prediction Markets | **1.4.1** | 1.3.0 |
+| Talking Points | **1.2.1** | 1.1.1 |
+
+All older saved configs migrate automatically on load.
+
+---
+
+### Vertical Weather — 3.3.1
+
+**Changed**
+- **The scrolling backdrop is now an editorial choice, not a weather mapping.**
+  The Look tab has a thumbnail picker for the 13 day/neutral plates; the selected
+  `backdrop.image` stays put while the live conditions change. The old
+  condition/day-night lookup is gone, and night plates are no longer offered.
+- **City clocks are real wall clocks.** Each card renders the current time in
+  the city's IANA zone (`Intl.DateTimeFormat`) and updates every 15 s, instead of
+  printing the provider's rounded observation timestamp and freezing between
+  refreshes. A UTC-offset fallback covers a zone the browser cannot resolve.
+
+**Fixed**
+- New York and Miami (both Eastern) now read the same local time at the same
+  instant; a Pacific city is correctly three hours behind, not two.
+
+---
+
+### Talking Points — 1.2.1
+
+**Added**
+- **Background tab** with a thumbnail picker for the weather widget's 13
+  black-and-white plates (`../weather/backdrops/`), plus moving-background
+  enable, opacity, blur, pan seconds and scrim tint.
+- The chosen plate drifts behind the panel with the same two-layer crossfade and
+  ping-pong pan as the weather widget. Bands and rows go transparent under it and
+  a light scrim keeps the navy ink at WCAG AA over both photo extremes.
+- The picker reads `weather/backdrops/_manifest.json` when the hub is serving the
+  page, with the shipped list as the offline fallback. Plates are referenced, not
+  copied.
+
+**Changed**
+- Cache-busters and `config.json` move to **1.2.1**; the version-aware migration
+  adds the new `backdrop` block without touching saved content.
+
+**Fixed**
+- Choosing a plate no longer fades in and then blanks when the live config poll
+  remounts the panel: the backdrop image key is now cleared with the layers, so
+  `applyBackdrop()` cannot mistake a fresh layer for the already-painted one.
+
+---
+
 ## 2026-10-24
 
 ### Versions

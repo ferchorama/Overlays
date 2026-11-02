@@ -98,13 +98,17 @@ Add a **Web Request** action pointing at
 
 ## Customizing
 
-The control panel has six tabs:
+The control panel has seven tabs:
 
 * **Content** — title, subtitle (with optional auto-date), show/hide bands,
   the topic list (drag ⠿ to reorder, ✕ to delete, click ⠿ to enable/disable), max rows.
 * **Look** — every gradient (title band, subtitle band, row gradient with
   add/remove stops), text colours and sizes, row height,
   panel background/border/radius/shadow, gloss toggles.
+* **Background** — a thumbnail picker for the 13 black-and-white plates the
+  weather widget already ships (`../weather/backdrops/`), plus enable, opacity,
+  blur, pan seconds and scrim tint. The chosen plate drifts behind the panel;
+  it is **not** tied to the live weather conditions.
 * **Fonts** — Google Fonts list to load, plus font-family / weight /
   letter-spacing / UPPERCASE / max-lines / auto-shrink for each of the three
   text styles, and a **custom font CSS URL** for licensed fonts.
@@ -121,6 +125,16 @@ Everything is written to `localStorage`, pushed to the live preview instantly,
 and saved to `config.json` through the hub. Opening the panel does not write: it
 GETs the config once at boot, and only an edit, reset, preset or Apply JSON
 POSTs it back.
+
+### Moving backdrop
+
+The **Background** tab reuses the weather widget's plates instead of shipping a
+second copy: `script.js` points at `../weather/backdrops/<image>.webp`. Pick any
+of the 13 day/neutral plates, or switch the background off for the plain sky
+glass. `backdrop.image` is the file stem; the panel makes its bands and rows
+transparent and draws a light scrim so the navy ink keeps its contrast. The
+plate pans left→right over `panSeconds`, then back; `prefers-reduced-motion`
+stops the drift.
 
 ### Fonts
 
@@ -252,4 +266,4 @@ runs on every load and save:
   `subtitle.autoDate` back on after a version bump.
 
 The panel reports the upgrade once, e.g.
-`settings upgraded to v1.1.4 (was v1.1.1) — your settings were kept`.
+`settings upgraded to v1.2.1 (was v1.1.1) — your settings were kept`.
