@@ -136,7 +136,7 @@ window.CM_DEFAULT_CONFIG = {
      schema 2 means each category's `coins` is a list of unique CoinGecko ids
      (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
      before it is written. A config.json from schema 1 is upgraded on load. */
-  meta: { name: 'Digital Assets Market', version: '1.3.2', schema: 2 },
+  meta: { name: 'Digital Assets Market', version: '1.3.3', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -472,8 +472,8 @@ window.CM_DEFAULT_CONFIG = {
     'robinhood-markets-backpack-securities': 'assets/logos/robinhood.png',
     'spdr-gold-shares-robinhood-token': 'assets/logos/gold.png',
     'ishares-silver-trust-robinhood-tokenized-stock': 'assets/logos/silver.png',
-    'us-natural-gas-fund-ondo-tokenized': 'assets/logos/natgas.png',
-    'united-states-oil-fund-robinhood-tokenized-stock': 'assets/logos/crude-oil.png',
+    'us-natural-gas-fund-ondo-tokenized': 'assets/logos/natgas-flame.png',
+    'united-states-oil-fund-robinhood-tokenized-stock': 'assets/logos/crude-oil-drop.png',
     'us-copper-index-fund-ondo-tokenized': 'assets/logos/copper.png',
     'nvidia-robinhood-tokenized-stock': 'assets/logos/nvidia.png',
     'apple-robinhood-tokenized-stock': 'assets/logos/apple.png',

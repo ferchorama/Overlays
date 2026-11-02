@@ -11,7 +11,7 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.3.2** | 1.1.6 |
+| Digital Assets Market | **1.3.3** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
@@ -19,9 +19,13 @@ All older saved configs migrate automatically on load.
 
 ---
 
-### Digital Assets Market — 1.3.2
+### Digital Assets Market — 1.3.3
 
 **Fixed**
+- NATGAS and Crude Oil WTI used two crops of the same USCF fuel-droplet mark, so
+  they read as the same icon at 44px. They now point at distinct local marks —
+  `natgas-flame.png` and `crude-oil-drop.png` — and the old files are removed so
+  a cached copy cannot survive the OBS reload.
 - The tokenised rows were showing the **Robinhood issuer feather** on Circle,
   Coinbase, Strategy, Galaxy Digital and Gold/Silver/Crude — one badge reused for
   every Robinhood token — and generic Ondo "USOF" badges on NATGAS/Copper. A new

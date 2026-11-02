@@ -1,10 +1,10 @@
 {
   "meta": {
     "name": "Digital Assets Market",
-    "version": "1.3.2",
+    "version": "1.3.3",
     "schema": 2,
     "migratedFrom": "1.1.5",
-    "savedAt": 1793652432470
+    "savedAt": 1793653266733
   },
   "font": {
     "id": "figtree"
@@ -362,6 +362,26 @@
       "ticker": "SPCX"
     }
   },
+  "assetImages": {
+    "securitize-corp": "assets/logos/securitize.png",
+    "circle-internet-group-robinhood-tokenized-stock": "assets/logos/circle.png",
+    "coinbase-robinhood-tokenized-stock": "assets/logos/coinbase.png",
+    "strategy-inc-robinhood-tokenized-stock": "assets/logos/strategy.png",
+    "galaxy-digital-inc-robinhood-token": "assets/logos/galaxy-digital.png",
+    "robinhood-markets-backpack-securities": "assets/logos/robinhood.png",
+    "spdr-gold-shares-robinhood-token": "assets/logos/gold.png",
+    "ishares-silver-trust-robinhood-tokenized-stock": "assets/logos/silver.png",
+    "us-natural-gas-fund-ondo-tokenized": "assets/logos/natgas-flame.png",
+    "united-states-oil-fund-robinhood-tokenized-stock": "assets/logos/crude-oil-drop.png",
+    "us-copper-index-fund-ondo-tokenized": "assets/logos/copper.png",
+    "nvidia-robinhood-tokenized-stock": "assets/logos/nvidia.png",
+    "apple-robinhood-tokenized-stock": "assets/logos/apple.png",
+    "microsoft-robinhood-tokenized-stock": "assets/logos/microsoft.png",
+    "amazon-robinhood-tokenized-stock": "assets/logos/amazon.png",
+    "meta-platforms-robinhood-tokenized-stock": "assets/logos/meta.png",
+    "tesla-robinhood-tokenized-stock": "assets/logos/tesla.png",
+    "spacex-robinhood-tokenized-stock": "assets/logos/spacex.png"
+  },
   "maxRows": 11,
   "data": {
     "proxyUrl": "api/market",
@@ -404,25 +424,5 @@
     "pollMs": 2000,
     "stateUrl": "api/state",
     "statePollMs": 700
-  },
-  "assetImages": {
-    "securitize-corp": "assets/logos/securitize.png",
-    "circle-internet-group-robinhood-tokenized-stock": "assets/logos/circle.png",
-    "coinbase-robinhood-tokenized-stock": "assets/logos/coinbase.png",
-    "strategy-inc-robinhood-tokenized-stock": "assets/logos/strategy.png",
-    "galaxy-digital-inc-robinhood-token": "assets/logos/galaxy-digital.png",
-    "robinhood-markets-backpack-securities": "assets/logos/robinhood.png",
-    "spdr-gold-shares-robinhood-token": "assets/logos/gold.png",
-    "ishares-silver-trust-robinhood-tokenized-stock": "assets/logos/silver.png",
-    "us-natural-gas-fund-ondo-tokenized": "assets/logos/natgas.png",
-    "united-states-oil-fund-robinhood-tokenized-stock": "assets/logos/crude-oil.png",
-    "us-copper-index-fund-ondo-tokenized": "assets/logos/copper.png",
-    "nvidia-robinhood-tokenized-stock": "assets/logos/nvidia.png",
-    "apple-robinhood-tokenized-stock": "assets/logos/apple.png",
-    "microsoft-robinhood-tokenized-stock": "assets/logos/microsoft.png",
-    "amazon-robinhood-tokenized-stock": "assets/logos/amazon.png",
-    "meta-platforms-robinhood-tokenized-stock": "assets/logos/meta.png",
-    "tesla-robinhood-tokenized-stock": "assets/logos/tesla.png",
-    "spacex-robinhood-tokenized-stock": "assets/logos/spacex.png"
   }
 }
