@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "Digital Assets Market",
-    "version": "1.3.3",
+    "version": "1.3.4",
     "schema": 2,
     "migratedFrom": "1.1.5",
     "savedAt": 1793653266733

@@ -560,7 +560,13 @@
           if (cfg.columns.assetMaxWidth > 0) cell.style.maxWidth = cfg.columns.assetMaxWidth + 'px';
           var logo = el('div', 'logo logo--' + (cfg.rows.logo.radius || 'circle'), cell);
           logo.dataset.testid = 'logo';
-          self.setLogo(logo, rec, cfg.assetImages && cfg.assetImages[id]);
+          var logoFile = cfg.assetImages && cfg.assetImages[id];
+          /* local logo files are versioned so an OBS reload cannot keep a
+             cached copy of the previous mark; external URLs are left alone */
+          if (logoFile && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|data:)/i.test(logoFile)) {
+            logoFile += (logoFile.indexOf('?') === -1 ? '?' : '&') + 'v=' + (cfg.meta.version || '0');
+          }
+          self.setLogo(logo, rec, logoFile);
           var names = el('div', 'asset-names', cell);
           var nm = el('div', 'asset-name', names);
           nm.dataset.testid = 'name';

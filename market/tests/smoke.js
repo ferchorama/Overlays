@@ -347,7 +347,7 @@ setTimeout(async () => {
        points at a local company/fund mark instead. */
     const logoImg = board.rowEls[0] && board.rowEls[0].cells.asset.children[0].children[1];
     check('commodity row uses the local logo file',
-      !!logoImg && /assets\/logos\/gold\.png$/.test(logoImg.src),
+      !!logoImg && /assets\/logos\/gold\.png(\?v=[\d.]+)?$/.test(logoImg.src),
       logoImg ? logoImg.src : 'no logo');
     board.activeIndex = before;
     board.renderRows();
