@@ -11,11 +11,22 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.1.8** | 1.0.13 |
+| Digital Assets Market | **1.2.0** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
 All older saved configs migrate automatically on load.
+
+---
+
+### Digital Assets Market — 1.2.0
+
+**Added**
+- **EQUITY** category with nine tokenized equities — SP500, Nasdaq, Apple,
+  NVIDIA, Microsoft, Amazon, Alphabet, Meta and Tesla xStocks. They use the same
+  CoinGecko ids, logos and price/trend pipeline as the crypto rows, so no new
+  provider or columns were needed. The category is in the shipped defaults and
+  in the saved `config.json`, and `?category=equity` opens it directly.
 
 ---
 
@@ -68,7 +79,7 @@ All older saved configs migrate automatically on load.
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.2.8** | 3.1.7 |
-| Digital Assets Market | **1.1.8** | 1.0.13 |
+| Digital Assets Market | **1.2.0** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.1.4** | — |
 

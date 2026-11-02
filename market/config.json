@@ -238,6 +238,21 @@
       ]
     },
     {
+      "id": "equity",
+      "label": "EQUITY",
+      "coins": [
+        "sp500-xstock",
+        "nasdaq-xstock",
+        "apple-xstock",
+        "nvidia-xstock",
+        "microsoft-xstock",
+        "amazon-xstock",
+        "alphabet-xstock",
+        "meta-xstock",
+        "tesla-xstock"
+      ]
+    },
+    {
       "id": "dino",
       "label": "DINO COINS",
       "coins": [

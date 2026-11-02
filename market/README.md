@@ -2,9 +2,11 @@
 
 A **1920×1080** dark trading-terminal board: a title, category tabs, a column
 header row and up to eleven asset rows (rank · logo + name + ticker · 7-day
-trend · price · 24h · 7d). The shipped categories are **PRIVACY · REVENUE · AI ·
+trend · price · 24h · 7d). The shipped categories are **PRIVACY · REVENUE · AI · EQUITY ·
 DINO COINS · DEFI**, and they are data — the roster lives in `config.js` and is
-editable from the control panel. Prices come from **CoinGecko** through a cached
+editable from the control panel. **EQUITY** tracks tokenized equities (the
+xStock family: SPY, QQQ, Apple, NVIDIA, Microsoft, Amazon, Alphabet, Meta and
+Tesla), priced through the same CoinGecko endpoint as the crypto rows. Prices come from **CoinGecko** through a cached
 proxy in the shared hub, with a **CoinPaprika** fallback for when the free tier is
 rate-limiting — see [Data](#data) below.
 
@@ -125,7 +127,7 @@ The control panel has nine tabs:
   `CM_MIGRATE.cleanCategories` (blanks, invalid ids and repeats all go) and
   **Restore default assets** puts the shipped list back in every section while
   keeping your labels, order and look. The shipped roster is
-  `privacy` · `revenue` · `ai` · `dino` · `defi`. There is no bulk paste field and
+  `privacy` · `revenue` · `ai` · `equity` · `dino` · `defi`. There is no bulk paste field and
   no comma-separated id box: the rows are the editor.
 * **Columns** — reorder, relabel, resize and hide the six columns. A hidden
   column becomes a chip you can click to bring back. Every column, `asset`
@@ -167,7 +169,7 @@ preview over `postMessage`, and saved to `config.json` through the hub.
 
 | Parameter | Effect |
 |---|---|
-| `?category=<id>` | Open on a specific category (`privacy`, `revenue`, `ai`, `dino`, `defi`) |
+| `?category=<id>` | Open on a specific category (`privacy`, `revenue`, `ai`, `equity`, `dino`, `defi`) |
 | `?config=<base64 json>` | Apply a one-off config overlay |
 | `?fit=contain\|cover\|width\|none` | Override the scaling mode |
 | `?nosync=1` | Disable the `config.json` poll, the command poll and the OBS sync — what a screenshot or a test wants |

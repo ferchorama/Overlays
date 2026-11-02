@@ -199,6 +199,16 @@ const COINS = [
   coin('akash-network', 'akt', 'Akash Network', 0.80507, -1.95, 5.40),
   coin('pha', 'phala', 'Phala Network', 0.07498, 4.10, -6.25),
   coin('bittensor', 'tao', 'Bittensor', 303.60, 2.90, 14.10),
+  /* EQUITY */
+  coin('sp500-xstock', 'spyx', 'SP500 xStock', 638.42, 0.65, 2.10),
+  coin('nasdaq-xstock', 'qqqx', 'Nasdaq xStock', 566.18, 1.20, 3.85),
+  coin('apple-xstock', 'aaplx', 'Apple xStock', 271.35, -0.75, 1.40),
+  coin('nvidia-xstock', 'nvdax', 'NVIDIA xStock', 188.42, 2.45, 8.60),
+  coin('microsoft-xstock', 'msftx', 'Microsoft xStock', 512.67, 0.35, -1.15),
+  coin('amazon-xstock', 'amznx', 'Amazon xStock', 236.19, -1.10, 2.75),
+  coin('alphabet-xstock', 'googlx', 'Alphabet xStock', 207.84, 1.85, 4.20),
+  coin('meta-xstock', 'metax', 'Meta xStock', 655.27, -0.40, 5.55),
+  coin('tesla-xstock', 'tslax', 'Tesla xStock', 428.53, 3.10, -2.30),
   /* DINO COINS */
   coin('litecoin', 'ltc', 'Litecoin', 70.38, -0.45, 1.85),
   coin('ripple', 'xrp', 'XRP', 1.51, 1.10, 8.20),
@@ -284,6 +294,13 @@ setTimeout(async () => {
     tabs.length + ' tabs / ' + cfg.categories.length + ' categories');
   check('tab labels match the categories', tabs.map((t) => t.textContent).join(',') ===
     cfg.categories.map((c) => c.label).join(','), tabs.map((t) => t.textContent).join(','));
+  {
+    const eq = cfg.categories.filter((c) => c.id === 'equity')[0];
+    check('equity category ships tokenized equities',
+      !!eq && eq.label === 'EQUITY' && eq.coins.indexOf('nvidia-xstock') !== -1 &&
+      eq.coins.indexOf('sp500-xstock') !== -1,
+      eq ? eq.coins.length + ' symbols' : 'missing');
+  }
   /* web-performance-a11y: interactive elements must be real buttons */
   check('tabs are real <button> elements (keyboard reachable)',
     tabs.every((t) => t.tagName === 'BUTTON'), tabs.map((t) => t.tagName).join(','));

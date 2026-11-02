@@ -136,7 +136,7 @@ window.CM_DEFAULT_CONFIG = {
      schema 2 means each category's `coins` is a list of unique CoinGecko ids
      (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
      before it is written. A config.json from schema 1 is upgraded on load. */
-  meta: { name: 'Digital Assets Market', version: '1.1.8', schema: 2 },
+  meta: { name: 'Digital Assets Market', version: '1.2.0', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -394,6 +394,15 @@ window.CM_DEFAULT_CONFIG = {
       id: 'ai',
       label: 'AI',
       coins: ['near', 'akash-network', 'pha', 'bittensor']
+    },
+    {
+      /* tokenized equities / xStocks — still CoinGecko ids, so prices, names,
+         tickers and logos come back through the same markets endpoint */
+      id: 'equity',
+      label: 'EQUITY',
+      coins: ['sp500-xstock', 'nasdaq-xstock', 'apple-xstock', 'nvidia-xstock',
+              'microsoft-xstock', 'amazon-xstock', 'alphabet-xstock', 'meta-xstock',
+              'tesla-xstock']
     },
     {
       id: 'dino',
