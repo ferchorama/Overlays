@@ -136,7 +136,7 @@ window.CM_DEFAULT_CONFIG = {
      schema 2 means each category's `coins` is a list of unique CoinGecko ids
      (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
      before it is written. A config.json from schema 1 is upgraded on load. */
-  meta: { name: 'Digital Assets Market', version: '1.3.1', schema: 2 },
+  meta: { name: 'Digital Assets Market', version: '1.3.2', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -456,6 +456,32 @@ window.CM_DEFAULT_CONFIG = {
     'meta-platforms-robinhood-tokenized-stock': { name: 'Meta', ticker: 'META' },
     'tesla-robinhood-tokenized-stock': { name: 'Tesla', ticker: 'TSLA' },
     'spacex-robinhood-tokenized-stock': { name: 'SpaceX', ticker: 'SPCX' }
+  },
+
+  /* Logos for the tokenised rows. The Robinhood-issued tokens all carry the
+     same green feather badge, and Ondo/Securitize ids sometimes ship no mark the
+     board can read at 44px, so each row points at a local 128px PNG of the
+     company/fund mark instead. Paths are relative to the overlay page; anything
+     not listed keeps the provider image. */
+  assetImages: {
+    'securitize-corp': 'assets/logos/securitize.png',
+    'circle-internet-group-robinhood-tokenized-stock': 'assets/logos/circle.png',
+    'coinbase-robinhood-tokenized-stock': 'assets/logos/coinbase.png',
+    'strategy-inc-robinhood-tokenized-stock': 'assets/logos/strategy.png',
+    'galaxy-digital-inc-robinhood-token': 'assets/logos/galaxy-digital.png',
+    'robinhood-markets-backpack-securities': 'assets/logos/robinhood.png',
+    'spdr-gold-shares-robinhood-token': 'assets/logos/gold.png',
+    'ishares-silver-trust-robinhood-tokenized-stock': 'assets/logos/silver.png',
+    'us-natural-gas-fund-ondo-tokenized': 'assets/logos/natgas.png',
+    'united-states-oil-fund-robinhood-tokenized-stock': 'assets/logos/crude-oil.png',
+    'us-copper-index-fund-ondo-tokenized': 'assets/logos/copper.png',
+    'nvidia-robinhood-tokenized-stock': 'assets/logos/nvidia.png',
+    'apple-robinhood-tokenized-stock': 'assets/logos/apple.png',
+    'microsoft-robinhood-tokenized-stock': 'assets/logos/microsoft.png',
+    'amazon-robinhood-tokenized-stock': 'assets/logos/amazon.png',
+    'meta-platforms-robinhood-tokenized-stock': 'assets/logos/meta.png',
+    'tesla-robinhood-tokenized-stock': 'assets/logos/tesla.png',
+    'spacex-robinhood-tokenized-stock': 'assets/logos/spacex.png'
   },
 
   /* how many rows a category shows before it is cut off */

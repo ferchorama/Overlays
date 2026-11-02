@@ -11,7 +11,7 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.3.1** | 1.1.6 |
+| Digital Assets Market | **1.3.2** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
@@ -19,7 +19,16 @@ All older saved configs migrate automatically on load.
 
 ---
 
-### Digital Assets Market — 1.3.1
+### Digital Assets Market — 1.3.2
+
+**Fixed**
+- The tokenised rows were showing the **Robinhood issuer feather** on Circle,
+  Coinbase, Strategy, Galaxy Digital and Gold/Silver/Crude — one badge reused for
+  every Robinhood token — and generic Ondo "USOF" badges on NATGAS/Copper. A new
+  `assetImages` map points all 18 ids at local 128px PNGs of the company/fund
+  mark in `assets/logos/`, so the board now shows the Coinbase C, the Strategy
+  wordmark, the Circle ring, SpaceX, GLD, SLV, CPER and the rest. Anything not
+  listed keeps the provider image (the initials layer is still the 404 fallback).
 
 **Removed**
 - **DINO COINS** tab removed from the shipped defaults and the saved

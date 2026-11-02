@@ -1,10 +1,10 @@
 {
   "meta": {
     "name": "Digital Assets Market",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "schema": 2,
     "migratedFrom": "1.1.5",
-    "savedAt": 1792849856824
+    "savedAt": 1793652432470
   },
   "font": {
     "id": "figtree"
@@ -288,47 +288,6 @@
       ]
     }
   ],
-  "maxRows": 11,
-  "data": {
-    "proxyUrl": "api/market",
-    "directUrl": "https://api.coingecko.com/api/v3/coins/markets",
-    "currency": "usd",
-    "sparkline": true,
-    "timeoutMs": 12000,
-    "useCacheOnFailure": true,
-    "cacheKey": "cm-cache-v1"
-  },
-  "animation": {
-    "autoPlay": true,
-    "autoPlayDelay": 0.25,
-    "headerDuration": 0.7,
-    "headerEase": "power3.out",
-    "headerFrom": 26,
-    "tabsDuration": 0.6,
-    "rowDuration": 0.6,
-    "rowEase": "power3.out",
-    "rowStagger": 0.06,
-    "rowStart": 0.26,
-    "rowFrom": 20,
-    "fadeRows": true,
-    "newRowDuration": 0.55,
-    "newRowFrom": 18,
-    "newRowEase": "power2.out",
-    "sparklineDraw": 0.9,
-    "tabSwitch": true,
-    "pillDuration": 0.25,
-    "tabOutDuration": 0.15,
-    "tabSwitchDuration": 0.2,
-    "tabSwitchStagger": 0.04,
-    "tabEase": "power2.inOut",
-    "tabInEase": "power2.out"
-  },
-  "sync": {
-    "serverConfigUrl": "config.json",
-    "pollMs": 2000,
-    "stateUrl": "api/state",
-    "statePollMs": 700
-  },
   "assetLabels": {
     "securitize-corp": {
       "name": "Securitize",
@@ -402,5 +361,68 @@
       "name": "SpaceX",
       "ticker": "SPCX"
     }
+  },
+  "maxRows": 11,
+  "data": {
+    "proxyUrl": "api/market",
+    "directUrl": "https://api.coingecko.com/api/v3/coins/markets",
+    "currency": "usd",
+    "sparkline": true,
+    "timeoutMs": 12000,
+    "useCacheOnFailure": true,
+    "cacheKey": "cm-cache-v1"
+  },
+  "animation": {
+    "autoPlay": true,
+    "autoPlayDelay": 0.25,
+    "headerDuration": 0.7,
+    "headerEase": "power3.out",
+    "headerFrom": 26,
+    "tabsDuration": 0.6,
+    "rowDuration": 0.6,
+    "rowEase": "power3.out",
+    "rowStagger": 0.06,
+    "rowStart": 0.26,
+    "rowFrom": 20,
+    "fadeRows": true,
+    "newRowDuration": 0.55,
+    "newRowFrom": 18,
+    "newRowEase": "power2.out",
+    "removeRowDuration": 0.28,
+    "removeRowEase": "power2.inOut",
+    "sparklineDraw": 0.9,
+    "tabSwitch": true,
+    "pillDuration": 0.25,
+    "tabOutDuration": 0.15,
+    "tabSwitchDuration": 0.2,
+    "tabSwitchStagger": 0.04,
+    "tabEase": "power2.inOut",
+    "tabInEase": "power2.out"
+  },
+  "sync": {
+    "serverConfigUrl": "config.json",
+    "pollMs": 2000,
+    "stateUrl": "api/state",
+    "statePollMs": 700
+  },
+  "assetImages": {
+    "securitize-corp": "assets/logos/securitize.png",
+    "circle-internet-group-robinhood-tokenized-stock": "assets/logos/circle.png",
+    "coinbase-robinhood-tokenized-stock": "assets/logos/coinbase.png",
+    "strategy-inc-robinhood-tokenized-stock": "assets/logos/strategy.png",
+    "galaxy-digital-inc-robinhood-token": "assets/logos/galaxy-digital.png",
+    "robinhood-markets-backpack-securities": "assets/logos/robinhood.png",
+    "spdr-gold-shares-robinhood-token": "assets/logos/gold.png",
+    "ishares-silver-trust-robinhood-tokenized-stock": "assets/logos/silver.png",
+    "us-natural-gas-fund-ondo-tokenized": "assets/logos/natgas.png",
+    "united-states-oil-fund-robinhood-tokenized-stock": "assets/logos/crude-oil.png",
+    "us-copper-index-fund-ondo-tokenized": "assets/logos/copper.png",
+    "nvidia-robinhood-tokenized-stock": "assets/logos/nvidia.png",
+    "apple-robinhood-tokenized-stock": "assets/logos/apple.png",
+    "microsoft-robinhood-tokenized-stock": "assets/logos/microsoft.png",
+    "amazon-robinhood-tokenized-stock": "assets/logos/amazon.png",
+    "meta-platforms-robinhood-tokenized-stock": "assets/logos/meta.png",
+    "tesla-robinhood-tokenized-stock": "assets/logos/tesla.png",
+    "spacex-robinhood-tokenized-stock": "assets/logos/spacex.png"
   }
 }

@@ -560,7 +560,7 @@
           if (cfg.columns.assetMaxWidth > 0) cell.style.maxWidth = cfg.columns.assetMaxWidth + 'px';
           var logo = el('div', 'logo logo--' + (cfg.rows.logo.radius || 'circle'), cell);
           logo.dataset.testid = 'logo';
-          self.setLogo(logo, rec);
+          self.setLogo(logo, rec, cfg.assetImages && cfg.assetImages[id]);
           var names = el('div', 'asset-names', cell);
           var nm = el('div', 'asset-name', names);
           nm.dataset.testid = 'name';
@@ -755,12 +755,13 @@
     });
   };
 
-  Board.prototype.setLogo = function (node, rec) {
+  Board.prototype.setLogo = function (node, rec, imageOverride) {
     node.innerHTML = '';
     var initials = rec && rec.symbol ? rec.symbol.slice(0, 3).toUpperCase() : '?';
     var span = el('span', null, node);
     span.textContent = initials;
-    if (rec && rec.image) {
+    var src = imageOverride || (rec && rec.image);
+    if (src) {
       var img = document.createElement('img');
       img.alt = '';
       img.loading = 'eager';
@@ -770,7 +771,7 @@
          image 404s. */
       img.addEventListener('load', function () { span.style.display = 'none'; });
       img.addEventListener('error', function () { if (img.parentNode) img.parentNode.removeChild(img); });
-      img.src = rec.image;
+      img.src = src;
       node.appendChild(img);
     }
   };

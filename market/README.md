@@ -40,6 +40,7 @@ mid-sentence. Switch tabs by clicking one, with the arrow keys, or with the
 | `admin.html` / `admin.css` / `admin.js` | The control panel: live preview, 9 tabs of editors, Apply/Copy JSON, HTTP reference. |
 | `config.json` | Created by the hub when you hit **Save** — the board polls it, so OBS follows your edits live. |
 | `vendor/gsap.min.js` | Local GSAP 3.12.5 so the board works offline (the CDN is the fallback). |
+| `assets/logos/` | 128px company/fund marks for the tokenised rows, referenced by `assetImages` (the provider reuses one issuer badge per platform). |
 | `tests/smoke.js` | Runs the real engine in Node with a DOM shim and a stubbed proxy (3 modes). |
 | `tests/contrast.js` | WCAG AA gate over the composited panel + a colour-blind separation check. |
 | `tests/admin.js` | Control-panel runtime check: boots the real `admin.html` + `admin.js`, drives the editors, asserts what was written and posted. |
@@ -136,8 +137,10 @@ The control panel has nine tabs:
   `crypto-equities` · `commodities` · `equity` · `privacy` · `revenue` · `ai` ·
   `defi`. The tokenised rows take their on-air text from the optional
   `assetLabels` map (provider id → `{ name, ticker }`), editable in the raw JSON
-  box; anything not listed keeps the provider name. There is no bulk paste field
-  and no comma-separated id box: the rows are the editor.
+  box, and their logo from `assetImages` (provider id → local file under
+  `assets/logos/`) — the provider otherwise reuses the issuer's badge for every
+  token it mints. Anything not listed keeps the provider name and image. There
+  is no bulk paste field and no comma-separated id box: the rows are the editor.
 * **Columns** — reorder, relabel, resize and hide the six columns. A hidden
   column becomes a chip you can click to bring back. Every column, `asset`
   included, has an editable width; `columns.assetMaxWidth` (560 px shipped) caps
