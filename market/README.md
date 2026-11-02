@@ -3,7 +3,7 @@
 A **1920×1080** dark trading-terminal board: a title, category tabs, a column
 header row and up to eleven asset rows (rank · logo + name + ticker · 7-day
 trend · price · 24h · 7d). The shipped categories are **CRYPTO EQUITIES ·
-COMMODITIES · EQUITIES · PRIVACY · REVENUE · AI · DINO COINS · DEFI**, and they
+COMMODITIES · EQUITIES · PRIVACY · REVENUE · AI · DEFI**, and they
 are data — the roster lives in `config.js` and is editable from the control
 panel. The first three are tokenised proxies for real-world assets (Robinhood tokenised stocks,
 Ondo tokenised ETFs and Securitize's own equity token): Coinbase, Circle, Strategy, Galaxy
@@ -134,7 +134,7 @@ The control panel has nine tabs:
   **Restore default assets** puts the shipped list back in every section while
   keeping your labels, order and look. The shipped roster is
   `crypto-equities` · `commodities` · `equity` · `privacy` · `revenue` · `ai` ·
-  `dino` · `defi`. The tokenised rows take their on-air text from the optional
+  `defi`. The tokenised rows take their on-air text from the optional
   `assetLabels` map (provider id → `{ name, ticker }`), editable in the raw JSON
   box; anything not listed keeps the provider name. There is no bulk paste field
   and no comma-separated id box: the rows are the editor.
@@ -178,7 +178,7 @@ preview over `postMessage`, and saved to `config.json` through the hub.
 
 | Parameter | Effect |
 |---|---|
-| `?category=<id>` | Open on a specific category (`crypto-equities`, `commodities`, `equity`, `privacy`, `revenue`, `ai`, `dino`, `defi`) |
+| `?category=<id>` | Open on a specific category (`crypto-equities`, `commodities`, `equity`, `privacy`, `revenue`, `ai`, `defi`) |
 | `?config=<base64 json>` | Apply a one-off config overlay |
 | `?fit=contain\|cover\|width\|none` | Override the scaling mode |
 | `?nosync=1` | Disable the `config.json` poll, the command poll and the OBS sync — what a screenshot or a test wants |

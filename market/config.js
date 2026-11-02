@@ -136,7 +136,7 @@ window.CM_DEFAULT_CONFIG = {
      schema 2 means each category's `coins` is a list of unique CoinGecko ids
      (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
      before it is written. A config.json from schema 1 is upgraded on load. */
-  meta: { name: 'Digital Assets Market', version: '1.3.0', schema: 2 },
+  meta: { name: 'Digital Assets Market', version: '1.3.1', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -424,11 +424,6 @@ window.CM_DEFAULT_CONFIG = {
       id: 'ai',
       label: 'AI',
       coins: ['near', 'akash-network', 'pha', 'bittensor']
-    },
-    {
-      id: 'dino',
-      label: 'DINO COINS',
-      coins: ['litecoin', 'ripple', 'stellar', 'bitcoin-cash', 'dogecoin']
     },
     {
       id: 'defi',

@@ -11,7 +11,7 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.3.0** | 1.1.6 |
+| Digital Assets Market | **1.3.1** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
@@ -19,7 +19,12 @@ All older saved configs migrate automatically on load.
 
 ---
 
-### Digital Assets Market — 1.3.0
+### Digital Assets Market — 1.3.1
+
+**Removed**
+- **DINO COINS** tab removed from the shipped defaults and the saved
+  `config.json` (litecoin, ripple, stellar, bitcoin-cash, dogecoin). The other
+  sections are untouched; it can be re-created from the Categories tab if needed.
 
 **Added**
 - **CRYPTO EQUITIES, COMMODITIES and EQUITIES** sections with the requested

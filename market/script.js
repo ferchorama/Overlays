@@ -3,7 +3,7 @@
    ----------------------------------------------------------------------------
      • fetches CoinGecko through our own cached proxy, then direct, then cache
      • renders a four-column board: asset / price / 24h / 7d
-     • category tabs (PRIVACY · REVENUE · AI · DINO COINS · DEFI), switched by hand:
+     • category tabs (PRIVACY · CRYPTO EQUITIES · COMMODITIES · EQUITIES · REVENUE · AI · DEFI), switched by hand:
         click, arrow keys, or the next/prev commands. Deliberately no
         auto-rotate — on air the board holds the category you chose.
      • GSAP everywhere: entrance, tab swaps, sliding pill, price ticks

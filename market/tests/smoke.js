@@ -220,12 +220,7 @@ const COINS = [
   coin('meta-platforms-robinhood-tokenized-stock', 'meta', 'Meta Platforms • Robinhood Token', 611.03, -0.54, -3.67),
   coin('tesla-robinhood-tokenized-stock', 'tsla', 'Tesla • Robinhood Token', 403.98, 1.30, 2.38),
   coin('spacex-robinhood-tokenized-stock', 'spcx', 'SpaceX • Robinhood Token', 138.08, 0.64, -7.27),
-  /* DINO COINS */
-  coin('litecoin', 'ltc', 'Litecoin', 70.38, -0.45, 1.85),
-  coin('ripple', 'xrp', 'XRP', 1.51, 1.10, 8.20),
-  coin('stellar', 'xlm', 'Stellar', 0.22485, -0.70, 2.65),
-  coin('bitcoin-cash', 'bch', 'Bitcoin Cash', 320.25, 0.85, 4.30),
-  coin('dogecoin', 'doge', 'Dogecoin', 0.09628, 2.20, 9.95),
+
   /* DEFI */
   coin('ethereum', 'eth', 'Ethereum', 2722.56, 1.55, 6.40),
   coin('chainlink', 'link', 'Chainlink', 14.18, -1.20, 3.75),
