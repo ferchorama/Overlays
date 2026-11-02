@@ -199,16 +199,27 @@ const COINS = [
   coin('akash-network', 'akt', 'Akash Network', 0.80507, -1.95, 5.40),
   coin('pha', 'phala', 'Phala Network', 0.07498, 4.10, -6.25),
   coin('bittensor', 'tao', 'Bittensor', 303.60, 2.90, 14.10),
-  /* EQUITY */
-  coin('sp500-xstock', 'spyx', 'SP500 xStock', 638.42, 0.65, 2.10),
-  coin('nasdaq-xstock', 'qqqx', 'Nasdaq xStock', 566.18, 1.20, 3.85),
-  coin('apple-xstock', 'aaplx', 'Apple xStock', 271.35, -0.75, 1.40),
-  coin('nvidia-xstock', 'nvdax', 'NVIDIA xStock', 188.42, 2.45, 8.60),
-  coin('microsoft-xstock', 'msftx', 'Microsoft xStock', 512.67, 0.35, -1.15),
-  coin('amazon-xstock', 'amznx', 'Amazon xStock', 236.19, -1.10, 2.75),
-  coin('alphabet-xstock', 'googlx', 'Alphabet xStock', 207.84, 1.85, 4.20),
-  coin('meta-xstock', 'metax', 'Meta xStock', 655.27, -0.40, 5.55),
-  coin('tesla-xstock', 'tslax', 'Tesla xStock', 428.53, 3.10, -2.30),
+  /* CRYPTO EQUITIES */
+  coin('securitize-corp', 'secz', 'Securitize', 7.56, 0.35, -3.08),
+  coin('circle-internet-group-robinhood-tokenized-stock', 'crcl', 'Circle Internet Group • Robinhood Token', 72.38, -0.50, -8.88),
+  coin('coinbase-robinhood-tokenized-stock', 'coin', 'Coinbase • Robinhood Token', 135.88, -7.28, -15.17),
+  coin('strategy-inc-robinhood-tokenized-stock', 'mstr', 'Strategy Inc. • Robinhood Token', 131.05, -1.70, -7.05),
+  coin('galaxy-digital-inc-robinhood-token', 'glxy', 'Galaxy Digital Inc. • Robinhood Token', 14.55, -10.28, -6.86),
+  coin('robinhood-markets-backpack-securities', 'hood', 'Robinhood Markets (Backpack Securities)', 84.13, -2.00, -9.40),
+  /* COMMODITIES */
+  coin('spdr-gold-shares-robinhood-token', 'gld', 'SPDR Gold Shares • Robinhood Token', 361.40, 1.67, -1.82),
+  coin('ishares-silver-trust-robinhood-tokenized-stock', 'slv', 'iShares Silver Trust • Robinhood Token', 45.68, 2.11, -6.41),
+  coin('us-natural-gas-fund-ondo-tokenized', 'ungon', 'US Natural Gas Fund (Ondo Tokenized)', 9.03, -0.02, -5.42),
+  coin('united-states-oil-fund-robinhood-tokenized-stock', 'uso', 'United States Oil Fund • Robinhood Token', 157.64, -5.84, -5.33),
+  coin('us-copper-index-fund-ondo-tokenized', 'cperon', 'US Copper Index Fund (Ondo Tokenized)', 39.46, 0.00, 0.07),
+  /* EQUITIES */
+  coin('nvidia-robinhood-tokenized-stock', 'nvda', 'NVIDIA • Robinhood Token', 204.13, -0.16, -5.89),
+  coin('apple-robinhood-tokenized-stock', 'aapl', 'Apple • Robinhood Token', 338.79, -1.48, -1.70),
+  coin('microsoft-robinhood-tokenized-stock', 'msft', 'Microsoft • Robinhood Token', 512.93, -2.10, -3.31),
+  coin('amazon-robinhood-tokenized-stock', 'amzn', 'Amazon • Robinhood Token', 247.99, 3.07, -0.48),
+  coin('meta-platforms-robinhood-tokenized-stock', 'meta', 'Meta Platforms • Robinhood Token', 611.03, -0.54, -3.67),
+  coin('tesla-robinhood-tokenized-stock', 'tsla', 'Tesla • Robinhood Token', 403.98, 1.30, 2.38),
+  coin('spacex-robinhood-tokenized-stock', 'spcx', 'SpaceX • Robinhood Token', 138.08, 0.64, -7.27),
   /* DINO COINS */
   coin('litecoin', 'ltc', 'Litecoin', 70.38, -0.45, 1.85),
   coin('ripple', 'xrp', 'XRP', 1.51, 1.10, 8.20),
@@ -295,11 +306,49 @@ setTimeout(async () => {
   check('tab labels match the categories', tabs.map((t) => t.textContent).join(',') ===
     cfg.categories.map((c) => c.label).join(','), tabs.map((t) => t.textContent).join(','));
   {
-    const eq = cfg.categories.filter((c) => c.id === 'equity')[0];
-    check('equity category ships tokenized equities',
-      !!eq && eq.label === 'EQUITY' && eq.coins.indexOf('nvidia-xstock') !== -1 &&
-      eq.coins.indexOf('sp500-xstock') !== -1,
-      eq ? eq.coins.length + ' symbols' : 'missing');
+    const idsOf = (id) => (cfg.categories.filter((c) => c.id === id)[0] || { coins: [] }).coins;
+    const cryptoEq = idsOf('crypto-equities');
+    const comm = idsOf('commodities');
+    const eq = idsOf('equity');
+    check('crypto equities tab ships the six requested tickers',
+      cryptoEq.indexOf('securitize-corp') !== -1 &&
+      cryptoEq.indexOf('circle-internet-group-robinhood-tokenized-stock') !== -1 &&
+      cryptoEq.indexOf('coinbase-robinhood-tokenized-stock') !== -1 &&
+      cryptoEq.indexOf('strategy-inc-robinhood-tokenized-stock') !== -1 &&
+      cryptoEq.indexOf('galaxy-digital-inc-robinhood-token') !== -1 &&
+      cryptoEq.indexOf('robinhood-markets-backpack-securities') !== -1,
+      cryptoEq.length + ' symbols');
+    check('commodities tab ships gold, silver, natgas, wti and copper',
+      comm.indexOf('spdr-gold-shares-robinhood-token') !== -1 &&
+      comm.indexOf('ishares-silver-trust-robinhood-tokenized-stock') !== -1 &&
+      comm.indexOf('us-natural-gas-fund-ondo-tokenized') !== -1 &&
+      comm.indexOf('united-states-oil-fund-robinhood-tokenized-stock') !== -1 &&
+      comm.indexOf('us-copper-index-fund-ondo-tokenized') !== -1,
+      comm.length + ' symbols');
+    check('equities tab ships the seven requested names',
+      eq.indexOf('nvidia-robinhood-tokenized-stock') !== -1 &&
+      eq.indexOf('apple-robinhood-tokenized-stock') !== -1 &&
+      eq.indexOf('microsoft-robinhood-tokenized-stock') !== -1 &&
+      eq.indexOf('amazon-robinhood-tokenized-stock') !== -1 &&
+      eq.indexOf('meta-platforms-robinhood-tokenized-stock') !== -1 &&
+      eq.indexOf('tesla-robinhood-tokenized-stock') !== -1 &&
+      eq.indexOf('spacex-robinhood-tokenized-stock') !== -1,
+      eq.length + ' symbols');
+
+    /* On air the row must show "Gold"/GLD, not the provider's
+       "SPDR Gold Shares • Robinhood Token"/GLD. Switch to COMMODITIES, inspect,
+       then hand the board back to the first tab for the checks that follow. */
+    const before = board.activeIndex;
+    board.activeIndex = cfg.categories.findIndex((c) => c.id === 'commodities');
+    board.renderRows();
+    const names = collect(stage, 'name').map((n) => n.textContent);
+    const tickers = collect(stage, 'ticker').map((n) => n.textContent);
+    check('commodity rows use the operator labels, not provider names',
+      names.indexOf('Gold') !== -1 && names.indexOf('NATGAS') !== -1 &&
+      names.indexOf('Crude Oil WTI') !== -1 && tickers.indexOf('GLD') !== -1,
+      names.join(' | ') + ' / ' + tickers.join(' | '));
+    board.activeIndex = before;
+    board.renderRows();
   }
   /* web-performance-a11y: interactive elements must be real buttons */
   check('tabs are real <button> elements (keyboard reachable)',
@@ -736,8 +785,9 @@ setTimeout(async () => {
     check('a payload without a record stops shimmering and marks the row missing',
       !!row && !row.root.classList.contains('is-loading') && row.root.classList.contains('is-missing'),
       row ? row.root.className : 'row not found');
-    check('the missing row still carries the id and dashes, not a blank hole',
-      !!row && row.cells.asset.children[1].children[0].textContent === victim &&
+    check('the missing row still carries its name and dashes, not a blank hole',
+      !!row && row.cells.asset.children[1].children[0].textContent ===
+        (((cfg.assetLabels || {})[victim] || {}).name || victim) &&
       row.cells.price.textContent === '\u2014' && row.cells.change24h.textContent === '\u2014',
       row ? JSON.stringify([row.cells.asset.children[1].children[0].textContent,
         row.cells.price.textContent, row.cells.change24h.textContent]) : 'no row');

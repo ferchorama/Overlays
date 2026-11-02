@@ -11,7 +11,7 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.2.0** | 1.1.6 |
+| Digital Assets Market | **1.3.0** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
@@ -19,14 +19,29 @@ All older saved configs migrate automatically on load.
 
 ---
 
-### Digital Assets Market — 1.2.0
+### Digital Assets Market — 1.3.0
 
 **Added**
-- **EQUITY** category with nine tokenized equities — SP500, Nasdaq, Apple,
-  NVIDIA, Microsoft, Amazon, Alphabet, Meta and Tesla xStocks. They use the same
-  CoinGecko ids, logos and price/trend pipeline as the crypto rows, so no new
-  provider or columns were needed. The category is in the shipped defaults and
-  in the saved `config.json`, and `?category=equity` opens it directly.
+- **CRYPTO EQUITIES, COMMODITIES and EQUITIES** sections with the requested
+  roster: Securitize (SECZ), Circle (CRCL), Coinbase (COIN), Strategy (MSTR),
+  Galaxy Digital (GLXY) and Robinhood (HOOD); gold, silver, NATGAS, WTI crude and
+  copper; NVIDIA, Apple, Microsoft, Amazon, Meta, Tesla and SpaceX. They are
+  tokenised proxies priced through the same CoinGecko markets endpoint and cache
+  as the crypto rows, so no new provider or columns were needed. All three ship
+  in `config.js` **and** the saved `config.json`;
+  `?category=crypto-equities|commodities|equity` opens them directly.
+- `assetLabels` maps those provider ids to the on-air name and ticker, so a row
+  reads "Robinhood · HOOD" instead of "Robinhood Markets (Backpack Securities) ·
+  HOOD"; Gold, Silver, NATGAS, Crude Oil WTI and Copper replace the long ETF /
+  Ondo token names. Price and trend still come from the provider.
+- The EQUITIES tab replaced the earlier xStock ETF roster (SP500, Nasdaq,
+  Alphabet are no longer in it); every other section is unchanged.
+
+**Operational**
+- Those 18 tokenised ids are **CoinGecko-only**: CoinPaprika does not list them,
+  so if the fallback answers those rows show "no market data" rather than a
+  different token's price. The ids are declared in `COINGECKO_ONLY` and the hub
+  test checks that every shipped id is either mapped or declared there.
 
 ---
 

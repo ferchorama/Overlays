@@ -315,10 +315,27 @@ function finish() {
       check('market config readable for fallback coverage', false, String(e.message));
     }
 
-    const uncovered = shipped.filter((id) => !mapped.has(id));
-    check('every coin the board ships has a fallback id', uncovered.length === 0,
+    /* Tokenised equities / commodity ETFs have no CoinPaprika id at all, so
+       they are declared Gecko-only in server.js. During a CoinGecko outage those
+       rows render as "no market data" instead of borrowing another token's
+       price. Coverage is still checked, it just has two honest buckets. */
+    let geckoOnly = new Set();
+    const gStart = serverSrc.indexOf('const COINGECKO_ONLY = new Set([');
+    const gEnd = serverSrc.indexOf(']);', gStart);
+    if (gStart !== -1 && gEnd > gStart) {
+      const block = serverSrc.slice(gStart, gEnd);
+      for (const m of block.matchAll(/"([^"]+)"/g)) geckoOnly.add(m[1]);
+    }
+    check('the CoinGecko-only list is present', geckoOnly.size > 0, geckoOnly.size + ' ids');
+    const stray = [...geckoOnly].filter((id) => shipped.indexOf(id) === -1);
+    check('every CoinGecko-only id is actually shipped', stray.length === 0,
+      stray.join(', ') || 'all shipped');
+
+    const uncovered = shipped.filter((id) => !mapped.has(id) && !geckoOnly.has(id));
+    check('every coin the board ships has a fallback or is declared Gecko-only',
+      uncovered.length === 0,
       uncovered.length ? 'unmapped: ' + uncovered.join(', ')
-        : shipped.length + ' coins, ' + mapped.size + ' mapped');
+        : shipped.length + ' coins, ' + mapped.size + ' mapped, ' + geckoOnly.size + ' Gecko-only');
   }
 
   finish();

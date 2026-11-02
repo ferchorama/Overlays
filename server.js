@@ -81,6 +81,32 @@ const COINPAPRIKA_IDS = {
     "sky": "sky-sky", "syrup": "syrup-syrup-token", "morpho": "morpho-morpho"
 };
 
+/* Tokenised equities / commodity ETFs that CoinPaprika does not list. They stay
+   on the board as CoinGecko-only rows: during a CoinGecko outage the fallback
+   omits them and the board paints those rows as "no market data" instead of
+   printing a different token's price under the label. Keep in step with the
+   three tokenised categories in market/config.js. */
+const COINGECKO_ONLY = new Set([
+  "securitize-corp",
+  "circle-internet-group-robinhood-tokenized-stock",
+  "coinbase-robinhood-tokenized-stock",
+  "strategy-inc-robinhood-tokenized-stock",
+  "galaxy-digital-inc-robinhood-token",
+  "robinhood-markets-backpack-securities",
+  "spdr-gold-shares-robinhood-token",
+  "ishares-silver-trust-robinhood-tokenized-stock",
+  "us-natural-gas-fund-ondo-tokenized",
+  "united-states-oil-fund-robinhood-tokenized-stock",
+  "us-copper-index-fund-ondo-tokenized",
+  "nvidia-robinhood-tokenized-stock",
+  "apple-robinhood-tokenized-stock",
+  "microsoft-robinhood-tokenized-stock",
+  "amazon-robinhood-tokenized-stock",
+  "meta-platforms-robinhood-tokenized-stock",
+  "tesla-robinhood-tokenized-stock",
+  "spacex-robinhood-tokenized-stock"
+]);
+
 /* Reshape a CoinPaprika ticker list into CoinGecko's /coins/markets format, so
    the overlay needs no knowledge of which provider answered. */
 function normaliseCoinPaprika(raw, params) {

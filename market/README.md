@@ -2,11 +2,17 @@
 
 A **1920×1080** dark trading-terminal board: a title, category tabs, a column
 header row and up to eleven asset rows (rank · logo + name + ticker · 7-day
-trend · price · 24h · 7d). The shipped categories are **PRIVACY · REVENUE · AI · EQUITY ·
-DINO COINS · DEFI**, and they are data — the roster lives in `config.js` and is
-editable from the control panel. **EQUITY** tracks tokenized equities (the
-xStock family: SPY, QQQ, Apple, NVIDIA, Microsoft, Amazon, Alphabet, Meta and
-Tesla), priced through the same CoinGecko endpoint as the crypto rows. Prices come from **CoinGecko** through a cached
+trend · price · 24h · 7d). The shipped categories are **CRYPTO EQUITIES ·
+COMMODITIES · EQUITIES · PRIVACY · REVENUE · AI · DINO COINS · DEFI**, and they
+are data — the roster lives in `config.js` and is editable from the control
+panel. The first three are tokenised proxies for real-world assets (Robinhood tokenised stocks,
+Ondo tokenised ETFs and Securitize's own equity token): Coinbase, Circle, Strategy, Galaxy
+Digital, Robinhood and Securitize under CRYPTO EQUITIES; gold, silver, natural
+gas, WTI crude and copper under COMMODITIES; and NVIDIA, Apple, Microsoft,
+Amazon, Meta, Tesla and SpaceX under EQUITIES. They price through the same
+CoinGecko endpoint as the crypto rows, and `assetLabels` gives each one the
+on-air name and ticker instead of the tokenisation platform's long provider name.
+Prices come from **CoinGecko** through a cached
 proxy in the shared hub, with a **CoinPaprika** fallback for when the free tier is
 rate-limiting — see [Data](#data) below.
 
@@ -127,8 +133,11 @@ The control panel has nine tabs:
   `CM_MIGRATE.cleanCategories` (blanks, invalid ids and repeats all go) and
   **Restore default assets** puts the shipped list back in every section while
   keeping your labels, order and look. The shipped roster is
-  `privacy` · `revenue` · `ai` · `equity` · `dino` · `defi`. There is no bulk paste field and
-  no comma-separated id box: the rows are the editor.
+  `crypto-equities` · `commodities` · `equity` · `privacy` · `revenue` · `ai` ·
+  `dino` · `defi`. The tokenised rows take their on-air text from the optional
+  `assetLabels` map (provider id → `{ name, ticker }`), editable in the raw JSON
+  box; anything not listed keeps the provider name. There is no bulk paste field
+  and no comma-separated id box: the rows are the editor.
 * **Columns** — reorder, relabel, resize and hide the six columns. A hidden
   column becomes a chip you can click to bring back. Every column, `asset`
   included, has an editable width; `columns.assetMaxWidth` (560 px shipped) caps
@@ -169,7 +178,7 @@ preview over `postMessage`, and saved to `config.json` through the hub.
 
 | Parameter | Effect |
 |---|---|
-| `?category=<id>` | Open on a specific category (`privacy`, `revenue`, `ai`, `equity`, `dino`, `defi`) |
+| `?category=<id>` | Open on a specific category (`crypto-equities`, `commodities`, `equity`, `privacy`, `revenue`, `ai`, `dino`, `defi`) |
 | `?config=<base64 json>` | Apply a one-off config overlay |
 | `?fit=contain\|cover\|width\|none` | Override the scaling mode |
 | `?nosync=1` | Disable the `config.json` poll, the command poll and the OBS sync — what a screenshot or a test wants |
@@ -202,6 +211,12 @@ is where the Data tab's "last updated" comes from.
   lower-ranked coin had no effect and its row silently emptied for the length of
   an outage. Both behaviours are logged:
   `CoinPaprika bulk list missed 1 coin(s) — filled 1 individually (zama)`.
+* **Tokenised equities are CoinGecko-only.** CoinPaprika does not list the
+  Robinhood-token / Ondo-token / Securitize ids, so those 18 rows have no fallback. On the
+  degraded path they are omitted and the board paints them as "no market data"
+  with their labels intact — it never borrows another token's price. The ids are
+  declared in `COINGECKO_ONLY` in `server.js`, and `tests/server.js` checks that
+  every shipped id is either mapped or declared there.
 * **Stale beats broken** — if both providers fail, the proxy serves the last good
   response for up to 15 minutes with `X-Cache: STALE`. The footer still only says
   how long ago that response was fetched.

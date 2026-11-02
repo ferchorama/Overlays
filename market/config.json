@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "Digital Assets Market",
-    "version": "1.1.6",
+    "version": "1.3.0",
     "schema": 2,
     "migratedFrom": "1.1.5",
     "savedAt": 1792849856824
@@ -215,6 +215,42 @@
       ]
     },
     {
+      "id": "crypto-equities",
+      "label": "CRYPTO EQUITIES",
+      "coins": [
+        "securitize-corp",
+        "circle-internet-group-robinhood-tokenized-stock",
+        "coinbase-robinhood-tokenized-stock",
+        "strategy-inc-robinhood-tokenized-stock",
+        "galaxy-digital-inc-robinhood-token",
+        "robinhood-markets-backpack-securities"
+      ]
+    },
+    {
+      "id": "commodities",
+      "label": "COMMODITIES",
+      "coins": [
+        "spdr-gold-shares-robinhood-token",
+        "ishares-silver-trust-robinhood-tokenized-stock",
+        "us-natural-gas-fund-ondo-tokenized",
+        "united-states-oil-fund-robinhood-tokenized-stock",
+        "us-copper-index-fund-ondo-tokenized"
+      ]
+    },
+    {
+      "id": "equity",
+      "label": "EQUITIES",
+      "coins": [
+        "nvidia-robinhood-tokenized-stock",
+        "apple-robinhood-tokenized-stock",
+        "microsoft-robinhood-tokenized-stock",
+        "amazon-robinhood-tokenized-stock",
+        "meta-platforms-robinhood-tokenized-stock",
+        "tesla-robinhood-tokenized-stock",
+        "spacex-robinhood-tokenized-stock"
+      ]
+    },
+    {
       "id": "revenue",
       "label": "REVENUE",
       "coins": [
@@ -235,21 +271,6 @@
         "akash-network",
         "pha",
         "bittensor"
-      ]
-    },
-    {
-      "id": "equity",
-      "label": "EQUITY",
-      "coins": [
-        "sp500-xstock",
-        "nasdaq-xstock",
-        "apple-xstock",
-        "nvidia-xstock",
-        "microsoft-xstock",
-        "amazon-xstock",
-        "alphabet-xstock",
-        "meta-xstock",
-        "tesla-xstock"
       ]
     },
     {
@@ -318,5 +339,79 @@
     "pollMs": 2000,
     "stateUrl": "api/state",
     "statePollMs": 700
+  },
+  "assetLabels": {
+    "securitize-corp": {
+      "name": "Securitize",
+      "ticker": "SECZ"
+    },
+    "circle-internet-group-robinhood-tokenized-stock": {
+      "name": "Circle",
+      "ticker": "CRCL"
+    },
+    "coinbase-robinhood-tokenized-stock": {
+      "name": "Coinbase",
+      "ticker": "COIN"
+    },
+    "strategy-inc-robinhood-tokenized-stock": {
+      "name": "Strategy",
+      "ticker": "MSTR"
+    },
+    "galaxy-digital-inc-robinhood-token": {
+      "name": "Galaxy Digital",
+      "ticker": "GLXY"
+    },
+    "robinhood-markets-backpack-securities": {
+      "name": "Robinhood",
+      "ticker": "HOOD"
+    },
+    "spdr-gold-shares-robinhood-token": {
+      "name": "Gold",
+      "ticker": "GLD"
+    },
+    "ishares-silver-trust-robinhood-tokenized-stock": {
+      "name": "Silver",
+      "ticker": "SLV"
+    },
+    "us-natural-gas-fund-ondo-tokenized": {
+      "name": "NATGAS",
+      "ticker": "UNG"
+    },
+    "united-states-oil-fund-robinhood-tokenized-stock": {
+      "name": "Crude Oil WTI",
+      "ticker": "USO"
+    },
+    "us-copper-index-fund-ondo-tokenized": {
+      "name": "Copper",
+      "ticker": "CPER"
+    },
+    "nvidia-robinhood-tokenized-stock": {
+      "name": "Nvidia",
+      "ticker": "NVDA"
+    },
+    "apple-robinhood-tokenized-stock": {
+      "name": "Apple",
+      "ticker": "AAPL"
+    },
+    "microsoft-robinhood-tokenized-stock": {
+      "name": "Microsoft",
+      "ticker": "MSFT"
+    },
+    "amazon-robinhood-tokenized-stock": {
+      "name": "Amazon",
+      "ticker": "AMZN"
+    },
+    "meta-platforms-robinhood-tokenized-stock": {
+      "name": "Meta",
+      "ticker": "META"
+    },
+    "tesla-robinhood-tokenized-stock": {
+      "name": "Tesla",
+      "ticker": "TSLA"
+    },
+    "spacex-robinhood-tokenized-stock": {
+      "name": "SpaceX",
+      "ticker": "SPCX"
+    }
   }
 }

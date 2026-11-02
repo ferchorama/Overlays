@@ -136,7 +136,7 @@ window.CM_DEFAULT_CONFIG = {
      schema 2 means each category's `coins` is a list of unique CoinGecko ids
      (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
      before it is written. A config.json from schema 1 is upgraded on load. */
-  meta: { name: 'Digital Assets Market', version: '1.2.0', schema: 2 },
+  meta: { name: 'Digital Assets Market', version: '1.3.0', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -373,16 +373,46 @@ window.CM_DEFAULT_CONFIG = {
      `id` is the CoinGecko coin id, so a list is just data — no name mapping to
      maintain. Names, tickers and logos all come back from the API.
 
-     Every id below was checked against the live /coins/markets endpoint, because
-     a ticker is not an id and several tickers are ambiguous on CoinGecko: LIT is
-     `lighter` (not litentry), ARX is `arcium` (not arcs), PUMP is `pump-fun`, and
-     Phala's id is `pha`. A wrong id renders a permanently empty row.
-     NEAR appears under both PRIVACY and AI on purpose — the fetch de-dupes. */
+     The three tokenised-equity sections are proxies for the real-world assets:
+     Robinhood tokenised stocks and Ondo tokenised ETFs all appear on CoinGecko,
+     so they price through the SAME markets endpoint and cache as the crypto
+     rows. A ticker is not an id and several ids are ambiguous: Gold is
+     `spdr-gold-shares-robinhood-token` (GLD), NATGAS is the Ondo UNG token, and
+     Robinhood itself is `robinhood-markets-backpack-securities` (HOOD). A wrong
+     id renders a permanently empty row — every id below was checked against the
+     live /coins/markets endpoint. NEAR appears under both PRIVACY and AI on
+     purpose — the fetch de-dupes. */
   categories: [
     {
       id: 'privacy',
       label: 'PRIVACY',
       coins: ['zcash', 'near', 'zama', 'monero', 'arcium', 'dash']
+    },
+    {
+      id: 'crypto-equities',
+      label: 'CRYPTO EQUITIES',
+      coins: ['securitize-corp', 'circle-internet-group-robinhood-tokenized-stock',
+              'coinbase-robinhood-tokenized-stock', 'strategy-inc-robinhood-tokenized-stock',
+              'galaxy-digital-inc-robinhood-token', 'robinhood-markets-backpack-securities']
+    },
+    {
+      id: 'commodities',
+      label: 'COMMODITIES',
+      coins: ['spdr-gold-shares-robinhood-token',
+              'ishares-silver-trust-robinhood-tokenized-stock',
+              'us-natural-gas-fund-ondo-tokenized',
+              'united-states-oil-fund-robinhood-tokenized-stock',
+              'us-copper-index-fund-ondo-tokenized']
+    },
+    {
+      /* tokenized equities — still CoinGecko ids, so prices, names, tickers and
+         logos come back through the same markets endpoint */
+      id: 'equity',
+      label: 'EQUITIES',
+      coins: ['nvidia-robinhood-tokenized-stock', 'apple-robinhood-tokenized-stock',
+              'microsoft-robinhood-tokenized-stock', 'amazon-robinhood-tokenized-stock',
+              'meta-platforms-robinhood-tokenized-stock', 'tesla-robinhood-tokenized-stock',
+              'spacex-robinhood-tokenized-stock']
     },
     {
       id: 'revenue',
@@ -396,15 +426,6 @@ window.CM_DEFAULT_CONFIG = {
       coins: ['near', 'akash-network', 'pha', 'bittensor']
     },
     {
-      /* tokenized equities / xStocks — still CoinGecko ids, so prices, names,
-         tickers and logos come back through the same markets endpoint */
-      id: 'equity',
-      label: 'EQUITY',
-      coins: ['sp500-xstock', 'nasdaq-xstock', 'apple-xstock', 'nvidia-xstock',
-              'microsoft-xstock', 'amazon-xstock', 'alphabet-xstock', 'meta-xstock',
-              'tesla-xstock']
-    },
-    {
       id: 'dino',
       label: 'DINO COINS',
       coins: ['litecoin', 'ripple', 'stellar', 'bitcoin-cash', 'dogecoin']
@@ -415,6 +436,32 @@ window.CM_DEFAULT_CONFIG = {
       coins: ['ethereum', 'chainlink', 'sky', 'syrup', 'uniswap', 'aave', 'morpho']
     }
   ],
+
+  /* Display names for the tokenised stocks. The provider names the tokenisation
+     platform ("Coinbase • Robinhood Token", "US Natural Gas Fund (Ondo
+     Tokenized)"), which is noise in a row; these labels are what goes on air.
+     Keys are CoinGecko ids; only the text is overridden, never the price or the
+     trend. Anything not listed keeps the provider name. */
+  assetLabels: {
+    'securitize-corp': { name: 'Securitize', ticker: 'SECZ' },
+    'circle-internet-group-robinhood-tokenized-stock': { name: 'Circle', ticker: 'CRCL' },
+    'coinbase-robinhood-tokenized-stock': { name: 'Coinbase', ticker: 'COIN' },
+    'strategy-inc-robinhood-tokenized-stock': { name: 'Strategy', ticker: 'MSTR' },
+    'galaxy-digital-inc-robinhood-token': { name: 'Galaxy Digital', ticker: 'GLXY' },
+    'robinhood-markets-backpack-securities': { name: 'Robinhood', ticker: 'HOOD' },
+    'spdr-gold-shares-robinhood-token': { name: 'Gold', ticker: 'GLD' },
+    'ishares-silver-trust-robinhood-tokenized-stock': { name: 'Silver', ticker: 'SLV' },
+    'us-natural-gas-fund-ondo-tokenized': { name: 'NATGAS', ticker: 'UNG' },
+    'united-states-oil-fund-robinhood-tokenized-stock': { name: 'Crude Oil WTI', ticker: 'USO' },
+    'us-copper-index-fund-ondo-tokenized': { name: 'Copper', ticker: 'CPER' },
+    'nvidia-robinhood-tokenized-stock': { name: 'Nvidia', ticker: 'NVDA' },
+    'apple-robinhood-tokenized-stock': { name: 'Apple', ticker: 'AAPL' },
+    'microsoft-robinhood-tokenized-stock': { name: 'Microsoft', ticker: 'MSFT' },
+    'amazon-robinhood-tokenized-stock': { name: 'Amazon', ticker: 'AMZN' },
+    'meta-platforms-robinhood-tokenized-stock': { name: 'Meta', ticker: 'META' },
+    'tesla-robinhood-tokenized-stock': { name: 'Tesla', ticker: 'TSLA' },
+    'spacex-robinhood-tokenized-stock': { name: 'SpaceX', ticker: 'SPCX' }
+  },
 
   /* how many rows a category shows before it is cut off */
   maxRows: 11,

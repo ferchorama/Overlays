@@ -564,10 +564,13 @@
           var names = el('div', 'asset-names', cell);
           var nm = el('div', 'asset-name', names);
           nm.dataset.testid = 'name';
-          setText(nm, rec ? shortName(rec.name, cfg.rows.asset.nameMaxChars) : id);
+          /* assetLabels renames tokenised stocks on air; the price/trend still
+             come from the provider record, only the text is overridden */
+          var label = cfg.assetLabels && cfg.assetLabels[id];
+          setText(nm, shortName(label && label.name ? label.name : (rec ? rec.name : id), cfg.rows.asset.nameMaxChars));
           var tk = el('div', 'asset-ticker', names);
           tk.dataset.testid = 'ticker';
-          setText(tk, rec ? rec.symbol : '\u2014');
+          setText(tk, label && label.ticker ? String(label.ticker).toUpperCase() : (rec ? rec.symbol : '\u2014'));
           shown.asset = cell;
         } else if (key === 'sparkline') {
           var sp = el('div', 'cell-spark', row);
@@ -1022,7 +1025,8 @@
     var bits = this.activeCoins().map(function (id) {
       var r = this.data[id];
       if (!r) return null;
-      return r.name + ' ' + formatPrice(r.price, this.cfg.rows) + ', ' +
+      var label = this.cfg.assetLabels && this.cfg.assetLabels[id];
+      return (label && label.name ? label.name : r.name) + ' ' + formatPrice(r.price, this.cfg.rows) + ', ' +
         formatChange(r.change24h, this.cfg.rows) + ' over 24 hours';
     }, this).filter(Boolean);
     setText(live, (cat.label || cat.id) + ': ' + bits.join('. '));
