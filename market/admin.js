@@ -463,6 +463,16 @@
   /* An asset the provider cannot price would render as an empty row forever, so
      ask the hub before committing it to the board. A failed/absent answer is not
      a refusal: only a definite "no record for this id" blocks the add. */
+  /* A search hit already carries its market-cap rank, which is a strong enough
+     signal that /coins/markets will know it. Use that instead of blocking the
+     selection on a second hub round trip — the row now appears immediately and
+     the board fills it from the same cached read. Only an unknown/no-rank hit
+     goes through the explicit price check. */
+  function withUsableMarket(coin, onYes, onNo) {
+    if (coin && (coin.rank != null || coin.market_cap_rank != null)) { onYes(); return; }
+    withMarketData(coin, onYes, onNo);
+  }
+
   function withMarketData(coin, onYes, onNo) {
     fetch('api/market?ids=' + encodeURIComponent(coin.id) + '&sparkline=0&changes=24h', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
@@ -505,7 +515,7 @@
         renderCategories();
         return;
       }
-      withMarketData(coin, function () {
+      withUsableMarket(coin, function () {
         if (coins.indexOf(coin.id) !== -1) {
           status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');
           renderCategories();
@@ -544,7 +554,7 @@
         status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');
         return;
       }
-      withMarketData(coin, function () {
+      withUsableMarket(coin, function () {
         /* the validation is async, so re-check the section before appending */
         if ((cat.coins || []).indexOf(coin.id) !== -1) {
           status('"' + coin.name + '" is already in ' + (cat.label || 'this section'), 'warn');

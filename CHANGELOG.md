@@ -11,11 +11,21 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.3.4** | 1.1.6 |
+| Digital Assets Market | **1.3.5** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
 All older saved configs migrate automatically on load.
+
+---
+
+### Digital Assets Market — 1.3.5
+
+**Fixed**
+- Adding an asset no longer blocks the dropdown on a second market lookup when
+  the search hit already carries a market-cap rank — it commits immediately. A
+  newly added id renders a loading row while its quote lands instead of showing
+  a permanent-looking "no market data" placeholder.
 
 ---
 

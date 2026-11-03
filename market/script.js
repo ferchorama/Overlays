@@ -220,7 +220,7 @@
     this.cfg = cfg;
     this.stage = stage;
     this.data = {};          /* id -> coin record */
-    this.state = { loaded: false, error: null, fromCache: false, fetchedAt: 0, onAir: false };
+    this.state = { loaded: false, loading: false, error: null, fromCache: false, fetchedAt: 0, onAir: false };
     this.activeIndex = 0;
     this.rowEls = [];
     this.tl = null;
@@ -537,7 +537,7 @@
       if (cfg.rows.zebra && i % 2 === 1) row.classList.add('zebra');
       /* shimmer only while a read is genuinely in flight; once it has finished,
          an id with no record is a permanent "no market data" row, not a loader */
-      var waiting = !rec && (!self.state.loaded || self.stage.dataset.state === 'loading');
+      var waiting = !rec && (self.state.loading || !self.state.loaded || self.stage.dataset.state === 'loading');
       if (waiting) row.classList.add('is-loading');
       else if (!rec) {
         row.classList.add('is-missing');
@@ -976,8 +976,10 @@
 
   Board.prototype.refresh = function (opts) {
     var self = this;
+    this.state.loading = true;
     this.stage.dataset.state = 'loading';
     return this.fetchData(opts).then(function () {
+      self.state.loading = false;
       self.state.loaded = true;
       self.stage.dataset.state = self.state.error ? 'stale' : 'ready';
       self.renderRows();
@@ -986,6 +988,7 @@
       self.afterRefresh();
       return true;
     }).catch(function (e) {
+      self.state.loading = false;
       self.state.loaded = true;
       self.state.error = String((e && e.message) || e);
       self.stage.dataset.state = 'error';
@@ -1362,6 +1365,10 @@
           error: prev.state.error,
           degraded: prev.state.degraded
         });
+        /* The rebuild already carries the old prices, so a NEW id must render as
+           loading, not as an immediate "no market data" row, until refresh()
+           finishes. */
+        next.state.loading = true;
       }
       this.board = next.mount();
       /* mount() has already honoured cfg.__startIndex for both the first render
