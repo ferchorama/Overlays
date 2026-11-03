@@ -812,16 +812,25 @@ const MIME = {
   '.webm': 'video/webm'
 };
 
+/* Every response from the hub is live operator state: an OBS source or an open
+   control panel must never replay yesterday's JavaScript from the browser cache.
+   `no-store` is the one that matters; the other three are the belt-and-braces
+   set older CEF/Chromium builds still look at. */
+const NO_CACHE = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0'
+};
+
 function send(res, code, body, type) {
-  res.writeHead(code, {
+  res.writeHead(code, Object.assign({
     'Content-Type': type || 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     /* lets the overlay read whether the proxy answered from cache or upstream */
-    'Access-Control-Expose-Headers': 'X-Cache, X-Cache-Age, X-Fetched-At, X-Upstream-Error, X-Source, X-Degraded, Retry-After',
-    'Cache-Control': 'no-store'
-  });
+    'Access-Control-Expose-Headers': 'X-Cache, X-Cache-Age, X-Fetched-At, X-Upstream-Error, X-Source, X-Degraded, Retry-After'
+  }, NO_CACHE));
   res.end(body);
 }
 
@@ -1320,11 +1329,10 @@ async function handleApp(app, req, res, sub, parsed) {
       if (path.basename(file) === 'config.json') return send(res, 200, '{}', 'application/json; charset=utf-8');
       return send(res, 404, 'not found: ' + app.prefix + sub, 'text/plain');
     }
-    res.writeHead(200, {
+    res.writeHead(200, Object.assign({
       'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-store'
-    });
+      'Access-Control-Allow-Origin': '*'
+    }, NO_CACHE));
     fs.createReadStream(file).pipe(res);
   });
 }
@@ -1393,11 +1401,10 @@ const primary = http.createServer((req, res) => {
     if (!file) return send(res, 403, 'forbidden', 'text/plain');
     return fs.stat(file, (err, st) => {
       if (err || st.isDirectory()) return send(res, 404, 'not found: ' + pathname, 'text/plain');
-      res.writeHead(200, {
+      res.writeHead(200, Object.assign({
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store'
-      });
+        'Access-Control-Allow-Origin': '*'
+      }, NO_CACHE));
       fs.createReadStream(file).pipe(res);
     });
   }

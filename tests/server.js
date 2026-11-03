@@ -33,7 +33,7 @@ function request(method, urlPath, body) {
     }, (res) => {
       let data = '';
       res.on('data', (c) => { data += c; });
-      res.on('end', () => resolve({ status: res.statusCode, type: res.headers['content-type'] || '', body: data }));
+      res.on('end', () => resolve({ status: res.statusCode, type: res.headers['content-type'] || '', headers: res.headers, body: data }));
     });
     req.on('error', (e) => resolve({ status: 0, type: '', body: String(e.message) }));
     if (body) req.write(body);
@@ -127,6 +127,9 @@ function finish() {
   /* ------------------------------------------------ every app, one origin */
   const wx = await get('/weather/index.html');
   const tp = await get('/topics/index.html');
+  check('overlay assets opt out of the browser cache',
+    /no-store/.test(wx.headers['cache-control'] || '') && /no-cache/.test(wx.headers['pragma'] || ''),
+    wx.headers['cache-control'] || 'no Cache-Control');
   check('weather overlay served under /weather/', wx.status === 200 && /Vertical Weather Overlay/.test(wx.body),
     'HTTP ' + wx.status);
   check('topics overlay served under /topics/', tp.status === 200 && /Talking Points/.test(tp.body),
