@@ -258,8 +258,9 @@ Gold/silver use the spot last price with Yahoo's history for the 24 h/7 d trend;
 the energy/copper rows use the front-month futures chart directly. Both are
 free, no-key feeds, so they are cached and treated as best-effort rather than a
 paid SLA. A failed spot read leaves the row empty rather than falling back to
-the ETF share price. The tab still shows `—` in the rank column, because a
-commodity has no CoinGecko market-cap rank.
+the ETF share price. An all-commodity tab hides the `#` column, because a spot
+commodity has no CoinGecko market-cap rank; it returns as soon as the tab holds
+a ranked asset.
 
 * **An unpriced asset is labelled, not left shimmering.** CoinGecko's search
   indexes coins that `/coins/markets` does not price, and a refresh can time out

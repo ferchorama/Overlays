@@ -369,6 +369,8 @@ setTimeout(async () => {
     check('commodity price carries its trading unit',
       !!spotPriceCell && spotPriceCell.dataset.unit === '/oz',
       spotPriceCell ? String(spotPriceCell.dataset.unit) : 'missing');
+    check('the empty rank column is hidden on an all-commodity tab',
+      board.panel.classList.contains('no-rank'), board.panel.className);
 
     /* The Robinhood tokens all share one issuer badge, so each tokenised row
        points at a local company/fund mark instead. */
@@ -378,6 +380,8 @@ setTimeout(async () => {
       logoImg ? logoImg.src : 'no logo');
     board.activeIndex = before;
     board.renderRows();
+    check('the rank column returns for ranked categories',
+      !board.panel.classList.contains('no-rank'), board.panel.className);
   }
   /* web-performance-a11y: interactive elements must be real buttons */
   check('tabs are real <button> elements (keyboard reachable)',

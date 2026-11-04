@@ -217,6 +217,9 @@ html, body {
   align-items: center;
   gap: 13px;
 }
+.panel.no-rank .col--rank,
+.panel.no-rank .cell-rank { display: none; }
+
 .cell-rank {
   flex: 0 0 auto;
   padding-right: 6px;

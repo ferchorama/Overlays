@@ -11,11 +11,20 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.3.6** | 1.1.6 |
+| Digital Assets Market | **1.3.7** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
 All older saved configs migrate automatically on load.
+
+---
+
+### Digital Assets Market — 1.3.7
+
+**Fixed**
+- The rank column is hidden on an all-commodity tab. A spot commodity has no
+  CoinGecko market-cap rank, so the `#` column was five rows of dashes; it now
+  steps aside with the header and returns automatically on ranked categories.
 
 ---
 

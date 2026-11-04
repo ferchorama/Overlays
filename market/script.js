@@ -515,8 +515,20 @@
     return name.slice(0, max - 1).trim() + '…';
   }
 
+  /* The rank column means "CoinGecko market-cap rank". A spot commodity has no
+     rank, so an all-commodity tab would show a full column of dashes. Hide the
+     header and the cells together for that tab, and bring them back when the
+     category mixes in a ranked asset. */
+  Board.prototype.updateRankColumn = function () {
+    var spot = this.cfg.spotCommodities || {};
+    var ids = this.activeCoins();
+    var allSpot = ids.length > 0 && ids.every(function (id) { return !!spot[id]; });
+    this.panel.classList.toggle('no-rank', allSpot);
+  };
+
   Board.prototype.renderRows = function () {
     var self = this, cfg = this.cfg;
+    this.updateRankColumn();
     var host = this.rowsEl;
     host.innerHTML = '';
     this.rowEls = [];
