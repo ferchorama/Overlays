@@ -560,7 +560,8 @@
           if (cfg.columns.assetMaxWidth > 0) cell.style.maxWidth = cfg.columns.assetMaxWidth + 'px';
           var logo = el('div', 'logo logo--' + (cfg.rows.logo.radius || 'circle'), cell);
           logo.dataset.testid = 'logo';
-          var logoFile = cfg.assetImages && cfg.assetImages[id];
+          var spotMeta = cfg.spotCommodities && cfg.spotCommodities[id];
+          var logoFile = (spotMeta && spotMeta.image) || (cfg.assetImages && cfg.assetImages[id]);
           /* local logo files are versioned so an OBS reload cannot keep a
              cached copy of the previous mark; external URLs are left alone */
           if (logoFile && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|data:)/i.test(logoFile)) {
@@ -572,7 +573,8 @@
           nm.dataset.testid = 'name';
           /* assetLabels renames tokenised stocks on air; the price/trend still
              come from the provider record, only the text is overridden */
-          var label = cfg.assetLabels && cfg.assetLabels[id];
+          var spotLabel = cfg.spotCommodities && cfg.spotCommodities[id];
+          var label = spotLabel || (cfg.assetLabels && cfg.assetLabels[id]);
           setText(nm, shortName(label && label.name ? label.name : (rec ? rec.name : id), cfg.rows.asset.nameMaxChars));
           var tk = el('div', 'asset-ticker', names);
           tk.dataset.testid = 'ticker';
@@ -588,6 +590,9 @@
           var pc = el('div', 'cell-price', row);
           pc.dataset.testid = 'price';
           pc.style.flex = colFlex(cfg, 'price', 190);
+          var spotPrice = cfg.spotCommodities && cfg.spotCommodities[id];
+          var priceLabel = spotPrice || (cfg.assetLabels && cfg.assetLabels[id]);
+          if (priceLabel && priceLabel.unit) pc.dataset.unit = priceLabel.unit;
           setText(pc, rec ? formatPrice(rec.price, cfg.rows) : '\u2014');
           shown.price = pc;
         } else if (key === 'change24h' || key === 'change7d') {
@@ -816,6 +821,18 @@
     return ids;
   };
 
+  /* The five commodity rows are prices from the spot feed, not the tokenised
+     ETF share, so they must not go to the CoinGecko markets request. */
+  Board.prototype.spotIds = function () {
+    var spot = this.cfg.spotCommodities || {};
+    return this.buildIds().filter(function (id) { return !!spot[id]; });
+  };
+
+  Board.prototype.cryptoIds = function () {
+    var spot = this.spotIds();
+    return this.buildIds().filter(function (id) { return spot.indexOf(id) === -1; });
+  };
+
   /* 168 hourly points is far more resolution than a 96px sparkline can show,
      and honest-dataviz asks for ~12-28 points. */
   function downsample(points, target) {
@@ -876,7 +893,8 @@
   Board.prototype.fetchData = function (opts) {
     var self = this, d = this.cfg.data;
     var force = !!(opts && opts.force);
-    var ids = this.buildIds().join(',');
+    var ids = this.cryptoIds().join(',');
+    if (!ids) return Promise.resolve(true);
     var q = 'ids=' + encodeURIComponent(ids) +
             '&currency=' + encodeURIComponent(d.currency) +
             '&changes=24h,7d' +
@@ -974,11 +992,36 @@
       });
   };
 
+  /* Spot/front-month commodities. The endpoint returns the same shape the
+     board's normaliser expects, so rows keep their prices, trend and sparkline
+     without a second rendering path. A failed spot fetch leaves the row missing
+     rather than quietly showing the ETF share it used to show. */
+  Board.prototype.fetchSpot = function (opts) {
+    var self = this, d = this.cfg.data;
+    var ids = this.spotIds();
+    if (!ids.length) return Promise.resolve(0);
+    var force = !!(opts && opts.force);
+    var url = 'api/commodities?ids=' + encodeURIComponent(ids.join(',')) + (force ? '&force=1' : '');
+    return fetchJson(url, d.timeoutMs).then(function (r) {
+      var list = Array.isArray(r.json) ? r.json : (r.json && r.json.coins);
+      if (!list) return 0;
+      var next = normalise(list), added = 0;
+      Object.keys(next).forEach(function (id) {
+        if (ids.indexOf(id) === -1) return;
+        self.data[id] = next[id];
+        added++;
+      });
+      return added;
+    }).catch(function () { return 0; });
+  };
+
   Board.prototype.refresh = function (opts) {
     var self = this;
     this.state.loading = true;
     this.stage.dataset.state = 'loading';
     return this.fetchData(opts).then(function () {
+      return self.fetchSpot(opts);
+    }).then(function () {
       self.state.loading = false;
       self.state.loaded = true;
       self.stage.dataset.state = self.state.error ? 'stale' : 'ready';

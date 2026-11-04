@@ -315,6 +315,15 @@ html, body {
   font-weight: var(--price-weight, 600);
   color: var(--price-c, #eef4ff);
 }
+/* spot commodities carry a unit that must not become part of the price string
+   the tests (and screen readers) parse */
+.cell-price[data-unit]::after {
+  content: ' ' attr(data-unit);
+  font-size: .55em;
+  font-weight: 500;
+  color: var(--muted-2, #8ea3c0);
+  letter-spacing: .01em;
+}
 .cell-change {
   font-size: var(--change-size, 18px);
   font-weight: var(--change-weight, 600);

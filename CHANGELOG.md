@@ -11,11 +11,25 @@ app. This entry describes the current working tree (nothing is tagged yet).
 | App | Version | Saved configs found in the wild |
 |---|---|---|
 | Vertical Weather | **3.3.1** | 3.1.7 |
-| Digital Assets Market | **1.3.5** | 1.1.6 |
+| Digital Assets Market | **1.3.6** | 1.1.6 |
 | Prediction Markets | **1.4.1** | 1.3.0 |
 | Talking Points | **1.2.1** | 1.1.1 |
 
 All older saved configs migrate automatically on load.
+
+---
+
+### Digital Assets Market — 1.3.6
+
+**Changed**
+- **Commodities are now commodity prices, not tokenised ETF shares.** The five
+  rows use a new free `/market/api/commodities` feed: gold and silver are spot
+  XAU/XAG, while WTI, natural gas and copper use Yahoo's front-month futures
+  (the continuously quoted benchmark). Prices carry their units (`/oz`, `/bbl`,
+  `/MMBtu`, `/lb`), and the row labels/tickers are XAU, XAG, CL, NG and HG.
+  Gold/silver use neutral Au/Ag marks instead of the GLD/SLV ETF badges.
+- The spot feed is cached for 60 s in the hub; the normal board build still
+  fetches crypto and tokenised equities through CoinGecko as before.
 
 ---
 

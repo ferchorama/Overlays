@@ -338,8 +338,22 @@
     });
     saveAssetMeta();
   }
-  function labelOf(id) { var m = assetMeta[id]; return (m && m.name) ? m.name : id; }
-  function symbolOf(id) { var m = assetMeta[id]; return (m && m.symbol) ? m.symbol : ''; }
+  /* config.assetLabels is the on-air name (Gold/XAU, not the token's ETF title);
+     the search cache is only the fallback for ids that are not renamed. */
+  function labelOf(id) {
+    var s = cfg.spotCommodities && cfg.spotCommodities[id];
+    var l = s || (cfg.assetLabels && cfg.assetLabels[id]);
+    if (l && l.name) return l.name;
+    var m = assetMeta[id];
+    return (m && m.name) ? m.name : id;
+  }
+  function symbolOf(id) {
+    var s = cfg.spotCommodities && cfg.spotCommodities[id];
+    var l = s || (cfg.assetLabels && cfg.assetLabels[id]);
+    if (l && l.ticker) return l.ticker;
+    var m = assetMeta[id];
+    return (m && m.symbol) ? m.symbol : '';
+  }
 
   /* names for ids the operator has not searched for yet (a shipped list, a
      config typed by hand). Reads the hub's cache — no provider call unless the

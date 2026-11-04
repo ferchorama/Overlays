@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Silver">
+  <defs>
+    <linearGradient id="g" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f4f8fb"/>
+      <stop offset=".55" stop-color="#b9c6d2"/>
+      <stop offset="1" stop-color="#7b8b9b"/>
+    </linearGradient>
+    <linearGradient id="s" x1="36" y1="22" x2="92" y2="102" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="62" fill="url(#g)"/>
+  <circle cx="64" cy="64" r="54" fill="none" stroke="#425260" stroke-opacity=".35" stroke-width="2"/>
+  <path d="M35 34c10-9 24-14 38-12" fill="none" stroke="url(#s)" stroke-width="5" stroke-linecap="round"/>
+  <text x="64" y="82" text-anchor="middle" font-family="Figtree, Montserrat, Arial, sans-serif" font-size="48" font-weight="700" fill="#26333f">Ag</text>
+</svg>

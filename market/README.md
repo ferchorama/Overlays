@@ -5,15 +5,18 @@ header row and up to eleven asset rows (rank · logo + name + ticker · 7-day
 trend · price · 24h · 7d). The shipped categories are **CRYPTO EQUITIES ·
 COMMODITIES · EQUITIES · PRIVACY · REVENUE · AI · DEFI**, and they
 are data — the roster lives in `config.js` and is editable from the control
-panel. The first three are tokenised proxies for real-world assets (Robinhood tokenised stocks,
-Ondo tokenised ETFs and Securitize's own equity token): Coinbase, Circle, Strategy, Galaxy
-Digital, Robinhood and Securitize under CRYPTO EQUITIES; gold, silver, natural
-gas, WTI crude and copper under COMMODITIES; and NVIDIA, Apple, Microsoft,
-Amazon, Meta, Tesla and SpaceX under EQUITIES. They price through the same
-CoinGecko endpoint as the crypto rows, and `assetLabels` gives each one the
-on-air name and ticker instead of the tokenisation platform's long provider name.
-Prices come from **CoinGecko** through a cached
-proxy in the shared hub, with a **CoinPaprika** fallback for when the free tier is
+panel. CRYPTO EQUITIES and EQUITIES are tokenised proxies for real-world assets
+(Robinhood tokenised stocks, Ondo tokenised ETFs and Securitize's own equity
+token): Coinbase, Circle, Strategy, Galaxy Digital, Robinhood and Securitize
+under CRYPTO EQUITIES; NVIDIA, Apple, Microsoft, Amazon, Meta, Tesla and SpaceX
+under EQUITIES. They price through the same CoinGecko endpoint as the crypto
+rows, and `assetLabels` gives each one the on-air name and ticker instead of the
+tokenisation platform's long provider name. **COMMODITIES is different:** gold,
+silver, natural gas, WTI crude and copper come from free spot/front-month feeds
+through the hub, so those rows show $/oz, $/MMBtu, $/bbl and $/lb rather than a
+tokenised ETF share price — see [Spot commodities](#spot-commodities) below.
+Crypto and tokenised equities come from **CoinGecko** through a cached proxy in
+the shared hub, with a **CoinPaprika** fallback when the free tier is
 rate-limiting — see [Data](#data) below.
 
 Like the other overlays this is plain **HTML + CSS + vanilla JS + GSAP**, with
@@ -233,6 +236,31 @@ is where the Data tab's "last updated" comes from.
   the last good response in `localStorage` (`cm-cache-v1`).
 * **Honest failure** — with no cache and no network the rows keep their layout and
   show `—` everywhere; the board never invents a price.
+### Spot commodities
+
+```
+GET /market/api/commodities?ids=spdr-gold-shares-robinhood-token,…
+```
+
+Those five ids still identify the tokenised rows in the roster, but their prices
+come from this endpoint instead of `/api/market`:
+
+| Row | Source | Unit |
+|---|---|---|
+| Gold | gold-api.com spot XAU | USD/oz |
+| Silver | gold-api.com spot XAG | USD/oz |
+| WTI Crude | Yahoo front-month `CL=F` | USD/bbl |
+| Natural Gas | Yahoo front-month `NG=F` | USD/MMBtu |
+| Copper | Yahoo front-month `HG=F` | USD/lb |
+
+The endpoint caches all five for 60 s and supports `force=1` for **Update now**.
+Gold/silver use the spot last price with Yahoo's history for the 24 h/7 d trend;
+the energy/copper rows use the front-month futures chart directly. Both are
+free, no-key feeds, so they are cached and treated as best-effort rather than a
+paid SLA. A failed spot read leaves the row empty rather than falling back to
+the ETF share price. The tab still shows `—` in the rank column, because a
+commodity has no CoinGecko market-cap rank.
+
 * **An unpriced asset is labelled, not left shimmering.** CoinGecko's search
   indexes coins that `/coins/markets` does not price, and a refresh can time out
   in the browser while the hub is still retrying upstream. Once a read has

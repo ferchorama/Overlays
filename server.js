@@ -608,6 +608,108 @@ const MARKET_DATA_STORES = {
   status: { fetchedAt: 0, error: null, inFlight: false, source: 'coingecko', lastForcedAt: 0 }
 };
 
+/* ------------------------------------------------------- spot commodities
+   CoinGecko prices the tokenised ETF shares, not the commodity. For the five
+   commodity rows the board asks this endpoint instead: gold/silver come from
+   gold-api.com's free spot feed, while WTI, natural gas and copper use Yahoo's
+   front-month futures chart (the standard continuously quoted benchmark).
+   Everything is cached here so five browser sources still cost five requests
+   per minute, not twenty-five. */
+const SPOT_COMMODITIES = {
+  'spdr-gold-shares-robinhood-token': {
+    symbol: 'XAU', name: 'Gold', unit: 'oz', source: 'gold-api', yahoo: 'GC=F'
+  },
+  'ishares-silver-trust-robinhood-tokenized-stock': {
+    symbol: 'XAG', name: 'Silver', unit: 'oz', source: 'gold-api', yahoo: 'SI=F'
+  },
+  'united-states-oil-fund-robinhood-tokenized-stock': {
+    symbol: 'CL', name: 'WTI Crude', unit: 'bbl', source: 'yahoo', yahoo: 'CL=F'
+  },
+  'us-natural-gas-fund-ondo-tokenized': {
+    symbol: 'NG', name: 'Natural Gas', unit: 'MMBtu', source: 'yahoo', yahoo: 'NG=F'
+  },
+  'us-copper-index-fund-ondo-tokenized': {
+    symbol: 'HG', name: 'Copper', unit: 'lb', source: 'yahoo', yahoo: 'HG=F'
+  }
+};
+const SPOT_TTL_MS = 60000;
+const spotCache = { ts: 0, rows: null, inflight: null };
+
+function upstreamJson(url, timeoutMs) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(url, {
+    signal: ctrl.signal,
+    headers: { Accept: 'application/json', 'User-Agent': 'obs-overlays/1.0 (spot commodities)' }
+  }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).finally(function () { clearTimeout(timer); });
+}
+
+async function spotCommodity(id, def) {
+  const yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
+    encodeURIComponent(def.yahoo) + '?interval=1d&range=8d';
+  const jobs = [upstreamJson(yahooUrl, 9000)];
+  if (def.source === 'gold-api') {
+    jobs.push(upstreamJson('https://api.gold-api.com/price/' + encodeURIComponent(def.symbol), 9000));
+  }
+  const results = await Promise.allSettled(jobs);
+  const chart = results[0].status === 'fulfilled' ? results[0].value : null;
+  const spot = results[1] && results[1].status === 'fulfilled' ? results[1].value : null;
+
+  const result = chart && chart.chart && chart.chart.result && chart.chart.result[0];
+  const meta = result && result.meta;
+  const quote = result && result.indicators && result.indicators.quote && result.indicators.quote[0];
+  const closes = (quote && quote.close ? quote.close : []).filter(function (v) { return typeof v === 'number'; });
+  var price = spot && typeof spot.price === 'number' ? spot.price : (meta && meta.regularMarketPrice);
+  if (typeof price !== 'number' || !isFinite(price)) throw new Error('no price for ' + id);
+  var change24 = meta && typeof meta.regularMarketChangePercent === 'number'
+    ? meta.regularMarketChangePercent : null;
+  if (change24 == null && meta && typeof meta.chartPreviousClose === 'number' && meta.chartPreviousClose) {
+    change24 = (price / meta.chartPreviousClose - 1) * 100;
+  }
+  var change7 = closes.length > 1 ? (price / closes[0] - 1) * 100 : null;
+  return {
+    id: id,
+    symbol: def.symbol,
+    name: def.name,
+    image: '',
+    market_cap_rank: null,
+    current_price: price,
+    price_change_percentage_24h_in_currency: change24,
+    price_change_percentage_7d_in_currency: change7,
+    sparkline_in_7d: { price: closes }
+  };
+}
+
+function loadSpotCommodities(force) {
+  const fresh = spotCache.rows && Date.now() - spotCache.ts < SPOT_TTL_MS;
+  if (!force && fresh) return Promise.resolve(spotCache.rows);
+  if (spotCache.inflight) return spotCache.inflight;
+  const ids = Object.keys(SPOT_COMMODITIES);
+  spotCache.inflight = Promise.all(ids.map(function (id) {
+    return spotCommodity(id, SPOT_COMMODITIES[id]).catch(function () { return null; });
+  })).then(function (rows) {
+    const good = rows.filter(Boolean);
+    if (good.length) { spotCache.rows = good; spotCache.ts = Date.now(); }
+    return good;
+  }).finally(function () { spotCache.inflight = null; });
+  return spotCache.inflight;
+}
+
+function commodityHandler(req, res, parsed) {
+  const force = parsed.searchParams.get('force') === '1';
+  loadSpotCommodities(force).then(function (rows) {
+    const wanted = String(parsed.searchParams.get('ids') || '').split(',')
+      .map(function (s) { return s.trim(); }).filter(Boolean);
+    const out = wanted.length ? rows.filter(function (r) { return wanted.indexOf(r.id) !== -1; }) : rows;
+    json(res, 200, out);
+  }).catch(function (e) {
+    json(res, 502, { error: { code: 'spot_unavailable', message: String(e && e.message || e) } });
+  });
+}
+
 /* One spec, two paths: /market/api/market for the board and /predictions/api/data
    for the prediction board's price charts. Same build, same cache, same store,
    so whichever overlay asks first pays for the call. */
@@ -1264,6 +1366,10 @@ async function handleApp(app, req, res, sub, parsed) {
       }
       return app.__weatherData(req, res, parsed);
     }
+  }
+
+  if (app.id === 'market' && sub === '/api/commodities') {
+    return commodityHandler(req, res, parsed);
   }
 
   const upstreams = app.upstreams || (app.upstream ? [app.upstream] : []);

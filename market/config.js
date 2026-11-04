@@ -136,7 +136,7 @@ window.CM_DEFAULT_CONFIG = {
      schema 2 means each category's `coins` is a list of unique CoinGecko ids
      (never tickers), and a save is normalised through CM_MIGRATE.cleanCategories
      before it is written. A config.json from schema 1 is upgraded on load. */
-  meta: { name: 'Digital Assets Market', version: '1.3.5', schema: 2 },
+  meta: { name: 'Digital Assets Market', version: '1.3.6', schema: 2 },
 
   /* Which bundled face the board is set in. The Type tab writes this; the
      per-role stacks below are derived from it. */
@@ -373,10 +373,12 @@ window.CM_DEFAULT_CONFIG = {
      `id` is the CoinGecko coin id, so a list is just data — no name mapping to
      maintain. Names, tickers and logos all come back from the API.
 
-     The three tokenised-equity sections are proxies for the real-world assets:
+     The two tokenised-equity sections are proxies for the real-world assets:
      Robinhood tokenised stocks and Ondo tokenised ETFs all appear on CoinGecko,
      so they price through the SAME markets endpoint and cache as the crypto
-     rows. A ticker is not an id and several ids are ambiguous: Gold is
+     rows. The COMMODITIES section is different: those five rows are priced from
+     free spot/front-month feeds by `/api/commodities`, not from the tokenised
+     ETF share. `assetLabels[...].spot` marks them for the board. A ticker is not an id and several ids are ambiguous: Gold is
      `spdr-gold-shares-robinhood-token` (GLD), NATGAS is the Ondo UNG token, and
      Robinhood itself is `robinhood-markets-backpack-securities` (HOOD). A wrong
      id renders a permanently empty row — every id below was checked against the
@@ -444,11 +446,11 @@ window.CM_DEFAULT_CONFIG = {
     'strategy-inc-robinhood-tokenized-stock': { name: 'Strategy', ticker: 'MSTR' },
     'galaxy-digital-inc-robinhood-token': { name: 'Galaxy Digital', ticker: 'GLXY' },
     'robinhood-markets-backpack-securities': { name: 'Robinhood', ticker: 'HOOD' },
-    'spdr-gold-shares-robinhood-token': { name: 'Gold', ticker: 'GLD' },
-    'ishares-silver-trust-robinhood-tokenized-stock': { name: 'Silver', ticker: 'SLV' },
-    'us-natural-gas-fund-ondo-tokenized': { name: 'NATGAS', ticker: 'UNG' },
-    'united-states-oil-fund-robinhood-tokenized-stock': { name: 'Crude Oil WTI', ticker: 'USO' },
-    'us-copper-index-fund-ondo-tokenized': { name: 'Copper', ticker: 'CPER' },
+    'spdr-gold-shares-robinhood-token': { name: 'Gold', ticker: 'XAU' },
+    'ishares-silver-trust-robinhood-tokenized-stock': { name: 'Silver', ticker: 'XAG' },
+    'us-natural-gas-fund-ondo-tokenized': { name: 'Natural Gas', ticker: 'NG' },
+    'united-states-oil-fund-robinhood-tokenized-stock': { name: 'WTI Crude', ticker: 'CL' },
+    'us-copper-index-fund-ondo-tokenized': { name: 'Copper', ticker: 'HG' },
     'nvidia-robinhood-tokenized-stock': { name: 'Nvidia', ticker: 'NVDA' },
     'apple-robinhood-tokenized-stock': { name: 'Apple', ticker: 'AAPL' },
     'microsoft-robinhood-tokenized-stock': { name: 'Microsoft', ticker: 'MSFT' },
@@ -456,6 +458,18 @@ window.CM_DEFAULT_CONFIG = {
     'meta-platforms-robinhood-tokenized-stock': { name: 'Meta', ticker: 'META' },
     'tesla-robinhood-tokenized-stock': { name: 'Tesla', ticker: 'TSLA' },
     'spacex-robinhood-tokenized-stock': { name: 'SpaceX', ticker: 'SPCX' }
+  },
+
+  /* The spot commodity rows are build-owned metadata: the id still identifies
+     the roster row, but the price comes from /api/commodities and the unit is
+     part of the value. Kept separate from assetLabels so a saved config from
+     the ETF era (GLD/SLV) cannot relabel a spot price. */
+  spotCommodities: {
+    'spdr-gold-shares-robinhood-token': { name: 'Gold', ticker: 'XAU', unit: '/oz', image: 'assets/logos/gold-spot.svg' },
+    'ishares-silver-trust-robinhood-tokenized-stock': { name: 'Silver', ticker: 'XAG', unit: '/oz', image: 'assets/logos/silver-spot.svg' },
+    'united-states-oil-fund-robinhood-tokenized-stock': { name: 'WTI Crude', ticker: 'CL', unit: '/bbl' },
+    'us-natural-gas-fund-ondo-tokenized': { name: 'Natural Gas', ticker: 'NG', unit: '/MMBtu' },
+    'us-copper-index-fund-ondo-tokenized': { name: 'Copper', ticker: 'HG', unit: '/lb' }
   },
 
   /* Logos for the tokenised rows. The Robinhood-issued tokens all carry the
@@ -470,8 +484,8 @@ window.CM_DEFAULT_CONFIG = {
     'strategy-inc-robinhood-tokenized-stock': 'assets/logos/strategy.png',
     'galaxy-digital-inc-robinhood-token': 'assets/logos/galaxy-digital.png',
     'robinhood-markets-backpack-securities': 'assets/logos/robinhood.png',
-    'spdr-gold-shares-robinhood-token': 'assets/logos/gold.png',
-    'ishares-silver-trust-robinhood-tokenized-stock': 'assets/logos/silver.png',
+    'spdr-gold-shares-robinhood-token': 'assets/logos/gold-spot.svg',
+    'ishares-silver-trust-robinhood-tokenized-stock': 'assets/logos/silver-spot.svg',
     'us-natural-gas-fund-ondo-tokenized': 'assets/logos/natgas-flame.png',
     'united-states-oil-fund-robinhood-tokenized-stock': 'assets/logos/crude-oil-drop.png',
     'us-copper-index-fund-ondo-tokenized': 'assets/logos/copper.png',

@@ -231,10 +231,28 @@ const COINS = [
   coin('morpho', 'morpho', 'Morpho', 2.70, -0.55, 4.60)
 ];
 
+/* The five commodity rows are priced from the spot/front-month endpoint, not
+   the tokenised ETF ids in the CoinGecko fixture above. */
+const SPOT_COINS = [
+  coin('spdr-gold-shares-robinhood-token', 'xau', 'Gold', 4068.70, 3.45, 7.10),
+  coin('ishares-silver-trust-robinhood-tokenized-stock', 'xag', 'Silver', 52.51, 5.26, 9.80),
+  coin('united-states-oil-fund-robinhood-tokenized-stock', 'cl', 'WTI Crude', 87.55, -8.89, -6.20),
+  coin('us-natural-gas-fund-ondo-tokenized', 'ng', 'Natural Gas', 2.953, 2.00, 4.40),
+  coin('us-copper-index-fund-ondo-tokenized', 'hg', 'Copper', 6.444, 0.66, 1.90)
+];
+
 let fetchLog = [];
 global.fetch = (url) => {
   const u = String(url);
   fetchLog.push(u);
+  if (u.indexOf('api/commodities') !== -1) {
+    const wanted = decodeURIComponent((u.match(/ids=([^&]*)/) || [, ''])[1]).split(',');
+    return Promise.resolve({
+      ok: true, status: 200,
+      headers: { get: () => null },
+      json: () => Promise.resolve(SPOT_COINS.filter((c) => wanted.indexOf(c.id) !== -1))
+    });
+  }
   if (u.indexOf('api/market') !== -1) {
     if (MODE === 'offline') return Promise.reject(new Error('proxy down'));
     const wanted = decodeURIComponent((u.match(/ids=([^&]*)/) || [, ''])[1]).split(',');
@@ -339,15 +357,24 @@ setTimeout(async () => {
     const names = collect(stage, 'name').map((n) => n.textContent);
     const tickers = collect(stage, 'ticker').map((n) => n.textContent);
     check('commodity rows use the operator labels, not provider names',
-      names.indexOf('Gold') !== -1 && names.indexOf('NATGAS') !== -1 &&
-      names.indexOf('Crude Oil WTI') !== -1 && tickers.indexOf('GLD') !== -1,
+      names.indexOf('Gold') !== -1 && names.indexOf('Natural Gas') !== -1 &&
+      names.indexOf('WTI Crude') !== -1 && tickers.indexOf('XAU') !== -1 &&
+      tickers.indexOf('CL') !== -1,
       names.join(' | ') + ' / ' + tickers.join(' | '));
+    check('commodity prices come from the spot feed, not the ETF share',
+      board.data['spdr-gold-shares-robinhood-token'].price === 4068.70 &&
+      board.data['united-states-oil-fund-robinhood-tokenized-stock'].price === 87.55,
+      String(board.data['spdr-gold-shares-robinhood-token'].price));
+    const spotPriceCell = board.rowEls[0] && board.rowEls[0].cells.price;
+    check('commodity price carries its trading unit',
+      !!spotPriceCell && spotPriceCell.dataset.unit === '/oz',
+      spotPriceCell ? String(spotPriceCell.dataset.unit) : 'missing');
 
     /* The Robinhood tokens all share one issuer badge, so each tokenised row
        points at a local company/fund mark instead. */
     const logoImg = board.rowEls[0] && board.rowEls[0].cells.asset.children[0].children[1];
     check('commodity row uses the local logo file',
-      !!logoImg && /assets\/logos\/gold\.png(\?v=[\d.]+)?$/.test(logoImg.src),
+      !!logoImg && /assets\/logos\/gold-spot\.svg(\?v=[\d.]+)?$/.test(logoImg.src),
       logoImg ? logoImg.src : 'no logo');
     board.activeIndex = before;
     board.renderRows();
