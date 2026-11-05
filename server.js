@@ -157,7 +157,7 @@ const POLYMARKET_API_BASE = process.env.POLYMARKET_API_BASE || 'https://gamma-ap
 const POLY_ENTITIES = ['events', 'markets'];
 /* Documented spellings, per endpoint — overridable from config for the same
    reason the whole adapter is hedged: it has never been exercised. */
-const POLY_SORT_KEY = { events: 'volume_24hr', markets: 'volume24hr' };
+const POLY_SORT_KEY = { events: 'volume24hr', markets: 'volume24hr' };   /* gamma rejects volume_24hr on /events with 422 */
 
 function polyNum(v) {
   if (v === null || v === undefined || v === '') return null;
