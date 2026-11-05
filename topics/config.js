@@ -61,8 +61,9 @@ window.TP_BACKDROPS = [
 ];
 
 window.TP_DEFAULT_CONFIG = {
-  /* 'light' | 'dark' — see TP_DARK_PALETTE above */
-  theme: 'light',
+  /* 'light' | 'dark' — see TP_DARK_PALETTE above. Dark is the default look;
+     a browser source can opt back into light with ?theme=light. */
+  theme: 'dark',
   meta: {
     name: 'Talking Points Panel',
     version: '1.2.1'
