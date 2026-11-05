@@ -255,8 +255,7 @@
   }
 
   /* ------------------------------------------------------- market normalising */
-  function normaliseMarkets(cfg) {
-    var items = (cfg.markets && cfg.markets.items) || [];
+  function normaliseItems(items, cfg) {
     var out = [];
     items.forEach(function (item, i) {
       if (!isObj(item)) return;
@@ -287,6 +286,39 @@
     /* 'manual' keeps the order the operator arranged */
 
     out.forEach(function (m, i) { m.rank = i + 1; });
+    return out;
+  }
+
+  function normaliseMarkets(cfg) {
+    return normaliseItems((cfg.markets && cfg.markets.items) || [], cfg);
+  }
+
+  /* Fetched headlines rendered as markets, so the Polymarket source can use the
+     hand-typed board's hero + ranked list instead of a second layout. Only the
+     fields that layout reads are mapped; `asset` stays empty because a Polymarket
+     row has no asset id for the live price series, so the chip synthesises the
+     line from the fetched probability like any hand-typed market without one. */
+  function headlineMarkets(cfg) {
+    var p = cfg.polymarket || {};
+    var cats = Array.isArray(p.categories) ? p.categories : [];
+    var out = [];
+    cats.forEach(function (cat) {
+      if (!cat) return;
+      categoryHeadlines(cat).forEach(function (it) {
+        if (!isObj(it)) return;
+        out.push({
+          topic: it.title,
+          probability: it.probability,
+          volume: it.volume,
+          change: it.change,
+          category: String(cat.label || ''),
+          ends: it.endDate,
+          thumb: it.image,
+          asset: '',
+          history: null
+        });
+      });
+    });
     return out;
   }
 
@@ -552,7 +584,9 @@
     var eh = el('h2', null, empty);
     eh.textContent = 'No markets';
     var ep = el('p', null, empty);
-    ep.textContent = 'Add topics in the control panel';
+    ep.textContent = this.cfg.source === 'polymarket'
+      ? 'Press Update headlines in the control panel'
+      : 'Add topics in the control panel';
     empty.style.display = 'none';
 
     this.apply();
@@ -658,7 +692,9 @@
   Board.prototype.renderMarkets = function () {
     var cfg = this.cfg, self = this;
 
-    this.markets = normaliseMarkets(cfg);
+    this.markets = (cfg.source === 'polymarket')
+      ? normaliseItems(headlineMarkets(cfg), cfg)
+      : normaliseMarkets(cfg);
 
     /* choose the hero */
     var mode = (cfg.hero && cfg.hero.mode) || 'volume';
@@ -695,17 +731,17 @@
      'polymarket' is the fetched headlines grouped by category. The two never
      share the stage — a half-built board is worse than either one. */
   Board.prototype.renderSource = function () {
-    var poly = this.cfg.source === 'polymarket';
-    if (this.groups) this.groups.style.display = poly ? '' : 'none';
-    if (!poly) {
-      if (this.main) this.main.style.display = '';
-      return;
+    /* Both sources share one layout now: the hand-typed hero + ranked list.
+       Fetched headlines arrive as markets (headlineMarkets above), so the old
+       grouped board is retired rather than kept as a second design. */
+    if (this.groups) this.groups.style.display = 'none';
+    if (this.main) this.main.style.display = '';
+    if (this.cfg.source === 'polymarket' && this.footRight) {
+      var p = this.cfg.polymarket || {};
+      this.footRight.textContent = p.updatedAt
+        ? 'Polymarket \u00b7 updated ' + agoText(Date.now() - num(p.updatedAt, 0))
+        : 'Polymarket \u00b7 not updated yet';
     }
-    /* the headline board takes the whole main area: a hero and a ranked list
-       have nothing to rank when every row is a fetched headline */
-    if (this.main) this.main.style.display = 'none';
-    if (this.empty) this.empty.style.display = 'none';
-    this.renderGroups();
   };
 
   /* One section per category, each showing `count` of the selected headlines.
