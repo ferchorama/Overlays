@@ -1302,7 +1302,7 @@
      layer treats this whole block as the thing that swaps. */
   /* One row per contract: name, probability, today's move, and the Yes/No pair.
      Mirrors the market page it came from, in the board's own type and palette. */
-  Board.prototype.renderContracts = function (contracts) {
+  Board.prototype.renderContracts = function (contracts, opts) {
     var wrap = this.contracts;
     this._contractTotal = contracts.length;
     this._fitGen = (this._fitGen || 0) + 1;
@@ -1356,6 +1356,7 @@
        visible re-layout when the operator pages through markets. Only the very
        first render (webfont still loading) defers, and it hides the block until
        the fit is final so the adjustment is never seen. */
+    if (opts && opts.deferFit) return;
     var self = this;
     var fontsPending = !!(document.fonts && document.fonts.status !== 'loaded');
     if (fontsPending) wrap.style.visibility = 'hidden';
@@ -1468,6 +1469,36 @@
       rows = [].slice.call(this.contracts.querySelectorAll('.contract'));
     }
     this.fitContractRows();
+  };
+
+  /* Row allocation, measured: how many outcomes fit is decided by the space the
+     hero leaves, and the hero gives ground (only its figure) until the list can
+     show what its URL brings — more outcomes, more rows. */
+  Board.prototype.allocateRows = function () {
+    var hero = this.hero, cont = this.contracts;
+    if (!hero || !cont || cont.style.display === 'none' || !this.hugeNum) return;
+    var n = this._listedCount || 0;
+    if (n <= 1) return;
+    var head = cont.querySelector('.contracts__head');
+    var row = cont.querySelector('.contract');
+    if (!head || !row) return;
+
+    /* ask for the whole list on a small market, a readable handful on a big one */
+    var want = Math.min(n - 1, 3);
+    var boardBottom = (this.board || document.body).getBoundingClientRect().bottom - 16;
+    var base = parseFloat((this.cfg.hero && this.cfg.hero.probabilitySize) || 330);
+    var caps = [base, base * 0.92, base * 0.84, base * 0.76, base * 0.68, base * 0.6, 150];
+
+    for (var i = 0; i < caps.length; i++) {
+      this.hugeNum.style.fontSize = Math.round(caps[i]) + 'px';
+      void cont.offsetHeight;                       /* force the reflow we measure */
+      var top = cont.getBoundingClientRect().top;
+      var room = boardBottom - top;
+      var fit = Math.floor((room - head.offsetHeight - 14) / row.offsetHeight);
+      if (fit >= want) break;
+    }
+    this.fitContractRows();
+    this.fillFrame();
   };
 
   Board.prototype.renderHero = function (m) {
@@ -1588,8 +1619,9 @@
       (h.showWhenNotAsset === true || isAssetMarket(m, cfg));
     if (wantChart) { this.chart.style.display = ''; this.renderChart(m); }
     else this.chart.style.display = 'none';
+    this._listedCount = listed.length;
     if (this.contracts) {
-      if (hasContracts) { this.contracts.style.display = ''; this.renderContracts(m._listed); }
+      if (hasContracts) { this.contracts.style.display = ''; this.renderContracts(m._listed, { deferFit: true }); }
       else { this.contracts.style.display = 'none'; this.contracts.innerHTML = ''; }
     }
     /* marks a hero with no graphic, so the topic can use the freed room */
@@ -1598,7 +1630,12 @@
     /* measure once the fonts have settled, otherwise the shrunk size is decided
        against a fallback font and the row overflows again after the webfont lands */
     var self2 = this;
+    /* hero first (it is the block that gives ground), then the list fills what is
+       left — the other order trims the rows before the hero has been asked to
+       make room, which is why only one row ever survived */
     this.fitHeroContent();
+    this.allocateRows();
+    this.fitContractRows();
     this.fillFrame();
     this.enforceBottom();
     /* One re-measure on the next frame is enough, and only on the first render:
@@ -1655,6 +1692,17 @@
       this.heroTopic.style.fontSize = size + 'px';
     }
     if (fits()) return;
+
+    /* the number gives ground next, but never below a readable hero size */
+    if (this.hugeNum) {
+      var numNow = parseFloat(this.hugeNum.style.fontSize || '0');
+      var numFloor = 150;
+      while (!fits() && numNow > numFloor && guard++ < 120) {
+        numNow -= 8;
+        this.hugeNum.style.fontSize = numNow + 'px';
+      }
+      if (fits()) { this.fitContractRows(); return; }
+    }
 
     /* then the graphic, down to a readable floor, and finally out of the way */
     if (this.chart && this.chart.style.display !== 'none') {

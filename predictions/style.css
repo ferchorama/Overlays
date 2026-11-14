@@ -1113,3 +1113,23 @@ body, .board { font-family: var(--font-text); }
   max-width: none;
   width: 100%;
 }
+
+/* the list must request its height, not be squeezed into the hero's box: a
+   shrinking flex child reported "fits" and left two rows visible of nineteen */
+.board__main.is-solo .contracts { flex: 0 0 auto; }
+
+/* the hero stack was 490px tall before the list even started: name, pills, stats
+   and topic each took a band. Compact it so three to six outcomes can show. */
+.board__main.is-solo .hero__lead-icon { width: 148px; height: 148px; border-radius: 24px; }
+.board__main.is-solo .hero__lead-name { font-size: clamp(48px, 3.9vw, 76px); max-width: 20ch; }
+.board__main.is-solo .hero__pills .cpill { font-size: clamp(24px, 1.7vw, 32px); padding: 10px 18px; min-width: 168px; }
+.board__main.is-solo .hero__lead-body { gap: 12px; }
+.board__main.is-solo .hero__lead { padding-top: 0; padding-bottom: 4px; }
+.board__main.is-solo .side .kv .v { font-size: 38px; }
+.board__main.is-solo .figs .lbl { font-size: 26px; }
+.board__main.is-solo .contract { padding-top: calc(6px + var(--row-extra, 0px) / 2); padding-bottom: calc(6px + var(--row-extra, 0px) / 2); }
+.board__main.is-solo .contract__name { font-size: 38px; }
+.board__main.is-solo .contract__pct { font-size: 52px; }
+.board__main.is-solo .contract__pills .cpill { font-size: 27px; padding: 11px 16px; }
+.board__main.is-solo .contracts { margin-top: 6px; }
+.board__main.is-solo .hero__topic { margin-top: 6px; }
