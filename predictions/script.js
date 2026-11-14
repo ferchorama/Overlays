@@ -1393,7 +1393,21 @@
       }
     }
 
-    /* A pasted event replaces the graphic with its own contracts. */
+    /* A pasted event replaces the graphic with its own contracts. A market that
+       only carries a single Yes/No is given one synthetic row instead, so every
+       headline lands on the same layout whether it has five date contracts or
+       one binary question. */
+    if ((!Array.isArray(m.contracts) || !m.contracts.length) && m.probability != null) {
+      var pYes = Math.round(Number(m.probability) * 10) / 10;
+      m.contracts = [{
+        name: formatEnds(m.ends) || 'Yes / No',
+        yes: pYes,
+        no: Math.round((100 - pYes) * 10) / 10,
+        change: m.change == null ? null : m.change,
+        volume: m.volume || 0,
+        image: m.thumb || m.image || null
+      }];
+    }
     var hasContracts = Array.isArray(m.contracts) && m.contracts.length > 0;
     if (this.chart) this.chart.style.height = '';
     var wantChart = !hasContracts && h.showHistory !== false &&

@@ -759,7 +759,7 @@ html, body {
 
 /* final placement pass: keep the last contract column inside the safe edge and
    the nav arrows inside the board, not hanging off the stage. */
-.board__main.is-solo .contracts { padding-right: 56px; }
+.board__main.is-solo .contracts { padding-right: 104px; }
 .nav { right: 96px; top: 118px; bottom: auto; }
 
 /* the contract figure must never lose its percent sign to the grid */
@@ -768,4 +768,60 @@ html, body {
 
 /* the "%" in a contract row was reading as a full stop */
 .contract__pct small { font-size: 19px; font-weight: 500; color: var(--inkSoft); margin-left: 2px; }
-.nav { top: 208px; }
+/* pager: middle of the right edge, stacked, with a gutter kept clear for it */
+.nav {
+  position: absolute; right: 30px; top: 50%; bottom: auto;
+  transform: translateY(-50%);
+  flex-direction: column; gap: 14px; z-index: 4;
+}
+.nav__count { min-width: 0; font-size: 12px; letter-spacing: .1em; }
+
+/* four contract rows have to fit inside 1080 with the pager beside them */
+.board__main.is-solo .contracts { margin-top: 18px; }
+.board__main.is-solo .contract { padding: 10px 2px; }
+.board__main.is-solo .figs { margin-top: 22px; }
+
+/* final vertical budget: everything must sit inside 1080 with no crop */
+.board__main.is-solo .figs__prob .num.huge { font-size: clamp(140px, 12.4vw, 210px); }
+.board__main.is-solo .hero__topic { font-size: clamp(52px, 3.9vw, 74px); }
+.board__main.is-solo .contract { padding: 8px 2px; }
+.board__main.is-solo .contracts { margin-top: 12px; }
+.board__main.is-solo .figs { margin-top: 16px; }
+
+/* ---------------------------------------------------------------- brand type
+   The Rollup runs Neue Haas Grotesk Display (headlines) and Text (body) on
+   therollup.co through their Adobe Fonts kit. The display face carries the
+   wordmark's cut, so the overlay reads as the same publication rather than a
+   template with an out-of-place serif. IBM Plex Mono stays for the small
+   numeric labels, where a grotesque reads badly at 11px. */
+:root {
+  --font-display: 'neue-haas-grotesk-display', 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-text: 'neue-haas-grotesk-text', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+body, .board { font-family: var(--font-text); }
+.board__header .brand__titles h1,
+.header__title,
+.empty h2,
+.hero__topic,
+.hero .figs__prob .num,
+.contract__name,
+.list__item .topic,
+.detail__topic {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.018em;
+}
+.kicker, .header__kicker, .lbl, .figs .lbl, .contracts__head, .contract__pct small,
+.nav__count, .header-right__sub, .foot, .board__footer {
+  font-family: var(--font-mono);
+}
+/* the masthead is the loudest brand cue: tight tracking, no serif */
+.header__title { font-size: clamp(38px, 2.9vw, 56px); letter-spacing: -0.028em; }
+
+/* brand type, calibrated: NHG is already tight, so the tracking comes back a
+   notch and only the masthead / topic / figure carry the 700 cut. */
+.hero__topic { letter-spacing: -0.008em; line-height: 1.04; word-spacing: 0.02em; }
+.header__title { letter-spacing: -0.02em; }
+.contract__name, .list__item .topic { font-weight: 400; letter-spacing: 0; }
+.hero .figs__prob .num { letter-spacing: -0.03em; }

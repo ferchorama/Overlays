@@ -29,8 +29,8 @@
     },
     "title": {
       "text": "Prediction Markets",
-      "fontFamily": "'Instrument Serif', 'Playfair Display', Georgia, serif",
-      "weight": 600,
+      "fontFamily": "'neue-haas-grotesk-display', 'Inter Tight', Inter, system-ui, sans-serif",
+      "weight": 700,
       "size": 72,
       "color": "#f8f3e8",
       "tracking": 0,
@@ -1349,8 +1349,6 @@
     "useLocalStorage": true
   },
   "googleFonts": [
-    "Instrument+Serif:ital@0;1",
-    "Inter:wght@400;500;600;700",
     "IBM+Plex+Mono:wght@400;500"
   ],
   "fontUrls": []
