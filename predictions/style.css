@@ -961,3 +961,11 @@ body, .board { font-family: var(--font-text); }
   display: flex; align-items: center; justify-content: center;
   padding: 11px 10px; font-size: 21px; line-height: 1; white-space: nowrap;
 }
+
+/* hero probability label — must read at OBS scale, not as a 11px caption */
+.board__main.is-solo .figs__prob .lbl {
+  font-size: 48px; letter-spacing: .12em; font-weight: 600; margin-bottom: 10px;
+}
+.board__main.is-solo .hero__lead {
+  font-size: 42px; line-height: 1.1; margin: 4px 0 10px;
+}

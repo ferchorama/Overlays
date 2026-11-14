@@ -1461,11 +1461,11 @@
       }
     }
 
-    /* A pasted event replaces the graphic with its own contracts. A market that
-       only carries a single Yes/No is given one synthetic row instead, so every
-       headline lands on the same layout whether it has five date contracts or
-       one binary question. */
-    if ((!Array.isArray(m.contracts) || !m.contracts.length) && m.probability != null) {
+    /* Keep every contract the pasted URL actually carried. Only invent a Yes/No
+       row when Gamma sent none — and that invented row stays off the list so it
+       does not echo the hero. */
+    var hadContracts = Array.isArray(m.contracts) && m.contracts.length > 0;
+    if (!hadContracts && m.probability != null) {
       var pYes = Math.round(Number(m.probability) * 10) / 10;
       m.contracts = [{
         name: m.outcome || 'Yes',
@@ -1476,15 +1476,7 @@
         image: m.thumb || m.image || null
       }];
     }
-    /* the leading outcome is already in the hero, so the list starts below it */
-    var listed = Array.isArray(m.contracts) ? m.contracts.slice() : [];
-    var leadC = leadingContract(m);
-    if (leadC && listed.length > 1) {
-      var at = listed.indexOf(leadC);
-      if (at !== -1) listed.splice(at, 1);
-    } else if (listed.length === 1) {
-      listed = [];
-    }
+    var listed = hadContracts ? m.contracts.slice() : [];
     var hasContracts = listed.length > 0;
     m._listed = listed;
     if (this.chart) this.chart.style.height = '';
