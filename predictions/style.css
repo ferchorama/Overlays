@@ -1133,3 +1133,12 @@ body, .board { font-family: var(--font-text); }
 .board__main.is-solo .contract__pills .cpill { font-size: 27px; padding: 11px 16px; }
 .board__main.is-solo .contracts { margin-top: 6px; }
 .board__main.is-solo .hero__topic { margin-top: 6px; }
+
+/* the headline photo is the identity of the market — give it real size */
+.board__main.is-solo .hero__lead-icon {
+  width: clamp(180px, 12vw, 248px);
+  height: clamp(180px, 12vw, 248px);
+  border-radius: 32px;
+  padding: 0;
+  object-fit: cover;
+}
