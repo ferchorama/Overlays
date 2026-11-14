@@ -1059,3 +1059,43 @@ body, .board { font-family: var(--font-text); }
 }
 .board__main.is-solo .hero__lead-body { gap: 20px; }
 .board__main.is-solo .hero__lead { align-items: flex-start; padding-top: 6px; }
+
+/* ---- large pass: the frame is 1920 and the board was using half of it -------
+   Hero figures and the contract list step up together; rows are still dropped
+   to fit, so nothing overflows — the empty band under the hero is what goes. */
+.board__main.is-solo .hero__topic {
+  font-size: clamp(56px, 4.2vw, 104px);
+  max-width: 26ch;
+  line-height: 1.06;
+}
+.board__main.is-solo .figs__prob .lbl { font-size: 44px; letter-spacing: .1em; }
+.board__main.is-solo .figs__prob .num.huge {
+  font-size: clamp(240px, 19.5vw, 380px);
+  line-height: .84;
+}
+.board__main.is-solo .hero__lead-icon { width: 196px; height: 196px; border-radius: 30px; }
+.board__main.is-solo .hero__lead-name { font-size: clamp(64px, 5.6vw, 112px); }
+.board__main.is-solo .hero__pills .cpill { font-size: clamp(30px, 2.2vw, 42px); padding: 14px 26px; min-width: 214px; }
+.board__main.is-solo .figs .lbl { font-size: 30px; letter-spacing: .09em; }
+.board__main.is-solo .side .kv .v { font-size: 46px; }
+.board__main.is-solo .side--row { gap: 84px; }
+
+/* contract list: bigger, and the columns spread over the full width */
+.board__main.is-solo .contracts__head { font-size: 24px; letter-spacing: .14em; }
+.board__main.is-solo .contract { padding: 10px 2px; }
+.board__main.is-solo .contract__icon { width: 52px; height: 52px; }
+.board__main.is-solo .contract__name { font-size: 44px; }
+.board__main.is-solo .contract__pct { font-size: 60px; }
+.board__main.is-solo .contract__pct small { font-size: 32px; }
+.board__main.is-solo .contract__delta { font-size: 30px; }
+.board__main.is-solo .contract__pills .cpill { font-size: 30px; padding: 14px 18px; }
+.board__main.is-solo .contract__pills { width: 360px; gap: 12px; }
+.board__main.is-solo .contract { grid-template-columns: minmax(0, 1fr) 150px 150px 360px; gap: 26px; }
+
+/* keep the name from squeezing the number: it wraps instead */
+.board__main.is-solo .hero__lead-name { max-width: 18ch; line-height: 1.12; }
+.board__main.is-solo .hero__topic { line-height: 1.1; }
+/* less dead air between the blocks */
+.board__main.is-solo .hero { padding-top: 18px; }
+.board__main.is-solo .contracts { margin-top: 10px; }
+.board__main.is-solo .hero__topic { line-height: 1.16; }

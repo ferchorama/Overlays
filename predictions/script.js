@@ -1610,9 +1610,20 @@
     if (!avail) { this.hugeSize = max; return; }   /* not laid out yet */
 
     var gap = 44;
+    /* In the one-column board the stats sit on their own row, so counting them
+       here made the width test fail for ever and quietly shrank the number to the
+       floor. Measure against the row the number actually shares: the winning
+       identity. */
+    var figsGrid = this.figs && typeof getComputedStyle === 'function' &&
+      getComputedStyle(this.figs).display === 'grid';
+    if (figsGrid) avail = this.figs.clientWidth || avail;
     var width = function () {
       var w = this.hugeNum.offsetWidth;
-      if (this.side) w += gap + this.side.offsetWidth;
+      if (figsGrid) {
+        if (this.heroLead) w += gap + this.heroLead.offsetWidth;
+      } else if (this.side) {
+        w += gap + this.side.offsetWidth;
+      }
       return w;
     }.bind(this);
 
