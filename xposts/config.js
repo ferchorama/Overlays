@@ -40,7 +40,7 @@ window.XP_DEFAULT_CONFIG = {
   imageZoom: {
     enabled: true,
     clickToOpen: true,
-    backdrop: 0.92
+    backdrop: 0.975
   },
 
   queue: {

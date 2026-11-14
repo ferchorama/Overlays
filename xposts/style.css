@@ -198,22 +198,35 @@ body { font-family: var(--font-text); color: var(--ink); }
   position: absolute; inset: 0; z-index: 20;
   display: flex; align-items: center; justify-content: center;
 }
-.zoom__shade { position: absolute; inset: 0; background: rgba(6, 6, 7, 0.92); }
-.zoom__fig {
-  position: relative; margin: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 20px;
-  max-width: 94%; max-height: 94%;
+.zoom__shade {
+  position: absolute; inset: 0;
+  background: rgba(6, 6, 7, 0.975);
+  backdrop-filter: blur(14px) saturate(0.75);
 }
+.zoom__fig {
+  position: absolute; inset: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* The picture is bounded by the frame on BOTH axes and nothing else, so its
+   longest side always lands on the edge of the frame: a wide shot runs the full
+   1920, a tall or square one runs the full 1080. The caption is overlaid rather
+   than stacked, so it never steals height from the image. */
 .zoom__img {
-  width: auto; height: auto;
-  max-width: 1720px; max-height: 900px;
-  border-radius: 22px; border: 1px solid var(--line);
-  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65);
+  display: block;
+  /* the element fills the frame and the picture is contained inside it, so a
+     small source still scales up until its longest side touches the edge */
+  width: 100%; height: 100%;
+  object-fit: contain;
+  border-radius: 0;
   cursor: zoom-out;
 }
 .zoom__cap {
+  position: absolute; left: 40px; bottom: 32px;
   font-family: var(--font-mono); font-size: 22px; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--dim);
+  text-transform: uppercase; color: var(--ink);
+  background: rgba(8, 8, 9, 0.62);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 14px; backdrop-filter: blur(6px);
 }
 
 /* the copy may use the full frame now that the queue is gone */
