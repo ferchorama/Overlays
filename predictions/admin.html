@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Prediction Markets — Control</title>
-  <link rel="stylesheet" href="admin.css?v=1.7.4" />
+  <link rel="stylesheet" href="admin.css?v=1.12.0" />
 <script>
   /* The hub is the single source of truth for the theme: same origin, same
      localStorage key, so switching it there switches every panel. Resolved
@@ -143,23 +143,6 @@
             <div class="field"><label>Index</label><input id="c_heroIndex" type="number" min="0" /></div>
             <div class="field"><label>Eyebrow label</label><input id="c_heroEyebrow" type="text" /></div>
           </div>
-          <label class="check"><input type="checkbox" id="c_heroHistory" /> show probability history</label>
-          <div class="row2">
-            <div class="field"><label>History mode</label>
-              <select id="c_historyMode">
-                <option value="asset">asset (real 7-day price)</option>
-                <option value="auto">auto</option>
-                <option value="manual">manual</option>
-                <option value="flat">flat</option>
-              </select>
-            </div>
-            <div class="field"><label>History volatility</label><input id="c_historyVolatility" type="number" step="0.01" min="0" max="1" /></div>
-          </div>
-          <label class="check"><input type="checkbox" id="c_showWhenNotAsset" /> show the graphic even when the topic is not an asset</label>
-          <div class="row2">
-            <label class="check"><input type="checkbox" id="c_chartGlow" /> travelling glow on the line</label>
-            <div class="field"><label>Glow colour</label><input id="c_chartGlowColor" type="color" /></div>
-          </div>
           <p class="hint">
             In <b>asset</b> mode a market that names an asset in its <b>asset</b> column plots that
             asset's real 7-day price series &mdash; the same cached feed the Digital Assets board uses.
@@ -170,33 +153,6 @@
             sweeps the line, rests, and repeats. It is a live element on air — switch it off here if the
             chart should stay still.
           </p>
-        </section>
-
-        <section class="group">
-          <header class="group__head"><h2 class="group__title">Asset data</h2></header>
-          <div class="ds-row">
-            <button id="btnDataUpdate" class="btn btn--ghost" type="button">Update now</button>
-            <span id="dataStatus" class="ds-status" role="status" aria-live="polite"></span>
-          </div>
-          <p class="hint">
-            The 7-day price lines are fetched through the hub once per load; there is no timer.
-            The hub shares one CoinGecko cache with the assets board, so a price it already has is free here.
-          </p>
-          <div class="row2">
-            <div class="field">
-              <label>Asset data feed <span class="muted">(7-day price history)</span></label>
-              <input id="c_dataProxy" type="text" placeholder="api/data" />
-            </div>
-            <div class="field">
-              <label>Public endpoint <span class="muted">(used by Fetch if the hub is down)</span></label>
-              <input id="c_dataDirect" type="text" placeholder="direct market endpoint" />
-            </div>
-          </div>
-          <label class="check"><input type="checkbox" id="c_dataEnabled" /> fetch asset history</label>
-          <div class="field field--wide">
-            <label>Asset keywords <span class="muted">(comma separated &mdash; a topic matching any of these gets the graphic)</span></label>
-            <textarea id="c_assetKeywords" rows="5" spellcheck="false"></textarea>
-          </div>
         </section>
 
         <section class="group">
@@ -408,6 +364,6 @@
   <script src="../shared/datasync.js?v=1.6.7"></script>
   <script src="config.js?v=1.6.7"></script>
   <script src="config-merge.js?v=1.6.7"></script>
-  <script src="admin.js?v=1.8.3"></script>
+  <script src="admin.js?v=1.12.0"></script>
 </body>
 </html>

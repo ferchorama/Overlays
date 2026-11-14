@@ -1643,8 +1643,9 @@
     var hasContracts = listed.length > 0;
     m._listed = listed;
     if (this.chart) this.chart.style.height = '';
-    var wantChart = !hasContracts && h.showHistory !== false &&
-      (h.showWhenNotAsset === true || isAssetMarket(m, cfg));
+    /* This board is outcomes only: every prediction is a list of contracts, and a
+       7-day probability line was inherited from the assets board. Never drawn. */
+    var wantChart = false;
     if (wantChart) { this.chart.style.display = ''; this.renderChart(m); }
     else this.chart.style.display = 'none';
     /* the US board draws only real history, so it is fetched before the line is
