@@ -229,6 +229,24 @@ function polyTagBinding(idRaw, slugRaw) {
 }
 
 /* One event or market → one board row. Returns null for anything unusable. */
+
+function withContracts(item, raw, entity) {
+  if (!item) return null;
+  item.contracts = entity === 'markets' ? polyContracts({ markets: [raw] }) : polyContracts(raw);
+  if ((!item.contracts || !item.contracts.length) && item.probability != null) {
+    const y = item.probability;
+    item.contracts = [{
+      name: item.outcome || 'Yes',
+      yes: y,
+      no: Math.round((100 - y) * 10) / 10,
+      change: item.change,
+      image: item.image || '',
+      volume: item.volume || 0
+    }];
+  }
+  return item;
+}
+
 function polyItem(raw, entity) {
   if (!raw || typeof raw !== 'object') return null;
   /* the query asks for open markets, but a cached or proxied page can still
@@ -319,22 +337,7 @@ function normalisePolymarket(body, params) {
     const resEntity = params.get('entity') === 'markets' ? 'markets' : 'events';
     const rows = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : []);
     const found = rows.map((r) => {
-      const item = polyItem(r, resEntity);
-      if (item) {
-        item.contracts = resEntity === 'events' ? polyContracts(r) : polyContracts({ markets: [r] });
-        if ((!item.contracts || !item.contracts.length) && item.probability != null) {
-          const y = item.probability;
-          item.contracts = [{
-            name: item.outcome || 'Yes',
-            yes: y,
-            no: Math.round((100 - y) * 10) / 10,
-            change: item.change,
-            image: item.image || '',
-            volume: item.volume || 0
-          }];
-        }
-      }
-      return item;
+      return withContracts(polyItem(r, resEntity), r, resEntity);
     }).filter(Boolean);
     /* An unknown slug is a typo in the pasted URL, not an upstream failure:
        answer 200 with no items so the panel can say "not found" instead of
@@ -351,7 +354,7 @@ function normalisePolymarket(body, params) {
   const entity = POLY_ENTITIES.indexOf(params.get('entity')) === -1 ? 'events' : params.get('entity');
   const limit = clampInt(params.get('limit'), 1, 50, 5);
   const list = Array.isArray(parsed) ? parsed : [];
-  const items = list.map((r) => polyItem(r, entity)).filter(Boolean);
+  const items = list.map((r) => withContracts(polyItem(r, entity), r, entity)).filter(Boolean);
 
   /* Rank by 24h volume HERE instead of trusting the upstream to have honoured its
      `order` parameter. "The best 5" is the one guarantee the whole feature rests
