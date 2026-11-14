@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>X Posts — Control</title>
   <link rel="stylesheet" href="admin.css?v=1.0.0" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=Work+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Libre+Franklin:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Figtree:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&display=swap" />
 <script>
   /* Same theme key as the hub and the other panels: switch it in one place. */
   (function () {
@@ -49,10 +50,10 @@
           <option value="0.75">75%</option>
           <option value="1">100%</option>
         </select>
-        <a id="linkOut" class="mini" href="index.html?v=1.5.0" target="_blank">open overlay &#8599;</a>
+        <a id="linkOut" class="mini" href="index.html?v=1.7.0" target="_blank">open overlay &#8599;</a>
       </div>
       <div class="preview__stage" id="previewStage">
-        <iframe id="preview" src="index.html?preview=1&v=1.5.0" title="preview"></iframe>
+        <iframe id="preview" src="index.html?preview=1&v=1.7.0" title="preview"></iframe>
       </div>
       <p class="hint">
         In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
@@ -144,6 +145,34 @@
         </section>
 
         <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Typography</h2>
+            <p class="group__note">corporate faces, kept in config.json so the choice survives a reload</p>
+          </header>
+          <div class="row2">
+            <div class="field"><label>Headline typeface</label><select id="selDisplayFont" data-cfg="type.display"></select></div>
+            <div class="field"><label>Body typeface</label><select id="selTextFont" data-cfg="type.text"></select></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Background</h2>
+            <p class="group__note">the drifting empire-state plate — same motion as the prediction board</p>
+          </header>
+          <div class="row3">
+            <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" data-cfg="backdrop.enabled" data-kind="bool" /> show plate</label></div>
+            <div class="field"><label>Plate path</label><input type="text" data-cfg="backdrop.image" /></div>
+            <div class="field"><label>Tint</label><input type="color" data-cfg="backdrop.tint" data-kind="rgba" /></div>
+          </div>
+          <div class="row3">
+            <div class="field"><label>Opacity</label><input type="number" min="0" max="1" step="0.05" data-cfg="backdrop.opacity" data-kind="number" /></div>
+            <div class="field"><label>Blur (px)</label><input type="number" min="0" max="30" step="1" data-cfg="backdrop.blur" data-kind="number" /></div>
+            <div class="field"><label>Pan (s)</label><input type="number" min="5" max="180" step="5" data-cfg="backdrop.panSeconds" data-kind="number" /></div>
+          </div>
+        </section>
+
+        <section class="group">
           <header class="group__head"><h2 class="group__title">Type scale</h2></header>
           <div class="row3">
             <div class="field"><label>Kicker</label><input type="number" min="12" max="40" step="1" data-cfg="header.kicker.size" data-kind="number" /></div>
@@ -189,6 +218,6 @@
   </main>
 
   <script src="config.js?v=1.0.0"></script>
-  <script src="admin.js?v=1.5.0"></script>
+  <script src="admin.js?v=1.7.0"></script>
 </body>
 </html>

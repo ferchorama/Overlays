@@ -45,6 +45,33 @@
   var heroBody = $('heroBody');
   var navCount = $('navCount');
 
+  function fontStack(id) {
+    var list = window.XP_FONTS || [];
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].stack;
+    return id || "'neue-haas-grotesk-display', sans-serif";
+  }
+
+  function applyFonts() {
+    var t = cfg.type || {};
+    var root = document.documentElement.style;
+    root.setProperty('--font-display', fontStack(t.display));
+    root.setProperty('--font-text', fontStack(t.text || t.display));
+  }
+
+  function applyBackdrop() {
+    var bd = $('bd'), img = $('bdImg'), tint = $('bdTint');
+    if (!bd || !img) return;
+    var b = cfg.backdrop || {};
+    var on = b.enabled !== false && !!b.image;
+    bd.style.display = on ? '' : 'none';
+    if (!on) return;
+    img.style.setProperty('--bd-src', 'url("' + b.image + '")');
+    img.style.setProperty('--bd-op', b.opacity == null ? 0.95 : b.opacity);
+    img.style.setProperty('--bd-blur', (b.blur || 0) + 'px');
+    img.style.setProperty('--bd-pan', (b.panSeconds || 25) + 's');
+    if (tint) tint.style.setProperty('--bd-tint', b.tint || 'rgba(8, 8, 9, 0.80)');
+  }
+
   function applyPalette() {
     var p = cfg.palette || {};
     var root = document.documentElement.style;
@@ -279,6 +306,8 @@
   }
 
   function render() {
+    applyFonts();
+    applyBackdrop();
     applyPalette();
     applyChrome();
     renderHero();

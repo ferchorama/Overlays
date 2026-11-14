@@ -6,10 +6,18 @@
   <title>X Posts — Overlay</title>
   <link rel="preconnect" href="https://use.typekit.net" crossorigin />
   <link rel="stylesheet" href="https://use.typekit.net/mbn6dsd.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=Work+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Libre+Franklin:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Figtree:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&display=swap" />
   <link rel="stylesheet" href="style.css?v=1.0.1" />
 </head>
 <body>
   <div class="stage" id="stage">
+    <!-- the empire-state plate: the same slowly drifting background the
+         prediction board carries, so the suite reads as one set -->
+    <div class="bd" id="bd" aria-hidden="true">
+      <div class="bd__img" id="bdImg"></div>
+      <div class="bd__tint" id="bdTint"></div>
+    </div>
+
     <div class="board" id="board">
       <header class="board__header">
         <div class="brand">
@@ -42,6 +50,6 @@
 
   <script src="vendor/gsap.min.js?v=1.0.0"></script>
   <script src="config.js?v=1.0.0"></script>
-  <script src="script.js?v=1.5.0"></script>
+  <script src="script.js?v=1.7.0"></script>
 </body>
 </html>

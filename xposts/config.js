@@ -5,6 +5,28 @@
    from the panel lives here first, so a fresh clone renders without a saved
    config.
    ========================================================================== */
+/* Corporate typefaces offered in the panel. Every one is loaded up front in
+   index.html; the browser only downloads the face that is actually used, so
+   switching in the panel is instant and survives a reload because the choice
+   lives in config.json. */
+window.XP_FONTS = [
+  { id: 'neue-haas',   label: 'Neue Haas Grotesk (house)', stack: "'neue-haas-grotesk-display', 'neue-haas-grotesk-text', 'Inter', sans-serif" },
+  { id: 'inter',       label: 'Inter',            stack: "'Inter', system-ui, sans-serif" },
+  { id: 'plex',        label: 'IBM Plex Sans',    stack: "'IBM Plex Sans', system-ui, sans-serif" },
+  { id: 'source-sans', label: 'Source Sans 3',    stack: "'Source Sans 3', system-ui, sans-serif" },
+  { id: 'work-sans',   label: 'Work Sans',        stack: "'Work Sans', system-ui, sans-serif" },
+  { id: 'manrope',     label: 'Manrope',          stack: "'Manrope', system-ui, sans-serif" },
+  { id: 'archivo',     label: 'Archivo',          stack: "'Archivo', system-ui, sans-serif" },
+  { id: 'franklin',    label: 'Libre Franklin',   stack: "'Libre Franklin', system-ui, sans-serif" },
+  { id: 'public',      label: 'Public Sans',      stack: "'Public Sans', system-ui, sans-serif" },
+  { id: 'dm-sans',     label: 'DM Sans',          stack: "'DM Sans', system-ui, sans-serif" },
+  { id: 'figtree',     label: 'Figtree',          stack: "'Figtree', system-ui, sans-serif" },
+  { id: 'instrument',  label: 'Instrument Sans',  stack: "'Instrument Sans', system-ui, sans-serif" },
+  { id: 'roboto',      label: 'Roboto',           stack: "'Roboto', system-ui, sans-serif" },
+  { id: 'open-sans',   label: 'Open Sans',        stack: "'Open Sans', system-ui, sans-serif" },
+  { id: 'lato',        label: 'Lato',             stack: "'Lato', system-ui, sans-serif" }
+];
+
 window.XP_DEFAULT_CONFIG = {
   meta: { version: '1.0.0' },
 
@@ -12,6 +34,23 @@ window.XP_DEFAULT_CONFIG = {
     width: 1920,
     height: 1080,
     background: '#0b0b0c'
+  },
+
+  /* Headline and body typefaces, by id from XP_FONTS. */
+  type: {
+    display: 'neue-haas',
+    text: 'neue-haas'
+  },
+
+  /* Same drifting plate and tint as the prediction board. `image` is a path
+     relative to this app (or an absolute one if it contains a slash). */
+  backdrop: {
+    enabled: true,
+    image: 'backdrops/rain.webp',
+    opacity: 0.95,
+    blur: 0,
+    panSeconds: 25,
+    tint: 'rgba(8, 8, 9, 0.80)'
   },
 
   header: {

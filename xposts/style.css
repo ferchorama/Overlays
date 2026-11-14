@@ -42,8 +42,27 @@ body { font-family: var(--font-text); color: var(--ink); }
     var(--stage);
 }
 
+/* ------------------------------------------------------------- background */
+.bd { position: absolute; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+.bd__img {
+  position: absolute; inset: -6%;
+  background-image: var(--bd-src, none);
+  background-size: cover; background-position: center;
+  opacity: var(--bd-op, .95);
+  filter: blur(var(--bd-blur, 0px)) saturate(.6) contrast(1.05);
+  animation: bd-pan var(--bd-pan, 25s) ease-in-out infinite alternate;
+  will-change: transform;
+}
+.bd__tint { position: absolute; inset: 0; background: var(--bd-tint, rgba(8, 8, 9, .80)); }
+@keyframes bd-pan {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1.06); }
+  to   { transform: translate3d(1.5%, 1%, 0) scale(1.10); }
+}
+@media (prefers-reduced-motion: reduce) { .bd__img { animation: none; } }
+
 .board {
   position: absolute; inset: 0;
+  z-index: 1;
   padding: 40px 96px 44px;
   display: flex; flex-direction: column;
   min-height: 0;

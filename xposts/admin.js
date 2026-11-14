@@ -83,9 +83,32 @@
   }
 
   /* ------------------------------------------------------------------ fields */
+  /* Tint is stored as an rgba() string but edited with a plain colour input, so
+     the alpha it already carries is preserved instead of being reset on edit. */
+  function hexFromRgba(v) {
+    var m = String(v || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (!m) return '#080809';
+    return '#' + [1, 2, 3].map(function (i) {
+      return ('0' + Math.min(255, parseInt(m[i], 10)).toString(16)).slice(-2);
+    }).join('');
+  }
+  function alphaOf(v) {
+    var m = String(v || '').match(/rgba\([^)]*,\s*([\d.]+)\s*\)/i);
+    return m ? Math.min(1, Math.max(0, parseFloat(m[1]))) : 0.8;
+  }
+  function rgbaFromHex(hex, alpha) {
+    var h = String(hex || '#080809').replace('#', '');
+    if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+    var n = parseInt(h, 16);
+    return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + alpha + ')';
+  }
+
   function readInput(input, path) {
     if (input.type === 'checkbox') return input.checked;
-    if (input.type === 'color') return input.value;
+    if (input.type === 'color') {
+      if (input.dataset.kind === 'rgba') return rgbaFromHex(input.value, alphaOf(getPath(cfg, path)));
+      return input.value;
+    }
     if (input.dataset.kind === 'number') {
       var n = parseFloat(input.value);
       return isFinite(n) ? n : getPath(cfg, path);
@@ -96,8 +119,24 @@
   function paintInput(input, path) {
     var v = getPath(cfg, path);
     if (input.type === 'checkbox') input.checked = v !== false && !!v;
-    else if (input.type === 'color') input.value = v || '#000000';
+    else if (input.type === 'color') input.value = input.dataset.kind === 'rgba' ? hexFromRgba(v) : (v || '#000000');
     else input.value = v == null ? '' : v;
+  }
+
+  /* The two font selects are built from XP_FONTS so the list lives in one place
+     and the stored value stays a stable id rather than a CSS stack. */
+  function buildFontSelects() {
+    var fonts = window.XP_FONTS || [];
+    document.querySelectorAll('select[data-cfg^="type."]').forEach(function (sel) {
+      sel.innerHTML = '';
+      fonts.forEach(function (f) {
+        var o = document.createElement('option');
+        o.value = f.id;
+        o.textContent = f.label;
+        try { o.style.fontFamily = f.stack; } catch (e) { /* ignore */ }
+        sel.appendChild(o);
+      });
+    });
   }
 
   function bindFields() {
@@ -371,6 +410,7 @@
       });
   }
 
+  buildFontSelects();
   bind();
   refreshHint();
   bindFields();
