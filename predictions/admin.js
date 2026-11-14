@@ -819,10 +819,13 @@
     push();
     return Promise.resolve();
   }
-  function renderPastedList() {
+  function renderPastedList(opts) {
     var host = $('pastedList');
     if (!host) return Promise.resolve();
-    if (!pastedItems().length && !boardCfg) {
+    /* opts.local paints what this panel already holds: after a clear, re-reading
+       the server would race the debounced save and repaint the rows it just
+       deleted */
+    if (!(opts && opts.local) && !pastedItems().length && !boardCfg) {
       return fetch('api/config', { cache: 'no-store' })
         .then(function (r) { return r.json(); })
         .then(function (remote) { boardCfg = remote; return paint(); })
@@ -940,12 +943,21 @@
   var pastedClear = $('btnPastedClear');
   if (pastedClear) {
     pastedClear.addEventListener('click', function () {
-      var p = cfg.polymarket = cfg.polymarket || {};
-      (p.categories || []).forEach(function (cat) {
-        if (!cat) return;
-        cat.items = []; cat.selection = []; cat.count = 0;
+      /* The list paints from the panel draft, and falls back to the board's own
+         config when the draft lost the items. Clearing only the draft therefore
+         emptied nothing visible — the fallback kept repainting the old rows. */
+      [cfg, boardCfg].forEach(function (root) {
+        if (!root) return;
+        var p = root.polymarket = root.polymarket || {};
+        if (!Array.isArray(p.categories)) p.categories = [];
+        p.categories.forEach(function (cat) {
+          if (!cat) return;
+          cat.items = []; cat.selection = []; cat.count = 0;
+        });
       });
-      savePasted();
+      boardCfg = null;
+      push({ msg: 'board cleared' });
+      renderPastedList({ local: true });
       status('board cleared', 'ok');
     });
   }
