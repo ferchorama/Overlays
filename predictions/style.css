@@ -1099,3 +1099,9 @@ body, .board { font-family: var(--font-text); }
 .board__main.is-solo .hero { padding-top: 18px; }
 .board__main.is-solo .contracts { margin-top: 10px; }
 .board__main.is-solo .hero__topic { line-height: 1.16; }
+
+/* rows absorb the leftover height so the list always reaches the frame edge */
+.board__main.is-solo .contract {
+  padding-top: calc(10px + var(--row-extra, 0px) / 2);
+  padding-bottom: calc(10px + var(--row-extra, 0px) / 2);
+}

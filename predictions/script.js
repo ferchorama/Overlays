@@ -1391,9 +1391,47 @@
        the row borders and gave a row less than the frame actually held */
     var limit = stage.getBoundingClientRect().bottom - 16;
     var rows = Array.prototype.slice.call(wrap.querySelectorAll('.contract'));
+    /* reset any stretch from the previous market before measuring */
+    wrap.style.removeProperty('--row-extra');
     while (rows.length > 1 && rows[rows.length - 1].getBoundingClientRect().bottom > limit) {
       rows.pop().remove();
     }
+    /* Fill what is left instead of leaving a dead band under the last row: split
+       the spare height across the rows, capped so a single-row market does not
+       turn into a billboard. */
+    if (!rows.length) return;
+    var spare = limit - rows[rows.length - 1].getBoundingClientRect().bottom;
+    if (spare > 16) {
+      /* a lone row may take the whole band; several rows share it modestly */
+      var cap = rows.length === 1 ? 96 : 30;
+      var extra = Math.min(cap, Math.floor(spare / rows.length));
+      if (extra > 0) wrap.style.setProperty('--row-extra', extra + 'px');
+    }
+  };
+
+  /* Whatever the list cannot use goes back to the hero: a single-outcome market
+     otherwise leaves a third of the frame empty under one row. Capped so the
+     number stays a number and not a wall of type. */
+  Board.prototype.fillFrame = function () {
+    if (!this.hugeNum || !this.contracts || !this.board) return;
+    var rows = [].slice.call(this.contracts.querySelectorAll('.contract'));
+    if (!rows.length) return;
+    var spare = this.board.getBoundingClientRect().bottom - 16 -
+      rows[rows.length - 1].getBoundingClientRect().bottom;
+    if (spare < 60) return;
+    var num = parseFloat(this.hugeNum.style.fontSize || '0');
+    if (num) {
+      var grown = Math.min(num * 1.35, num + spare * 0.95);
+      if (grown > num + 4) this.hugeNum.style.fontSize = Math.round(grown) + 'px';
+    }
+    if (this.heroTopic) {
+      var t = parseFloat(this.heroTopic.style.fontSize || '0');
+      if (t) {
+        var tg = Math.min(t * 1.2, t + spare * 0.22);
+        if (tg > t + 2) this.heroTopic.style.fontSize = Math.round(tg) + 'px';
+      }
+    }
+    this.fitContractRows();
   };
 
   Board.prototype.renderHero = function (m) {
@@ -1532,7 +1570,7 @@
       requestAnimationFrame(function () { self2.fitHeroContent(); });
     }
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () { self2.fitHeroContent(); });
+      document.fonts.ready.then(function () { self2.fitHeroContent(); self2.fillFrame(); });
     }
   };
 
