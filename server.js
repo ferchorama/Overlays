@@ -274,6 +274,7 @@ function polyUsContracts(ev) {
     const y = Math.round(yes * 1000) / 10;
     return {
       name,
+      slug: String(m.slug || ''),
       yes: y,
       no: Math.round((100 - y) * 10) / 10,
       change: null,
@@ -310,6 +311,22 @@ function polyUsItem(ev) {
     venue: 'polymarket-us',
     contracts
   };
+}
+
+/* Book-derived Yes/No display prices for one market, so the 7-day line is the
+   venue's own series rather than a synthesised walk. */
+function normalisePolymarketUSHistory(body) {
+  let parsed;
+  try { parsed = JSON.parse(body); } catch (e) { throw new Error('the US history feed did not return JSON'); }
+  const rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed && parsed.history) ? parsed.history : []);
+  const points = rows.map((r) => {
+    if (!r || typeof r !== 'object') return null;
+    const t = polyNum(r.timestamp);
+    const yes = polyNum(r.longPrice);
+    if (t === null || yes === null) return null;
+    return { t: Math.round(t), yes: Math.round(yes * 1000) / 10 };
+  }).filter(Boolean).sort((a, b) => a.t - b.t);
+  return JSON.stringify({ what: 'history', count: points.length, fetchedAt: Date.now(), points });
 }
 
 function normalisePolymarketUS(body) {
@@ -1079,6 +1096,22 @@ const APPS = [
           return POLYMARKET_US_BASE + '/v1/events?closed=false&limit=1&slug=' + encodeURIComponent(slug);
         },
         shape: normalisePolymarketUS
+      },
+      {
+        path: '/api/polymarket-us/history',
+        ttlMs: 600000,
+        staleMs: 3600000,
+        timeoutMs: 15000,
+        retries: 1,
+        userAgent: 'obs-overlays/1.0 (prediction history us)',
+        source: 'polymarket-us',
+        build: function (params) {
+          var sym = String(params.get('symbol') || '').trim().toLowerCase();
+          if (!/^[a-z0-9][a-z0-9-]{0,120}$/.test(sym)) return null;
+          return POLYMARKET_US_BASE + '/v1/price-history?symbol=' + encodeURIComponent(sym) +
+            '&fixedInterval=INTERVAL_1W&fidelity=60';
+        },
+        shape: normalisePolymarketUSHistory
       },
       marketDataSpec('/api/data')
     ]

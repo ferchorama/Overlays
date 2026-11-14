@@ -276,7 +276,10 @@
         asset: String(item.asset == null ? '' : item.asset).trim(),
         history: Array.isArray(item.history) ? item.history.slice() : null,
         /* a pasted event brings its own outcomes; an empty list keeps the chart */
-        contracts: Array.isArray(item.contracts) && item.contracts.length ? item.contracts.slice() : null
+        contracts: Array.isArray(item.contracts) && item.contracts.length ? item.contracts.slice() : null,
+        /* which venue the numbers came from — the US board has its own history
+           endpoint and must never be drawn with a synthesised line */
+        venue: String(item.venue == null ? '' : item.venue)
       });
     });
 
@@ -331,7 +334,8 @@
           thumb: it.image,
           asset: '',
           history: null,
-          contracts: Array.isArray(it.contracts) && it.contracts.length ? it.contracts : null
+          contracts: Array.isArray(it.contracts) && it.contracts.length ? it.contracts : null,
+          venue: String(it.venue == null ? '' : it.venue)
         });
       });
     });
@@ -362,6 +366,9 @@
     if (market.history && market.history.length > 1) {
       return market.history.map(function (v) { return clamp(num(v, 0), 0, 100); });
     }
+    /* The US venue publishes its own series; inventing one next to it would put a
+       fictional shape under a real number. No series, no line. */
+    if (market.venue === 'polymarket-us' && mode !== 'asset') return null;
     if (mode === 'flat') {
       var flat = [];
       for (var f = 0; f < points; f++) flat.push(market.probability);
@@ -1474,17 +1481,38 @@
   /* Row allocation, measured: how many outcomes fit is decided by the space the
      hero leaves, and the hero gives ground (only its figure) until the list can
      show what its URL brings — more outcomes, more rows. */
+  var usHistory = {};      /* market slug → array of Yes % (or null) */
+
+  /* Real 7-day Yes series for a Polymarket US market, fetched once per slug. */
+  Board.prototype.loadUsHistory = function (m, slug, done) {
+    var self = this;
+    if (Object.prototype.hasOwnProperty.call(usHistory, slug)) {
+      done(usHistory[slug]);
+      return;
+    }
+    usHistory[slug] = null;                      /* one request per slug */
+    fetch('api/polymarket-us/history?symbol=' + encodeURIComponent(slug), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (body) {
+        var pts = (body && Array.isArray(body.points)) ? body.points : [];
+        var values = pts.length > 1 ? pts.map(function (p) { return p.yes; }) : null;
+        usHistory[slug] = values;
+        done(values);
+      })
+      .catch(function () { done(null); });
+  };
+
   Board.prototype.allocateRows = function () {
     var hero = this.hero, cont = this.contracts;
     if (!hero || !cont || cont.style.display === 'none' || !this.hugeNum) return;
-    var n = this._listedCount || 0;
+    var n = this._totalContracts || 0;      /* every outcome in the URL */
     if (n <= 1) return;
     var head = cont.querySelector('.contracts__head');
     var row = cont.querySelector('.contract');
     if (!head || !row) return;
 
     /* ask for the whole list on a small market, a readable handful on a big one */
-    var want = Math.min(n - 1, 3);
+    var want = Math.min(n - 1, 3);   /* the hero already shows one outcome */
     var boardBottom = (this.board || document.body).getBoundingClientRect().bottom - 16;
     var base = parseFloat((this.cfg.hero && this.cfg.hero.probabilitySize) || 330);
     var caps = [base, base * 0.92, base * 0.84, base * 0.76, base * 0.68, base * 0.6, 150];
@@ -1619,7 +1647,28 @@
       (h.showWhenNotAsset === true || isAssetMarket(m, cfg));
     if (wantChart) { this.chart.style.display = ''; this.renderChart(m); }
     else this.chart.style.display = 'none';
+    /* the US board draws only real history, so it is fetched before the line is
+       shown; until it lands (and if it never does) the graphic stays hidden */
+    if (wantChart && m.venue === 'polymarket-us') {
+      var leadSlug = (m.contracts && m.contracts[0] && m.contracts[0].slug) || '';
+      if (!leadSlug) {
+        wantChart = false;
+        this.chart.style.display = 'none';
+      } else {
+        this.chart.style.display = 'none';
+        var selfH = this;
+        this.loadUsHistory(m, leadSlug, function (values) {
+          if (!values || values.length < 2) return;
+          m.history = values.slice();
+          var cur = selfH.heroMarket();
+          if (!cur || cur.topic !== m.topic) return;    /* moved on already */
+          selfH.chart.style.display = '';
+          selfH.renderChart(m);
+        });
+      }
+    }
     this._listedCount = listed.length;
+    this._totalContracts = Array.isArray(m.contracts) ? m.contracts.length : 0;
     if (this.contracts) {
       if (hasContracts) { this.contracts.style.display = ''; this.renderContracts(m._listed, { deferFit: true }); }
       else { this.contracts.style.display = 'none'; this.contracts.innerHTML = ''; }
@@ -1701,7 +1750,7 @@
         numNow -= 8;
         this.hugeNum.style.fontSize = numNow + 'px';
       }
-      if (fits()) { this.fitContractRows(); return; }
+      if (fits()) return;   /* trimming belongs to allocateRows, not here */
     }
 
     /* then the graphic, down to a readable floor, and finally out of the way */

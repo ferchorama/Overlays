@@ -119,7 +119,7 @@ window.PM_DEFAULT_CONFIG = {
     probabilitySize: 330,
     probabilitySuffix: '%',
     showStats: true,
-    showHistory: true,         /* the probability line under the figures */
+    showHistory: false,         /* the probability line under the figures */
     /* The 7-day line only makes sense for a traded asset. When the topic is not
        about one — a rate decision, an election, a policy question — the graphic is
        withheld rather than inventing a price history for it. Matching is a plain
