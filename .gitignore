@@ -37,3 +37,7 @@ state.json
 # Concept test, not used by the Windows OBS setup.
 crypto-wallpaper-1080p.png
 xposts/config.json
+market/config.json
+predictions/config.json
+topics/config.json
+weather/config.json
