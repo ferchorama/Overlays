@@ -661,7 +661,8 @@ html, body {
 }
 .contract__who { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .contract__icon {
-  width: 30px; height: 30px; border-radius: 50%; object-fit: cover;
+  width: 30px; height: 30px; border-radius: 50%;
+  object-fit: contain; background: rgba(255,255,255,.06);
   background: rgba(255,255,255,.06); flex: none;
 }
 .contract__name {
@@ -987,7 +988,7 @@ body, .board { font-family: var(--font-text); }
 }
 .hero__lead-icon {
   width: 88px; height: 88px; flex: none;
-  border-radius: 18px; object-fit: cover;
+  border-radius: 18px; object-fit: contain; padding: 6px; box-sizing: border-box;
   background: rgba(255,255,255,.06);
   border: 1px solid var(--line);
 }
@@ -1013,7 +1014,7 @@ body, .board { font-family: var(--font-text); }
 }
 .board__main.is-solo .hero__lead-icon {
   width: 168px; height: 168px; flex: none;
-  border-radius: 28px; object-fit: cover;
+  border-radius: 28px; object-fit: contain; padding: 10px; box-sizing: border-box;
   border: 1px solid var(--line);
   box-shadow: 0 18px 40px rgba(0,0,0,.45);
 }
@@ -1027,7 +1028,10 @@ body, .board { font-family: var(--font-text); }
   grid-column: 1 / -1; grid-row: 2;
   justify-content: flex-start;
 }
+/* the number is the story: let it own the frame */
 .board__main.is-solo .figs__prob .num.huge {
-  font-size: clamp(160px, 13vw, 240px);
+  font-size: clamp(220px, 17.5vw, 330px);
+  line-height: .86;
 }
+.board__main.is-solo .figs__prob .num.huge small { font-size: .34em; }
 .board__main.is-solo .eyebrow { display: none; }
