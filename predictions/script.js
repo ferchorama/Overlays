@@ -1442,7 +1442,9 @@
       rows[rows.length - 1].getBoundingClientRect().bottom;
     /* Only a genuinely empty frame is worth growing into: below this the spare
        height is better spent keeping another outcome row on screen. */
-    if (spare < 190) return;
+    /* Never grow the hero here: its size is a function of the outcome count
+       (allocateRows), and growing it made identical boards diverge. */
+    return;
     var num = parseFloat(this.hugeNum.style.fontSize || '0');
     if (num) {
       var grown = Math.min(num * 1.22, num + spare * 0.5);
@@ -1478,55 +1480,31 @@
     this.fitContractRows();
   };
 
-  /* Row allocation, measured: how many outcomes fit is decided by the space the
-     hero leaves, and the hero gives ground (only its figure) until the list can
-     show what its URL brings — more outcomes, more rows. */
-  var usHistory = {};      /* market slug → array of Yes % (or null) */
-
-  /* Real 7-day Yes series for a Polymarket US market, fetched once per slug. */
-  Board.prototype.loadUsHistory = function (m, slug, done) {
-    var self = this;
-    if (Object.prototype.hasOwnProperty.call(usHistory, slug)) {
-      done(usHistory[slug]);
-      return;
-    }
-    usHistory[slug] = null;                      /* one request per slug */
-    fetch('api/polymarket-us/history?symbol=' + encodeURIComponent(slug), { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (body) {
-        var pts = (body && Array.isArray(body.points)) ? body.points : [];
-        var values = pts.length > 1 ? pts.map(function (p) { return p.yes; }) : null;
-        usHistory[slug] = values;
-        done(values);
-      })
-      .catch(function () { done(null); });
-  };
-
+  /* How many rows the board shows is what makes two markets look alike, so the
+     hero size is chosen by walking one fixed ladder until that many rows fit.
+     The row stretch is cleared while measuring, otherwise a stretched row from
+     the previous market changes the answer. */
   Board.prototype.allocateRows = function () {
-    var hero = this.hero, cont = this.contracts;
-    if (!hero || !cont || cont.style.display === 'none' || !this.hugeNum) return;
-    var n = this._totalContracts || 0;      /* every outcome in the URL */
-    if (n <= 1) return;
-    var head = cont.querySelector('.contracts__head');
-    var row = cont.querySelector('.contract');
+    var n = this._totalContracts || 0;
+    if (n <= 1 || !this.hugeNum || !this.contracts) return;
+    var head = this.contracts.querySelector('.contracts__head');
+    var row = this.contracts.querySelector('.contract');
     if (!head || !row) return;
 
-    /* ask for the whole list on a small market, a readable handful on a big one */
-    var want = Math.min(n - 1, 3);   /* the hero already shows one outcome */
+    var want = Math.min(n - 1, 3);
     var boardBottom = (this.board || document.body).getBoundingClientRect().bottom - 16;
     var base = parseFloat((this.cfg.hero && this.cfg.hero.probabilitySize) || 330);
-    var caps = [base, base * 0.92, base * 0.84, base * 0.76, base * 0.68, base * 0.6, 150];
+    var ladder = [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58];
 
-    for (var i = 0; i < caps.length; i++) {
-      this.hugeNum.style.fontSize = Math.round(caps[i]) + 'px';
-      void cont.offsetHeight;                       /* force the reflow we measure */
-      var top = cont.getBoundingClientRect().top;
-      var room = boardBottom - top;
+    this.contracts.style.removeProperty('--row-extra');
+    for (var i = 0; i < ladder.length; i++) {
+      this.hugeNum.style.fontSize = Math.max(150, Math.round(base * ladder[i])) + 'px';
+      void this.contracts.offsetHeight;                 /* force the reflow */
+      var room = boardBottom - this.contracts.getBoundingClientRect().top;
       var fit = Math.floor((room - head.offsetHeight - 14) / row.offsetHeight);
       if (fit >= want) break;
     }
     this.fitContractRows();
-    this.fillFrame();
   };
 
   Board.prototype.renderHero = function (m) {
