@@ -1,8 +1,8 @@
 /* ============================================================================
    X Posts — overlay engine
    ----------------------------------------------------------------------------
-   One post on air, the next few queued under it, manual cycling only. No timer:
-   the operator decides when the feed moves, exactly like the prediction board.
+   One post on air at a time, manual cycling only: no timer, the operator decides
+   when the feed moves, exactly like the prediction board.
 
    Data comes from config.json (api/config), which the control panel writes after
    resolving each pasted X URL through the hub. The overlay never calls X.
@@ -43,7 +43,6 @@
   var stage = $('stage');
   var board = $('board');
   var heroBody = $('heroBody');
-  var queueEl = $('queue');
   var navCount = $('navCount');
 
   function applyPalette() {
@@ -171,31 +170,9 @@
     return wrap;
   }
 
-  function renderQueue() {
-    if (!queueEl) return;
-    queueEl.innerHTML = '';
-    if (!(cfg.queue && cfg.queue.visible !== false)) { queueEl.style.display = 'none'; return; }
-    queueEl.style.display = '';
-    var rows = Math.max(0, (cfg.queue.rows == null ? 3 : cfg.queue.rows));
-    if (posts.length < 2 || rows === 0) { queueEl.style.display = 'none'; return; }
-    for (var i = 1; i <= rows; i++) {
-      var p = posts[(index + i) % posts.length];
-      if (!p) break;
-      var row = el('div', 'queue__row', queueEl);
-      if (p.avatar) {
-        var av = el('img', 'queue__avatar', row);
-        av.src = p.avatar;
-        av.alt = '';
-        av.addEventListener('error', function () { av.style.display = 'none'; });
-      }
-      var snip = el('div', 'queue__snippet', row);
-      var who = el('b', null, snip);
-      who.textContent = '@' + (p.handle || '');
-      snip.appendChild(document.createTextNode('  ' + String(p.text || '').replace(/\s+/g, ' ')));
-      var likes = el('div', 'queue__likes', row);
-      likes.textContent = (cfg.queue.showMetrics === false ? '' : compact(p.likes) + ' likes');
-    }
-  }
+  /* One post per frame: the queue that used to list what was next is retired,
+     so everything below the hero belongs to the copy and the images. */
+  function renderQueue() {}
 
   function overflowing() {
     return board.scrollHeight - board.clientHeight > 2;
@@ -205,8 +182,7 @@
      so stepping sizes until scrollHeight stops moving chases its own tail. Take
      the hero's height with the media out of the flow, subtract it from the space
      the frame actually has, and give the remainder to the images. Text steps down
-     only if that remainder would fall under a readable plate; queue rows are the
-     last thing to give ground. */
+     only if that remainder would fall under a readable plate. */
   function fitFrame() {
     var h = cfg.hero || {};
     var t = heroBody.querySelector('.post__text');
@@ -215,8 +191,7 @@
     var head = board.querySelector('.board__header');
     var avail = board.clientHeight
       - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
-      - (head ? head.offsetHeight : 0)
-      - (queueEl && queueEl.offsetHeight ? queueEl.offsetHeight + 18 : 0);
+      - (head ? head.offsetHeight : 0);
 
     var minSize = h.minTextSize || 40;
     var cap = h.mediaMaxHeight || 560;
@@ -285,7 +260,7 @@
 
     if (!HAS_GSAP || opts.instant) {
       render();
-      if (HAS_GSAP) window.gsap.set([heroBody, queueEl], { clearProps: 'opacity,transform,clipPath' });
+      if (HAS_GSAP) window.gsap.set(heroBody, { clearProps: 'opacity,transform,clipPath' });
       return index;
     }
 
@@ -304,9 +279,7 @@
       clipPath: 'inset(0% 0% 0% 0%)', y: 0, opacity: 1,
       duration: num(a.wipeMs, 480) / 1000, ease: 'power3.out'
     });
-    tl.to(queueEl, { opacity: 0, duration: 0.18 }, 0)
-      .to(queueEl, { opacity: 1, duration: 0.4 }, 0.2);
-    tl.set([heroBody, queueEl], { clearProps: 'clipPath,transform' });
+    tl.set(heroBody, { clearProps: 'clipPath,transform' });
   }
 
   /* OBS never sees a "hide" flag on the source, so the panel drives visibility

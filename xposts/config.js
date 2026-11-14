@@ -1,9 +1,9 @@
 /* ============================================================================
    X Posts — shipped defaults
    ----------------------------------------------------------------------------
-   The board shows one post on air and the next few queued below it. Everything
-   an operator can change from the panel lives here first, so a fresh clone
-   renders without a saved config.
+   One post on air per frame, cycled by hand. Everything an operator can change
+   from the panel lives here first, so a fresh clone renders without a saved
+   config.
    ========================================================================== */
 window.XP_DEFAULT_CONFIG = {
   meta: { version: '1.0.0' },
@@ -41,12 +41,6 @@ window.XP_DEFAULT_CONFIG = {
     enabled: true,
     clickToOpen: true,
     backdrop: 0.975
-  },
-
-  queue: {
-    visible: false,
-    rows: 3,                 /* how many upcoming posts to list under the hero */
-    showMetrics: true
   },
 
   nav: { visible: true },
