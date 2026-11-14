@@ -166,13 +166,7 @@
       var rep = el('span', null, m);
       var rb = el('b', null, rep); rb.textContent = compact(p.replies);
       rep.appendChild(document.createTextNode(' replies'));
-      var open = el('a', null, m);
-      open.href = p.url || '#';
-      open.target = '_blank';
-      open.rel = 'noopener noreferrer';
-      open.textContent = 'open post ↗';
-      open.style.color = 'var(--brass)';
-      open.style.textDecoration = 'none';
+      /* no outbound link on air: the board is read, not clicked */
     }
     return wrap;
   }
