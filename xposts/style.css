@@ -1,0 +1,190 @@
+/* ============================================================================
+   X Posts — overlay styles
+   ----------------------------------------------------------------------------
+   Same visual language as the prediction board: ink ground, brass hairlines,
+   Neue Haas Grotesk Display for the loud type, Text for the reading type.
+   Authored on the real 1920×1080 stage; OBS scales the whole frame.
+   ========================================================================== */
+
+:root {
+  --font-display: 'neue-haas-grotesk-display', 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-text: 'neue-haas-grotesk-text', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --stage: #0b0b0c;
+  --ink: #f8f3e8;
+  --ink-soft: #eee6d6;
+  --dim: #c2b9a6;
+  --dimmer: #a9a08d;
+  --line: #38332a;
+  --line-soft: #262119;
+  --brass: #d8b45f;
+  --link: #7fcf9b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 1920px; height: 1080px;
+  overflow: hidden;
+  background: var(--stage);
+}
+
+body { font-family: var(--font-text); color: var(--ink); }
+
+.stage {
+  position: relative;
+  width: 1920px; height: 1080px;
+  background:
+    radial-gradient(1200px 700px at 18% 0%, rgba(216, 180, 95, .07), transparent 70%),
+    radial-gradient(900px 600px at 100% 100%, rgba(127, 207, 155, .05), transparent 65%),
+    var(--stage);
+}
+
+.board {
+  position: absolute; inset: 0;
+  padding: 40px 96px 44px;
+  display: flex; flex-direction: column;
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------------ header */
+.board__header {
+  display: flex; align-items: center; gap: 34px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.brand__logo { height: 80px; display: block; }
+.brand__titles { display: flex; flex-direction: column; gap: 6px; padding-left: 34px; border-left: 1px solid var(--line); }
+.kicker {
+  font-family: var(--font-mono); font-size: 22px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--brass);
+}
+.headline {
+  margin: 0; font-family: var(--font-display); font-weight: 700;
+  font-size: 62px; letter-spacing: -0.02em; line-height: 1; color: var(--ink);
+}
+.header-right {
+  margin-left: auto; text-align: right;
+  font-family: var(--font-mono); font-size: 22px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.header-right span { display: block; margin-top: 6px; font-size: 20px; color: var(--dim); }
+
+/* -------------------------------------------------------------------- hero */
+.board__main {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+  padding-top: 10px;
+}
+
+.hero { flex: 0 0 auto; min-height: 0; }
+.hero__body { display: flex; flex-direction: column; gap: 18px; }
+
+.post {
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+.post__author { display: flex; align-items: center; gap: 20px; }
+.post__avatar {
+  width: 96px; height: 96px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(255,255,255,.05);
+  object-fit: cover; flex: none;
+}
+.post__who { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.post__name {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 46px; letter-spacing: -0.01em; color: var(--ink);
+}
+.post__badge {
+  font-family: var(--font-mono); font-size: 15px; letter-spacing: .1em;
+  text-transform: uppercase; color: #0b0b0c; background: var(--brass);
+  border-radius: 6px; padding: 3px 8px;
+}
+.post__handle {
+  font-family: var(--font-mono); font-size: 28px; letter-spacing: .04em;
+  color: var(--dim);
+}
+.post__handle a { color: inherit; text-decoration: none; }
+
+.post__text {
+  font-family: var(--font-display); font-weight: 500;
+  font-size: 52px; line-height: 1.14; letter-spacing: -0.01em;
+  color: var(--ink); margin: 0; max-width: 60ch;
+}
+.post__text a { color: var(--link); text-decoration: none; }
+
+.post__media { display: flex; gap: 16px; align-items: flex-start; }
+.post__media { align-items: center; }
+/* Never crop a pasted image: it is bounded by height AND width with no explicit
+   size, so the browser scales it along its own ratio and the element itself is
+   the exact shape of the file. */
+.post__media img {
+  display: block; border-radius: 18px;
+  border: 1px solid var(--line);
+  width: auto; height: auto;
+  max-height: var(--media-max, 430px);
+  max-width: 100%;
+  object-fit: contain;
+}
+.post__media.is-many img { max-width: calc(50% - 8px); }
+
+.post__metrics {
+  display: flex; gap: 44px; align-items: center;
+  font-family: var(--font-mono); font-size: 24px; letter-spacing: .06em;
+  color: var(--dim);
+}
+.post__metrics b { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------------- queue */
+.queue {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  display: flex; flex-direction: column;
+  flex: none;
+}
+.queue__row {
+  display: grid; grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center; gap: 18px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.queue__row:last-child { border-bottom: 0; }
+.queue__avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  object-fit: cover; background: rgba(255,255,255,.05);
+  border: 1px solid var(--line);
+}
+.queue__snippet { font-size: 28px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue__snippet b { font-family: var(--font-display); font-weight: 700; color: var(--ink); }
+.queue__likes { font-family: var(--font-mono); font-size: 22px; color: var(--dimmer); }
+
+/* --------------------------------------------------------------------- nav */
+.nav {
+  position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+  z-index: 5;
+}
+.nav__btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .04);
+  color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer;
+  transition: border-color .15s, background .15s, transform .06s;
+}
+.nav__btn:hover { border-color: var(--brass); background: rgba(216, 180, 95, .12); }
+.nav__btn:active { transform: translateY(1px); }
+.nav__count {
+  font-family: var(--font-mono); font-size: 15px; letter-spacing: .06em;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------- empty */
+.empty {
+  margin: auto; text-align: center;
+  font-family: var(--font-display); font-size: 40px; color: var(--dimmer);
+}
+.empty small { display: block; margin-top: 12px; font-family: var(--font-mono); font-size: 20px; letter-spacing: .1em; }

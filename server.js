@@ -965,6 +965,61 @@ function marketDataSpec(path) {
   };
 }
 
+/* ---- X (Twitter) posts -----------------------------------------------------
+   A pasted status URL carries only the id. X's own syndication endpoint answers
+   with the post's full public payload — author, avatar, text, photo dimensions —
+   without a token, so the overlay never has to scrape the page or hold a key. */
+function xToken(id) {
+  const n = (Number(id) / 1e15) * Math.PI;
+  const digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+  let ip = Math.floor(n), frac = n - ip, out = '';
+  while (ip > 0) { out = digits[ip % 36] + out; ip = Math.floor(ip / 36); }
+  if (frac > 0) {
+    out += '.';
+    for (let i = 0; i < 12; i++) { frac *= 36; const d = Math.floor(frac); out += digits[d]; frac -= d; }
+  }
+  return out.replace(/0/g, '').replace(/\./g, '');
+}
+
+function xPostId(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (/^\d{6,25}$/.test(s)) return s;
+  const m = s.match(/(?:twitter\.com|x\.com)\/[^/]+\/status(?:es)?\/(\d{6,25})/i);
+  return m ? m[1] : '';
+}
+
+function normaliseXPost(body, params) {
+  let d;
+  try { d = JSON.parse(body); } catch (e) { throw new Error('the X feed did not return JSON'); }
+  if (!d || !d.id_str || !d.text) {
+    return JSON.stringify({ what: 'post', items: [], error: 'post not found or not public' });
+  }
+  const u = d.user || {};
+  const handle = String(u.screen_name || '');
+  const photos = (Array.isArray(d.photos) ? d.photos : []).map((ph) => ({
+    url: String(ph && ph.url || ''),
+    w: Math.round(polyNum(ph && ph.width) || 0),
+    h: Math.round(polyNum(ph && ph.height) || 0)
+  })).filter((ph) => ph.url);
+  const avatar = String(u.profile_image_url_https || '').replace(/_normal(\.\w+)$/, '_400x400$1');
+  const item = {
+    id: String(d.id_str),
+    url: 'https://x.com/' + (handle || 'i') + '/status/' + d.id_str,
+    handle,
+    name: String(u.name || handle),
+    verified: !!(u.verified || u.is_blue_verified),
+    avatar,
+    created: String(d.created_at || ''),
+    text: String(d.text || ''),
+    photos,
+    likes: Math.round(polyNum(d.favorite_count) || 0),
+    replies: Math.round(polyNum(d.conversation_count) || 0),
+    quotes: Math.round(polyNum(d.quote_count) || 0),
+    venue: 'x'
+  };
+  return JSON.stringify({ what: 'post', fetchedAt: Date.now(), count: 1, items: [item] });
+}
+
 const APPS = [
   {
     id: 'weather',
@@ -1116,6 +1171,33 @@ const APPS = [
         shape: normalisePolymarketUSHistory
       },
       marketDataSpec('/api/data')
+    ]
+  },
+  {
+    id: 'xposts',
+    name: 'X Posts',
+    tagline: 'Pasted X posts · one on air, the rest queued · manual cycling',
+    dir: path.join(BASE, 'xposts'),
+    actions: ['in', 'out', 'replay', 'next', 'prev', 'show'],
+    strictActions: false,
+    supportsIndex: true,
+    upstreams: [
+      {
+        path: '/api/x/post',
+        ttlMs: 300000,
+        staleMs: 3600000,
+        timeoutMs: 15000,
+        retries: 2,
+        userAgent: 'obs-overlays/1.0 (x posts)',
+        source: 'x',
+        build: function (params) {
+          var id = xPostId(params.get('url') || params.get('id'));
+          if (!id) return null;
+          return 'https://cdn.syndication.twimg.com/tweet-result?id=' + id +
+            '&lang=en&token=' + xToken(id);
+        },
+        shape: normaliseXPost
+      }
     ]
   }
 ];

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>X Posts — Control</title>
+  <link rel="stylesheet" href="admin.css?v=1.0.0" />
+<script>
+  /* Same theme key as the hub and the other panels: switch it in one place. */
+  (function () {
+    var t = 'light';
+    try {
+      var s = localStorage.getItem('obs-overlays-theme');
+      if (s === 'dark' || s === 'light') t = s;
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+    } catch (e) { /* private mode */ }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <strong>X Posts</strong>
+      <span class="muted">control</span>
+    </div>
+    <div class="topbar__actions">
+      <button type="button" id="btnTheme" class="btn" title="Switch theme" aria-label="Switch theme">Theme</button>
+      <span class="sep"></span>
+      <button id="btnIn" class="btn btn--on">&#9654; Play entrance</button>
+      <button id="btnPrev" class="btn">&lsaquo; Previous</button>
+      <button id="btnNext" class="btn">Next &rsaquo;</button>
+      <span class="sep"></span>
+      <button id="btnReset" class="btn btn--danger">Reset to defaults</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ------------------------------------------------------------ preview -->
+    <section class="preview">
+      <div class="preview__bar">
+        <span class="muted" id="status">ready</span>
+        <span class="grow"></span>
+        <label class="mini"><input type="checkbox" id="optGrid" /> guides</label>
+        <select id="selZoom" class="mini-select">
+          <option value="fit">Fit</option>
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+        </select>
+        <a id="linkOut" class="mini" href="index.html?v=1.0.3" target="_blank">open overlay &#8599;</a>
+      </div>
+      <div class="preview__stage" id="previewStage">
+        <iframe id="preview" src="index.html?preview=1&v=1.0.3" title="preview"></iframe>
+      </div>
+      <p class="hint">
+        In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
+        (1920&times;1080). Open this page from
+        <code>https://therollupmedia.site/overlays/xposts/admin.html</code> — served by the shared
+        <code>Overlays/server.js</code> — so every change reaches OBS live.
+      </p>
+    </section>
+
+    <!-- ------------------------------------------------------------- editor -->
+    <section class="editor">
+      <nav class="tabs" role="tablist" aria-label="Settings sections">
+        <button class="tab is-active" data-tab="content" role="tab" aria-selected="true">Content</button>
+        <button class="tab" data-tab="look" role="tab" aria-selected="false">Look</button>
+        <button class="tab" data-tab="layout" role="tab" aria-selected="false">Layout</button>
+        <button class="tab" data-tab="anim" role="tab" aria-selected="false">Animation</button>
+      </nav>
+
+      <!-- CONTENT -->
+      <div class="panel-body is-active" data-panel="content">
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Paste list</h2>
+            <p class="group__note">one X status URL per line &mdash; each is resolved and added to the feed</p>
+          </header>
+          <div class="paste">
+            <textarea id="pasteIn" rows="4" spellcheck="false"
+              placeholder="https://x.com/TheBlockCo/status/2121663943643115646&#10;https://x.com/KobeissiLetter/status/2121716781534314731"></textarea>
+            <div class="paste__foot">
+              <button id="btnPasteAppend" class="btn btn--primary">Add <span id="pasteCountHint" class="muted">0</span> posts</button>
+              <button id="btnPasteClear" class="btn btn--ghost">Clear</button>
+              <span class="grow"></span>
+              <span class="muted tiny">x.com/&hellip;/status/&hellip; or a bare id</span>
+            </div>
+          </div>
+          <div class="group__foot">
+            <span class="muted tiny" id="pastedCount">0 posts on the board</span>
+            <span class="grow"></span>
+            <button id="btnPastedClear" class="btn btn--ghost btn--danger">Remove all</button>
+          </div>
+          <div id="pastedList" class="pasted" aria-live="polite"></div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Header</h2></header>
+          <div class="row2">
+            <div class="field"><label>Kicker</label><input id="c_kicker" type="text" data-cfg="header.kicker.text" /></div>
+            <div class="field"><label>Title</label><input id="c_title" type="text" data-cfg="header.title.text" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Right label</label><input type="text" data-cfg="header.right.text" /></div>
+            <div class="field"><label>Right sub-label</label><input type="text" data-cfg="header.right.sub" /></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Hero post</h2></header>
+          <div class="row3">
+            <div class="field"><label>Body size (px)</label><input type="number" min="20" max="96" step="1" data-cfg="hero.textSize" data-kind="number" /></div>
+            <div class="field"><label>Body floor (px)</label><input type="number" min="16" max="60" step="1" data-cfg="hero.minTextSize" data-kind="number" /></div>
+            <div class="field"><label>Body max height (px)</label><input type="number" min="120" max="900" step="10" data-cfg="hero.maxTextHeight" data-kind="number" /></div>
+          </div>
+          <div class="row3">
+            <div class="field"><label>Image cap (px)</label><input type="number" min="120" max="700" step="10" data-cfg="hero.mediaMaxHeight" data-kind="number" /></div>
+            <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" data-cfg="hero.showMedia" data-kind="bool" /> show images</label></div>
+            <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" data-cfg="hero.showMetrics" data-kind="bool" /> likes / replies</label></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Queue</h2></header>
+          <div class="row3">
+            <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" data-cfg="queue.visible" data-kind="bool" /> show queue</label></div>
+            <div class="field"><label>Rows</label><input type="number" min="0" max="6" step="1" data-cfg="queue.rows" data-kind="number" /></div>
+            <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" data-cfg="queue.showMetrics" data-kind="bool" /> show likes</label></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" data-cfg="nav.visible" data-kind="bool" /> show pager</label></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- LOOK -->
+      <div class="panel-body" data-panel="look">
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Palette</h2>
+            <p class="group__note">matches the prediction board — keep the contrasts above 7:1 on the stage</p>
+          </header>
+          <div class="row3">
+            <div class="field"><label>Stage</label><input type="color" data-cfg="palette.stage" data-kind="color" /></div>
+            <div class="field"><label>Ink</label><input type="color" data-cfg="palette.ink" data-kind="color" /></div>
+            <div class="field"><label>Dim</label><input type="color" data-cfg="palette.dim" data-kind="color" /></div>
+          </div>
+          <div class="row3">
+            <div class="field"><label>Brass</label><input type="color" data-cfg="palette.brass" data-kind="color" /></div>
+            <div class="field"><label>Link</label><input type="color" data-cfg="palette.link" data-kind="color" /></div>
+            <div class="field"><label>Hairline</label><input type="color" data-cfg="palette.line" data-kind="color" /></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Type scale</h2></header>
+          <div class="row3">
+            <div class="field"><label>Kicker</label><input type="number" min="12" max="40" step="1" data-cfg="header.kicker.size" data-kind="number" /></div>
+            <div class="field"><label>Title</label><input type="number" min="30" max="110" step="1" data-cfg="header.title.size" data-kind="number" /></div>
+            <div class="field"><label>Header right</label><input type="number" min="14" max="40" step="1" data-cfg="header.right.size" data-kind="number" /></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- LAYOUT -->
+      <div class="panel-body" data-panel="layout">
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Stage</h2></header>
+          <div class="row3">
+            <div class="field"><label>Width</label><input type="number" min="640" step="10" data-cfg="stage.width" data-kind="number" /></div>
+            <div class="field"><label>Height</label><input type="number" min="360" step="10" data-cfg="stage.height" data-kind="number" /></div>
+            <div class="field"><label>Logo height</label><input type="number" min="30" max="160" step="2" data-cfg="header.logo.height" data-kind="number" /></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ANIMATION -->
+      <div class="panel-body" data-panel="anim">
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Handover</h2>
+            <p class="group__note">the same wipe the prediction board uses when the hero changes</p>
+          </header>
+          <div class="row2">
+            <div class="field"><label>Wipe (ms)</label><input type="number" min="0" max="1600" step="20" data-cfg="animation.wipeMs" data-kind="number" /></div>
+            <div class="field"><label>Row stagger (s)</label><input type="number" min="0" max="0.3" step="0.005" data-cfg="animation.stagger" data-kind="number" /></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <header class="group__head"><h2 class="group__title">Server / Stream Deck</h2></header>
+          <p class="muted tiny">
+            Command URL: <code>api/command?action=next</code> &middot; <code>prev</code> &middot; <code>replay</code>
+          </p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js?v=1.0.0"></script>
+  <script src="admin.js?v=1.0.2"></script>
+</body>
+</html>

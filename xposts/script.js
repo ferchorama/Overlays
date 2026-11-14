@@ -1,0 +1,375 @@
+/* ============================================================================
+   X Posts — overlay engine
+   ----------------------------------------------------------------------------
+   One post on air, the next few queued under it, manual cycling only. No timer:
+   the operator decides when the feed moves, exactly like the prediction board.
+
+   Data comes from config.json (api/config), which the control panel writes after
+   resolving each pasted X URL through the hub. The overlay never calls X.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var HAS_GSAP = !!window.gsap;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, cls, parent) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function num(v, d) { var n = parseFloat(v); return isFinite(n) ? n : d; }
+  function compact(n) {
+    n = Number(n) || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    return String(n);
+  }
+  function when(iso) {
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return '';
+    return new Date(t).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* ------------------------------------------------------------------ state */
+  var cfg = Object.assign({}, window.XP_DEFAULT_CONFIG || {});
+  var posts = [];
+  var index = 0;
+  var dir = 1;
+  var stage = $('stage');
+  var board = $('board');
+  var heroBody = $('heroBody');
+  var queueEl = $('queue');
+  var navCount = $('navCount');
+
+  function applyPalette() {
+    var p = cfg.palette || {};
+    var root = document.documentElement.style;
+    if (p.stage) root.setProperty('--stage', p.stage);
+    if (p.ink) root.setProperty('--ink', p.ink);
+    if (p.inkSoft) root.setProperty('--ink-soft', p.inkSoft);
+    if (p.dim) root.setProperty('--dim', p.dim);
+    if (p.dimmer) root.setProperty('--dimmer', p.dimmer);
+    if (p.line) root.setProperty('--line', p.line);
+    if (p.lineSoft) root.setProperty('--line-soft', p.lineSoft);
+    if (p.brass) root.setProperty('--brass', p.brass);
+    if (p.link) root.setProperty('--link', p.link);
+  }
+
+  function applyChrome() {
+    var h = cfg.header || {};
+    var logo = $('logo');
+    if (logo) {
+      logo.style.display = h.logo && h.logo.enabled === false ? 'none' : '';
+      if (h.logo && h.logo.src) logo.src = h.logo.src;
+      if (h.logo && h.logo.height) logo.style.height = h.logo.height + 'px';
+    }
+    var k = $('kicker');
+    if (k) {
+      k.textContent = (h.kicker && h.kicker.text) || '';
+      if (h.kicker) {
+        k.style.fontSize = (h.kicker.size || 22) + 'px';
+        k.style.letterSpacing = (h.kicker.tracking || 0.18) + 'em';
+      }
+      k.style.display = (h.kicker && h.kicker.text) ? '' : 'none';
+    }
+    var t = $('headline');
+    if (t) {
+      t.textContent = (h.title && h.title.text) || 'X Posts';
+      if (h.title) {
+        t.style.fontSize = (h.title.size || 62) + 'px';
+        t.style.fontWeight = h.title.weight || 700;
+        t.style.letterSpacing = (h.title.tracking || 0) + 'em';
+      }
+    }
+    var right = $('headerRight');
+    var rt = $('rightTop');
+    var rs = $('rightSub');
+    if (right) {
+      var hasRight = !!(h.right && (h.right.text || h.right.sub));
+      right.style.display = hasRight ? '' : 'none';
+      if (rt) rt.textContent = (h.right && h.right.text) || '';
+      if (rs) {
+        rs.textContent = (h.right && h.right.sub) || '';
+        rs.style.display = (h.right && h.right.sub) ? '' : 'none';
+      }
+      if (h.right) right.style.fontSize = (h.right.size || 22) + 'px';
+    }
+    var nav = $('nav');
+    if (nav) nav.style.display = (cfg.nav && cfg.nav.visible === false) ? 'none' : '';
+  }
+
+  /* ------------------------------------------------------------------ render */
+  function postNode(p, hero) {
+    var wrap = el('article', 'post');
+    wrap.dataset.id = p.id;
+
+    var author = el('div', 'post__author', wrap);
+    if (p.avatar) {
+      var av = el('img', 'post__avatar', author);
+      av.src = p.avatar;
+      av.alt = '';
+      av.addEventListener('error', function () { av.style.display = 'none'; });
+    }
+    var who = el('div', 'post__who', author);
+    var name = el('div', 'post__name', who);
+    var nameText = el('span', null, name);
+    nameText.textContent = p.name || p.handle || '';
+    if (p.verified) {
+      var badge = el('span', 'post__badge', name);
+      badge.textContent = 'verified';
+    }
+    var handle = el('div', 'post__handle', who);
+    var link = el('a', null, handle);
+    link.href = p.url || '#';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = '@' + (p.handle || '');
+    if (p.created) {
+      var dot = el('span', null, handle);
+      dot.textContent = '  ·  ' + when(p.created);
+    }
+
+    var text = el('p', 'post__text', wrap);
+    /* X truncates the display text; entities carry the real links, but the
+       plain text is what belongs on air */
+    text.textContent = p.text || '';
+
+    var media = (p.photos || []).slice(0, 2);
+    if (hero && cfg.hero && cfg.hero.showMedia !== false && media.length) {
+      var box = el('div', 'post__media ' + (media.length > 1 ? 'is-many' : 'is-one'), wrap);
+      box.style.setProperty('--media-max', (cfg.hero.mediaMaxHeight || 430) + 'px');
+      media.forEach(function (ph) {
+        var img = el('img', null, box);
+        img.src = ph.url;
+        img.alt = '';
+        img.addEventListener('error', function () { img.style.display = 'none'; });
+      });
+    }
+
+    if (hero && cfg.hero && cfg.hero.showMetrics !== false) {
+      var m = el('div', 'post__metrics', wrap);
+      var like = el('span', null, m);
+      var lb = el('b', null, like); lb.textContent = compact(p.likes);
+      like.appendChild(document.createTextNode(' likes'));
+      var rep = el('span', null, m);
+      var rb = el('b', null, rep); rb.textContent = compact(p.replies);
+      rep.appendChild(document.createTextNode(' replies'));
+      var open = el('a', null, m);
+      open.href = p.url || '#';
+      open.target = '_blank';
+      open.rel = 'noopener noreferrer';
+      open.textContent = 'open post ↗';
+      open.style.color = 'var(--brass)';
+      open.style.textDecoration = 'none';
+    }
+    return wrap;
+  }
+
+  function renderQueue() {
+    if (!queueEl) return;
+    queueEl.innerHTML = '';
+    if (!(cfg.queue && cfg.queue.visible !== false)) { queueEl.style.display = 'none'; return; }
+    queueEl.style.display = '';
+    var rows = Math.max(0, (cfg.queue.rows == null ? 3 : cfg.queue.rows));
+    if (posts.length < 2 || rows === 0) { queueEl.style.display = 'none'; return; }
+    for (var i = 1; i <= rows; i++) {
+      var p = posts[(index + i) % posts.length];
+      if (!p) break;
+      var row = el('div', 'queue__row', queueEl);
+      if (p.avatar) {
+        var av = el('img', 'queue__avatar', row);
+        av.src = p.avatar;
+        av.alt = '';
+        av.addEventListener('error', function () { av.style.display = 'none'; });
+      }
+      var snip = el('div', 'queue__snippet', row);
+      var who = el('b', null, snip);
+      who.textContent = '@' + (p.handle || '');
+      snip.appendChild(document.createTextNode('  ' + String(p.text || '').replace(/\s+/g, ' ')));
+      var likes = el('div', 'queue__likes', row);
+      likes.textContent = (cfg.queue.showMetrics === false ? '' : compact(p.likes) + ' likes');
+    }
+  }
+
+  function overflowing() {
+    return board.scrollHeight - board.clientHeight > 2;
+  }
+
+  /* One measured pass instead of nudging: images and text reflow asynchronously,
+     so stepping sizes until scrollHeight stops moving chases its own tail. Take
+     the hero's height with the media out of the flow, subtract it from the space
+     the frame actually has, and give the remainder to the images. Text steps down
+     only if that remainder would fall under a readable plate; queue rows are the
+     last thing to give ground. */
+  function fitFrame() {
+    var h = cfg.hero || {};
+    var t = heroBody.querySelector('.post__text');
+    var media = heroBody.querySelector('.post__media');
+    var author = heroBody.querySelector('.post__author');
+    var metrics = heroBody.querySelector('.post__metrics');
+    var cs = getComputedStyle(board);
+    var head = board.querySelector('.board__header');
+    var avail = board.clientHeight
+      - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+      - (head ? head.offsetHeight : 0)
+      - queueEl.offsetHeight
+      - 18;                                   /* queue margin */
+
+    var textSize = h.textSize || 52;
+    var minSize = h.minTextSize || 30;
+    var cap = h.mediaMaxHeight || 430;
+    var floor = Math.max(140, Math.round(avail * 0.22));
+
+    if (t) t.style.fontSize = textSize + 'px';
+    if (!media) return;
+
+    function heroBase() {
+      media.style.display = 'none';
+      var base = heroBody.offsetHeight;       /* author + text + metrics + gaps */
+      media.style.display = '';
+      return base;
+    }
+
+    /* images are the reason these posts get read: aim for ~45% of the frame and
+       let the copy step down to its floor before the plate gives ground */
+    var desired = Math.min(cap, Math.round(avail * 0.45));
+    var guard = 0;
+    while (guard++ < 40) {
+      var room = avail - heroBase() - 18;
+      if (room >= desired) break;
+      if (t && textSize > minSize) { textSize -= 2; t.style.fontSize = textSize + 'px'; continue; }
+      desired = Math.max(floor, desired - 12);
+      if (desired <= floor) break;
+    }
+    var allowed = Math.max(120, Math.min(cap, desired, avail - heroBase() - 18));
+    media.style.setProperty('--media-max', Math.round(allowed) + 'px');
+  }
+
+  function renderNav() {
+    if (!navCount) return;
+    var n = posts.length;
+    navCount.textContent = n ? pad(index + 1) + ' / ' + pad(n) : '';
+  }
+
+  function renderHero() {
+    if (!heroBody) return;
+    heroBody.innerHTML = '';
+    var p = posts[index];
+    if (!p) {
+      var e = el('div', 'empty', stage);
+      e.innerHTML = 'No posts yet<small>paste X links in the control panel</small>';
+      e.id = 'emptyNote';
+      return;
+    }
+    var note = $('emptyNote');
+    if (note) note.remove();
+    heroBody.appendChild(postNode(p, true));
+    fitFrame();
+  }
+
+  function render() {
+    applyPalette();
+    applyChrome();
+    renderHero();
+    renderQueue();
+    renderNav();
+    fitFrame();
+  }
+
+  /* --------------------------------------------------------------- animation */
+  function switchTo(i, opts) {
+    opts = opts || {};
+    if (!posts.length) return index;
+    var n = posts.length;
+    var next = ((i % n) + n) % n;
+    if (next === index && !opts.force) return index;
+    var fwd = (next - index + n) % n;
+    var back = (index - next + n) % n;
+    dir = opts.dir || (fwd <= back ? 1 : -1);
+    index = next;
+
+    if (!HAS_GSAP || opts.instant) {
+      render();
+      if (HAS_GSAP) window.gsap.set([heroBody, queueEl], { clearProps: 'opacity,transform,clipPath' });
+      return index;
+    }
+
+    var clipOut = dir > 0 ? 'inset(0% 0% 100% 0%)' : 'inset(100% 0% 0% 0%)';
+    var clipIn = dir > 0 ? 'inset(100% 0% 0% 0%)' : 'inset(0% 0% 100% 0%)';
+    var a = cfg.animation || {};
+    var outMs = num(a.wipeMs, 480) / 1000 * 0.55;
+
+    var tl = window.gsap.timeline();
+    tl.to(heroBody, { clipPath: clipOut, y: dir * -18, opacity: 0.25, duration: outMs, ease: 'power2.in' }, 0);
+    tl.call(function () {
+      render();
+      window.gsap.set(heroBody, { clipPath: clipIn, y: dir * 26, opacity: 0.3 });
+    });
+    tl.to(heroBody, {
+      clipPath: 'inset(0% 0% 0% 0%)', y: 0, opacity: 1,
+      duration: num(a.wipeMs, 480) / 1000, ease: 'power3.out'
+    });
+    tl.to(queueEl, { opacity: 0, duration: 0.18 }, 0)
+      .to(queueEl, { opacity: 1, duration: 0.4 }, 0.2);
+    tl.set([heroBody, queueEl], { clearProps: 'clipPath,transform' });
+  }
+
+  function next() { return switchTo(index + 1, { dir: 1 }); }
+  function prev() { return switchTo(index - 1, { dir: -1 }); }
+
+  /* --------------------------------------------------------------------- io */
+  function adopt(remote) {
+    if (!remote || typeof remote !== 'object') return;
+    cfg = Object.assign({}, cfg, remote);
+    posts = (cfg.posts && Array.isArray(cfg.posts.items)) ? cfg.posts.items.slice() : [];
+    if (index >= posts.length) index = 0;
+    render();
+  }
+
+  function load() {
+    fetch('api/config', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (remote) { if (remote && Object.keys(remote).length) adopt(remote); else { posts = []; render(); } })
+      .catch(function () { posts = []; render(); });
+  }
+
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || typeof d !== 'object') return;
+    if (d.type === 'xp:config' && d.config) adopt(d.config);
+    if (d.type === 'xp:command' || d.type === 'pm:command') {
+      var a = d.action;
+      if (a === 'next') next();
+      else if (a === 'prev') prev();
+      else if (a === 'in' || a === 'show') render();
+    }
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowRight') { next(); ev.preventDefault(); }
+    if (ev.key === 'ArrowLeft') { prev(); ev.preventDefault(); }
+  });
+
+  var nextBtn = $('next');
+  var prevBtn = $('prev');
+  if (nextBtn) nextBtn.addEventListener('click', next);
+  if (prevBtn) prevBtn.addEventListener('click', prev);
+
+  window.XP = {
+    get index() { return index; },
+    get posts() { return posts; },
+    get config() { return cfg; },
+    switchTo: switchTo,
+    next: next,
+    prev: prev,
+    render: render
+  };
+
+  load();
+  setInterval(load, 4000);      /* picks up panel edits without a reload */
+})();

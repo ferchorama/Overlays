@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>X Posts — Overlay</title>
+  <link rel="preconnect" href="https://use.typekit.net" crossorigin />
+  <link rel="stylesheet" href="https://use.typekit.net/mbn6dsd.css" />
+  <link rel="stylesheet" href="style.css?v=1.0.1" />
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="board" id="board">
+      <header class="board__header">
+        <div class="brand">
+          <img class="brand__logo" id="logo" src="assets/rollup-logo.png" alt="The Rollup" />
+        </div>
+        <div class="brand__titles">
+          <div class="kicker" id="kicker">Live from New York</div>
+          <h1 class="headline" id="headline">X Posts</h1>
+        </div>
+        <div class="header-right" id="headerRight">
+          <div id="rightTop">In the feed</div>
+          <span id="rightSub"></span>
+        </div>
+      </header>
+
+      <main class="board__main">
+        <section class="hero" id="hero">
+          <div class="hero__body" id="heroBody"></div>
+        </section>
+
+        <div class="queue" id="queue"></div>
+      </main>
+    </div>
+
+    <div class="nav" id="nav">
+      <button class="nav__btn" id="prev" type="button" aria-label="Previous post">‹</button>
+      <div class="nav__count" id="navCount"></div>
+      <button class="nav__btn" id="next" type="button" aria-label="Next post">›</button>
+    </div>
+  </div>
+
+  <script src="vendor/gsap.min.js?v=1.0.0"></script>
+  <script src="config.js?v=1.0.0"></script>
+  <script src="script.js?v=1.0.3"></script>
+</body>
+</html>
