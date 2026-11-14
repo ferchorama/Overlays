@@ -1496,9 +1496,16 @@
     var base = parseFloat((this.cfg.hero && this.cfg.hero.probabilitySize) || 330);
     var ladder = [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58];
 
+    /* The percentage is the point of the board: it never drops below 1.7× the
+       headline and 2.2× the outcome name, so no market can quietly demote it. */
+    var topicPx = parseFloat(getComputedStyle(this.heroTopic || this.hugeNum).fontSize) || 96;
+    var nameEl = this.heroLead ? this.heroLead.querySelector('.hero__lead-name') : null;
+    var namePx = nameEl ? (parseFloat(getComputedStyle(nameEl).fontSize) || 0) : 0;
+    var floor = Math.max(170, Math.round(topicPx * 1.7), Math.round(namePx * 2.2));
+
     this.contracts.style.removeProperty('--row-extra');
     for (var i = 0; i < ladder.length; i++) {
-      this.hugeNum.style.fontSize = Math.max(150, Math.round(base * ladder[i])) + 'px';
+      this.hugeNum.style.fontSize = Math.max(floor, Math.round(base * ladder[i])) + 'px';
       void this.contracts.offsetHeight;                 /* force the reflow */
       var room = boardBottom - this.contracts.getBoundingClientRect().top;
       var fit = Math.floor((room - head.offsetHeight - 14) / row.offsetHeight);
