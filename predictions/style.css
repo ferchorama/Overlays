@@ -1142,3 +1142,18 @@ body, .board { font-family: var(--font-text); }
   padding: 0;
   object-fit: cover;
 }
+
+/* Headline art comes in every shape — square crests, wide wordmarks, tall
+   portraits. A fixed square with object-fit:cover crops all three. Height is
+   fixed, width follows the file's own ratio (max-width caps a panorama), so
+   nothing is ever cut and nothing is stretched. */
+.board__main.is-solo .hero__lead-icon {
+  width: auto;
+  height: clamp(180px, 12vw, 248px);
+  max-width: 340px;
+  object-fit: contain;
+  border-radius: 24px;
+}
+
+/* a wide crest needs the width to keep its ratio at full height */
+.board__main.is-solo .hero__lead-icon { max-width: 480px; }
