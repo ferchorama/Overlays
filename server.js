@@ -153,6 +153,10 @@ function normaliseCoinPaprika(raw, params) {
    nothing usable is reported as an error rather than rendering an empty board.
    --------------------------------------------------------------------------- */
 const POLYMARKET_API_BASE = process.env.POLYMARKET_API_BASE || 'https://gamma-api.polymarket.com';
+/* Polymarket US is a separate venue with its own gateway and its own event
+   ids/slugs. It is reachable where polymarket.com is not, so a pasted
+   polymarket.us/event/<slug> has to resolve against this base instead. */
+const POLYMARKET_US_BASE = process.env.POLYMARKET_US_BASE || 'https://gateway.polymarket.us';
 
 const POLY_ENTITIES = ['events', 'markets'];
 /* Documented spellings, per endpoint — overridable from config for the same
@@ -218,6 +222,109 @@ function polyContracts(ev) {
   }).filter(Boolean);
   rows.sort((a, b) => (b.yes === null ? -1 : b.yes) - (a.yes === null ? -1 : a.yes));
   return rows;
+}
+
+/* ---- Polymarket US -------------------------------------------------------
+   The US venue does not share Gamma's shape: an event carries `markets`, each
+   market lists outcomes as ["No","Yes"], and the price of the Yes side is the
+   probability. Read the YES leg by NAME — the order is not the .com order, and
+   reading index 0 would put the No price on air as the Yes one. */
+function polyUsYes(market) {
+  if (!market || typeof market !== 'object') return null;
+  const prices = polyArray(market.outcomePrices) || [];
+  const a = polyNum(prices[0]);
+  const b = polyNum(prices[1]);
+  /* On the US venue each side is its own instrument, so outcomePrices carries
+     the YES bid and ask rather than two probabilities — 0.2020 / 0.2290 on the
+     MLS market lines up exactly with bestBid / bestAsk, and the venue's own
+     `currentPx` is their midpoint. Complementary pairs sum to ~1; bid/ask of one
+     instrument does not, which is how the two shapes are told apart. */
+  if (a !== null && b !== null) {
+    if (a + b < 0.95) return (a + b) / 2;      /* yes bid/ask → midpoint */
+    const outs = polyArray(market.outcomes) || [];
+    for (let i = 0; i < outs.length; i++) {
+      if (/^yes$/i.test(String(outs[i]).trim()) && prices[i] != null) {
+        return polyNum(prices[i]);
+      }
+    }
+    return b;                                   /* ["No","Yes"] → yes last */
+  }
+  if (a !== null) return a;
+  const sides = Array.isArray(market.marketSides) ? market.marketSides : [];
+  for (const side of sides) {
+    if (side && /^yes$/i.test(String(side.description || '').trim())) {
+      const v = polyNum(side.price);
+      if (v !== null) return v;
+    }
+  }
+  return null;
+}
+
+function polyUsContracts(ev) {
+  const list = Array.isArray(ev && ev.markets) ? ev.markets : [];
+  const rows = list.map((m) => {
+    if (!m || typeof m !== 'object') return null;
+    if (m.closed === true || m.archived === true || m.active === false) return null;
+    const yes = polyUsYes(m);
+    if (yes === null) return null;
+    /* the team/outcome name lives in titleShort on the US venue; question is
+       the same for every row of a winner market */
+    const name = String(m.titleShort || m.title || m.question || m.subtitle || '').trim();
+    if (!name) return null;
+    const y = Math.round(yes * 1000) / 10;
+    return {
+      name,
+      yes: y,
+      no: Math.round((100 - y) * 10) / 10,
+      change: null,
+      image: String(m.image || ''),
+      volume: 0
+    };
+  }).filter(Boolean);
+  rows.sort((a, b) => (b.yes === null ? -1 : b.yes) - (a.yes === null ? -1 : a.yes));
+  return rows;
+}
+
+function polyUsItem(ev) {
+  if (!ev || typeof ev !== 'object') return null;
+  if (ev.closed === true || ev.active === false) return null;
+  const title = String(ev.title || '').trim();
+  const slug = String(ev.slug || '').trim();
+  if (!title) return null;
+  const contracts = polyUsContracts(ev);
+  const lead = contracts.length ? contracts[0] : null;
+  return {
+    id: String(ev.id != null ? ev.id : slug || title),
+    title,
+    slug,
+    url: slug ? 'https://polymarket.us/event/' + slug : '',
+    probability: lead ? lead.yes : null,
+    change: null,
+    volume24hr: null,
+    volume: 0,
+    liquidity: null,
+    endDate: String(ev.endDate || ev.end_date || ''),
+    image: String(ev.image || ''),
+    outcome: '',
+    entity: 'events',
+    venue: 'polymarket-us',
+    contracts
+  };
+}
+
+function normalisePolymarketUS(body) {
+  let parsed;
+  try { parsed = JSON.parse(body); } catch (e) { throw new Error('the US feed did not return JSON'); }
+  const rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed && parsed.events) ? parsed.events : []);
+  const items = rows.map(polyUsItem).filter(Boolean);
+  return JSON.stringify({
+    what: 'resolve',
+    entity: 'events',
+    venue: 'polymarket-us',
+    fetchedAt: Date.now(),
+    count: items.length,
+    items
+  });
 }
 
 function polyTagBinding(idRaw, slugRaw) {
@@ -957,6 +1064,22 @@ const APPS = [
       /* The price history behind the 7-day chart. Same CoinGecko call and the
          same cache as the market board, reached through this app's own prefix so
          the overlay needs no knowledge of where the market board is mounted. */
+      /* Polymarket US: the fallback when a pasted slug is not a .com event. */
+      {
+        path: '/api/polymarket-us',
+        ttlMs: 120000,
+        staleMs: 900000,
+        timeoutMs: 15000,
+        retries: 2,
+        userAgent: 'obs-overlays/1.0 (prediction headlines us)',
+        source: 'polymarket-us',
+        build: function (params) {
+          var slug = String(params.get('slug') || '').trim().toLowerCase();
+          if (!/^[a-z0-9][a-z0-9-]{0,120}$/.test(slug)) return null;
+          return POLYMARKET_US_BASE + '/v1/events?closed=false&limit=1&slug=' + encodeURIComponent(slug);
+        },
+        shape: normalisePolymarketUS
+      },
       marketDataSpec('/api/data')
     ]
   }

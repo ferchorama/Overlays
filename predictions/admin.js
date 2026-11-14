@@ -680,7 +680,7 @@
   function slugFromLine(line) {
     var raw = String(line || '').trim();
     if (!raw) return '';
-    var m = raw.match(/polymarket\.com\/(?:event|market)\/([a-zA-Z0-9][a-zA-Z0-9_-]{0,120})/);
+    var m = raw.match(/polymarket\.(?:com|us)\/(?:event|market)\/([a-zA-Z0-9][a-zA-Z0-9_-]{0,120})/);
     if (m) return m[1].toLowerCase();
     m = raw.match(/^([a-zA-Z0-9][a-zA-Z0-9_-]{0,120})$/);      /* a bare slug */
     return m ? m[1].toLowerCase() : '';
@@ -712,11 +712,19 @@
     var entity = p.entity === 'markets' ? 'markets' : 'events';
     var url = String(p.endpoint || 'api/polymarket') + '?what=resolve&entity=' + entity +
       '&slug=' + encodeURIComponent(slug);
-    return fetch(url, { cache: 'no-store' }).then(function (r) {
-      return r.json().catch(function () { return null; }).then(function (body) {
-        return { ok: r.ok, items: (body && Array.isArray(body.items)) ? body.items : [] };
-      });
-    }, function () { return { ok: false, items: [] }; });
+    function read(u) {
+      return fetch(u, { cache: 'no-store' }).then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (body) {
+          return { ok: r.ok, items: (body && Array.isArray(body.items)) ? body.items : [] };
+        });
+      }, function () { return { ok: false, items: [] }; });
+    }
+    return read(url).then(function (res) {
+      if (res.items.length) return res;
+      /* not a .com event: the same slug may live on the US venue, which is the
+         only one reachable from some networks */
+      return read('api/polymarket-us?what=resolve&slug=' + encodeURIComponent(slug));
+    });
   }
   var pasteIn = $('pasteIn');
   var pasteHint = $('pasteCountHint');
