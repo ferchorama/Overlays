@@ -319,6 +319,18 @@
     tl.set([heroBody, queueEl], { clearProps: 'clipPath,transform' });
   }
 
+  /* OBS never sees a "hide" flag on the source, so the panel drives visibility
+     with the same fade the other boards use. */
+  function hideBoard() {
+    if (!HAS_GSAP) { board.style.display = 'none'; return; }
+    window.gsap.to(board, { opacity: 0, duration: 0.35, ease: 'power2.in', onComplete: function () { board.style.visibility = 'hidden'; } });
+  }
+  function showBoard() {
+    board.style.visibility = '';
+    if (!HAS_GSAP) { board.style.display = ''; board.style.opacity = 1; return; }
+    window.gsap.fromTo(board, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' });
+  }
+
   function next() { return switchTo(index + 1, { dir: 1 }); }
   function prev() { return switchTo(index - 1, { dir: -1 }); }
 
@@ -346,7 +358,8 @@
       var a = d.action;
       if (a === 'next') next();
       else if (a === 'prev') prev();
-      else if (a === 'in' || a === 'show') render();
+      else if (a === 'out') hideBoard();
+      else if (a === 'in' || a === 'show' || a === 'replay') showBoard();
     }
   });
 

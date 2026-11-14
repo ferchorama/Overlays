@@ -310,18 +310,28 @@
       });
     });
 
+    /* The button names the mode it switches TO, like the other panels. */
+    function paintTheme() {
+      var mode = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      var btn = $('btnTheme');
+      if (btn) btn.textContent = mode === 'dark' ? 'Light' : 'Dark';
+    }
     var themeBtn = $('btnTheme');
     if (themeBtn) themeBtn.addEventListener('click', function () {
       var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       try { localStorage.setItem('obs-overlays-theme', next); } catch (e) { /* ignore */ }
+      paintTheme();
     });
+    paintTheme();
 
     var zoom = $('selZoom');
     if (zoom) zoom.addEventListener('change', fitPreview);
 
     var play = $('btnIn');
     if (play) play.addEventListener('click', function () { sendCommand('replay'); });
+    var hide = $('btnOut');
+    if (hide) hide.addEventListener('click', function () { sendCommand('out'); });
     var prev = $('btnPrev');
     if (prev) prev.addEventListener('click', function () { sendCommand('prev'); });
     var next = $('btnNext');
