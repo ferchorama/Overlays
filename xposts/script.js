@@ -45,6 +45,25 @@
   var heroBody = $('heroBody');
   var navCount = $('navCount');
 
+  /* A face only downloads when something uses it, so the first selection of a new
+     typeface would land a beat late. Warm every family in the catalogue in the
+     background instead: by the time the operator picks one, it is already here. */
+  var warmedFonts = false;
+  function warmFonts() {
+    if (warmedFonts || !document.fonts || !document.fonts.load) return;
+    warmedFonts = true;
+    (window.XP_FONTS || []).forEach(function (f, i) {
+      var family = String(f.stack || '').split(',')[0].replace(/['"]/g, '').trim();
+      if (!family || family === 'neue-haas-grotesk-display') return;
+      setTimeout(function () {
+        try {
+          document.fonts.load('600 64px "' + family + '"');
+          document.fonts.load('500 40px "' + family + '"');
+        } catch (e) { /* ignore */ }
+      }, 400 + i * 180);
+    });
+  }
+
   function fontStack(id) {
     var list = window.XP_FONTS || [];
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].stack;
@@ -315,6 +334,7 @@
     renderNav();
     fitFrame();
     warm();
+    warmFonts();
   }
 
   /* --------------------------------------------------------------- animation */

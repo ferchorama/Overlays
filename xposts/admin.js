@@ -144,16 +144,22 @@
       var path = input.dataset.cfg;
       paintInput(input, path);
 
-      input.addEventListener('input', function () {
+      function commit(fast) {
         setPath(cfg, path, readInput(input, path));
+        /* push first: a typeface change has to be on screen the moment the
+           option is picked, not after the save round-trip */
         pushPreview();
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(function () { save(); }, 350);
-      });
-      input.addEventListener('change', function () {
-        setPath(cfg, path, readInput(input, path));
-        save(true);
-      });
+        if (fast) save(true);
+        else {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(function () { save(); }, 350);
+        }
+      }
+
+      input.addEventListener('input', function () { commit(false); });
+      input.addEventListener('change', function () { commit(true); });
+      /* a <select> in some browsers only fires change; keep it snappy anyway */
+      if (input.tagName === 'SELECT') input.addEventListener('input', function () { commit(true); });
     });
   }
 
