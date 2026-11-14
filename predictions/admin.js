@@ -13,6 +13,25 @@
   var LS_KEY = 'pm-config-v1';        /* config */
   var LS_STATE = 'pm-state-v1';       /* last command, so a late OBS source can pick it up */
   var preview = document.getElementById('preview');
+
+  /* ---- preview: render the overlay at 1920x1080 and scale the whole frame ----
+     A 16:9 iframe at panel width re-lays the board out instead of showing it, so
+     the operator ends up judging a crop. This keeps the real frame and shrinks it. */
+  (function fitPreview() {
+    var stage = document.getElementById('previewStage');
+    if (!stage || !preview) return;
+    function apply() {
+      var w = stage.clientWidth;
+      if (!w) return;
+      var scale = w / 1920;
+      preview.style.setProperty('--pv-scale', String(scale));
+      stage.style.height = Math.round(1080 * scale) + 'px';
+    }
+    apply();
+    if (window.ResizeObserver) new ResizeObserver(apply).observe(stage);
+    window.addEventListener('resize', apply);
+    preview.addEventListener('load', apply);
+  })();
   var SHIPPED = window.PM_DEFAULT_CONFIG || {};
   var cfg = clone(SHIPPED);
   var autoSaveTimer = null;

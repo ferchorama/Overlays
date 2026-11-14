@@ -315,8 +315,7 @@
            resolved one reads 100% — leading the board with that is a lie. Use the
            strongest live outcome instead. */
         if (cs && cs.length > 1 && (prob == null || prob >= 99.5 || prob <= 0.5)) {
-          var best = cs[0];
-          cs.forEach(function (c) { if (c && Number(c.yes) > Number(best.yes)) best = c; });
+          var best = bestContract(cs);
           if (best && best.yes != null) {
             prob = best.yes;
             if (best.change != null) chg = best.change;
@@ -1306,16 +1305,12 @@
     var head = el('div', 'contracts__head', wrap);
     var h1 = el('div', null, head);
     h1.textContent = 'Contracts';
-    /* the count sits beside the word Contracts: on the right it collided with
-       the first row's Yes/No pills once the type grew */
-    var h2 = el('div', 'contracts__count', head);
-    h2.textContent = '\u00b7 ' + contracts.length + (contracts.length === 1 ? ' outcome' : ' outcomes');
+    /* no outcome counter: the rows themselves are the count. */
+    void contracts;
 
-    /* a 17-outcome price ladder cannot fit a 1080 frame; the board shows the
-       top rows and says how many are behind them */
-    var maxRows = (this.cfg && this.cfg.contracts && this.cfg.contracts.maxRows) || 7;
-    var shown = contracts.slice(0, maxRows);
-    contracts = shown;
+    /* every outcome is offered; the fit routine below drops the overflow, so the
+       board always shows as many rows as the frame can hold and never a counter. */
+    var shown = contracts.slice();
 
     contracts.forEach(function (c) {
       var row = el('div', 'contract', wrap);
@@ -1346,22 +1341,45 @@
       no.textContent = 'No ' + (c.no === null || c.no === undefined ? '\u2014' : pctText(c.no) + '%');
     });
 
-    /* fit whatever is left of the frame: the hero above grows with the length of
-       the question, so the row count has to follow the space, not a constant. */
-    var stage = this.board || wrap.closest('.board') || document.body;
-    var room = stage.getBoundingClientRect().bottom - 18 - wrap.getBoundingClientRect().top;
-    /* keep a line spare for the "+N more" note instead of letting it fall off */
-    if ((this._contractTotal || 0) > shown.length) room -= 48;
-    var rows = Array.prototype.slice.call(wrap.querySelectorAll('.contract'));
-    while (rows.length > 1 && wrap.scrollHeight > room) {
-      var last = rows.pop();
-      last.remove();
+    this.fitContractRows();
+    /* the brand font swaps in after first paint and every row grows a little;
+       fit again once it is in, or the last row ends up under the frame edge */
+    var self = this;
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { self.fitContractRows(); });
+      setTimeout(function () { self.fitContractRows(); }, 1200);
     }
-    var hidden = (this._contractTotal || 0) - rows.length;
-    if (hidden > 0) {
-      var more = el('div', 'contract__more', wrap);
-      more.textContent = '+ ' + hidden + ' more outcome' + (hidden === 1 ? '' : 's');
-      if (wrap.scrollHeight > room) more.remove();
+  };
+
+  /* fill the frame: as many outcome rows as fit, no counter, never a crop */
+  /* A resolved leg is always 0 or 100 and would win any "highest number" race, so
+     the live legs are preferred: the hero must describe a market still trading. */
+  function bestContract(cs) {
+    if (!cs || !cs.length) return null;
+    var live = cs.filter(function (c) {
+      var y = Number(c && c.yes);
+      return isFinite(y) && y > 0 && y < 100;
+    });
+    var pool = live.length ? live : cs;
+    var best = pool[0];
+    pool.forEach(function (c) { if (c && Number(c.yes) > Number(best.yes)) best = c; });
+    return best || null;
+  }
+
+  function leadingContract(m) {
+    return bestContract(m && Array.isArray(m.contracts) ? m.contracts : null);
+  }
+
+  Board.prototype.fitContractRows = function () {
+    var wrap = this.contracts;
+    if (!wrap) return;
+    var stage = this.board || wrap.closest('.board') || document.body;
+    /* measure the real bottom edge of the last row: scrollHeight is inflated by
+       the row borders and gave a row less than the frame actually held */
+    var limit = stage.getBoundingClientRect().bottom - 16;
+    var rows = Array.prototype.slice.call(wrap.querySelectorAll('.contract'));
+    while (rows.length > 1 && rows[rows.length - 1].getBoundingClientRect().bottom > limit) {
+      rows.pop().remove();
     }
   };
 
@@ -1402,8 +1420,15 @@
         var pw = el('div', 'figs__prob', figs);
         var pl = el('div', 'lbl', pw);
         pl.textContent = 'Probability';
+        /* the number alone says nothing about which outcome it describes */
+        var lead = leadingContract(m);
+        if (lead && lead.name) {
+          var lv = el('div', 'hero__lead', pw);
+          lv.textContent = lead.name;
+        }
         var big = el('div', 'num huge', pw);
-        big.appendChild(document.createTextNode(pctText(m.probability)));
+        var shownProb = (lead && lead.yes != null) ? lead.yes : m.probability;
+        big.appendChild(document.createTextNode(pctText(shownProb)));
         if (h.probabilitySuffix !== false) {
           var sm = el('small', null, big);
           sm.textContent = '%';
@@ -1415,8 +1440,10 @@
            are. Four of them beside a 176px number is wider than the hero column,
            so the row would otherwise crush into several wrapped lines. */
         var stats = [];
-        if (h.showChange) stats.push(['7-day move', moveText(m.change) + ' pts', [moveClass(m.change)]]);
-        if (h.showVolume) stats.push(['7-day volume', money(m.volume), []]);
+        if (h.showChange && m.change != null && Number(m.change) !== 0) {
+          stats.push(['24h change', moveText(m.change) + ' pts', [moveClass(m.change)]]);
+        }
+        if (h.showVolume && m.volume) stats.push(['Volume', money(m.volume), []]);
         if (h.showCategory && m.category) stats.push(['Category', m.category, []]);
         if (h.showEnds && m.ends) stats.push(['Ends', formatEnds(m.ends), []]);
 
@@ -1441,7 +1468,7 @@
     if ((!Array.isArray(m.contracts) || !m.contracts.length) && m.probability != null) {
       var pYes = Math.round(Number(m.probability) * 10) / 10;
       m.contracts = [{
-        name: formatEnds(m.ends) || 'Yes / No',
+        name: m.outcome || 'Yes',
         yes: pYes,
         no: Math.round((100 - pYes) * 10) / 10,
         change: m.change == null ? null : m.change,
@@ -1449,14 +1476,24 @@
         image: m.thumb || m.image || null
       }];
     }
-    var hasContracts = Array.isArray(m.contracts) && m.contracts.length > 0;
+    /* the leading outcome is already in the hero, so the list starts below it */
+    var listed = Array.isArray(m.contracts) ? m.contracts.slice() : [];
+    var leadC = leadingContract(m);
+    if (leadC && listed.length > 1) {
+      var at = listed.indexOf(leadC);
+      if (at !== -1) listed.splice(at, 1);
+    } else if (listed.length === 1) {
+      listed = [];
+    }
+    var hasContracts = listed.length > 0;
+    m._listed = listed;
     if (this.chart) this.chart.style.height = '';
     var wantChart = !hasContracts && h.showHistory !== false &&
       (h.showWhenNotAsset === true || isAssetMarket(m, cfg));
     if (wantChart) { this.chart.style.display = ''; this.renderChart(m); }
     else this.chart.style.display = 'none';
     if (this.contracts) {
-      if (hasContracts) { this.contracts.style.display = ''; this.renderContracts(m.contracts); }
+      if (hasContracts) { this.contracts.style.display = ''; this.renderContracts(m._listed); }
       else { this.contracts.style.display = 'none'; this.contracts.innerHTML = ''; }
     }
     /* marks a hero with no graphic, so the topic can use the freed room */
@@ -1828,6 +1865,11 @@
          animating it back in: the topic flashed, vanished and reappeared. The
          outgoing hero now stays on screen for the fade-out, and the swap happens
          at the handover — one clean out-in, nothing rendered twice. */
+    var nMarkets = this.markets.length;
+    var fwd = (next - this.heroIdx + nMarkets) % nMarkets;
+    var back = (this.heroIdx - next + nMarkets) % nMarkets;
+    this._switchDir = opts.dir || (fwd <= back ? 1 : -1);
+
     this.heroIdx = next;
     if (this.renderNavCount) this.renderNavCount();
     rememberHero(m);
@@ -1836,6 +1878,7 @@
     if (this.detail) this.detailTopic = m.topic;
 
     var bits = this.heroBody ? [].slice.call(this.heroBody.children) : [];
+    if (this.contracts && this.contracts.style.display !== 'none') bits = bits.concat([this.contracts]);
     var chart = (this.chart && this.chart.style.display !== 'none') ? this.chart : null;
 
     /* the handover: replace the content, re-mark the list, restart the progress bar */
@@ -1916,8 +1959,8 @@
     this.navCount.textContent = n ? (i < 10 ? '0' + i : String(i)) + ' / ' + (n < 10 ? '0' + n : String(n)) : '';
   };
 
-  Board.prototype.next = function () { return this.switchTo(this.heroIdx + 1); };
-  Board.prototype.prev = function () { return this.switchTo(this.heroIdx - 1); };
+  Board.prototype.next = function () { return this.switchTo(this.heroIdx + 1, { dir: 1 }); };
+  Board.prototype.prev = function () { return this.switchTo(this.heroIdx - 1, { dir: -1 }); };
 
   Board.prototype.markHeroInList = function (m) {
     var self = this;
@@ -1934,107 +1977,58 @@
   /* --------------------------------------------------------------- animation */
   Board.prototype.animateHeroIn = function (done, bits) {
     if (!HAS_GSAP || !this.heroBody) { if (done) done(); return null; }
-    var a = this.cfg.animation;
-    /* `bits` is passed back in when the safety net replays this after a stalled
-       ticker: by then heroBody has already been re-rendered, so re-reading its
-       children would animate the WRONG elements */
+    var dir = this._switchDir || 1;
     bits = bits || [].slice.call(this.heroBody.children);
+    var rows = this.contracts && this.contracts.style.display !== 'none'
+      ? [].slice.call(this.contracts.querySelectorAll('.contract'))
+      : [];
+    var clipIn = dir > 0 ? 'inset(100% 0% 0% 0%)' : 'inset(0% 0% 100% 0%)';
     var tl = gsap.timeline({ onComplete: function () { if (done) done(); } });
-
-    /* --- the hero text --- */
-    if (bits.length) {
-      tl.from(bits, {
-        opacity: 0, y: 14,
-        duration: a.rowDuration, ease: a.rowEase, stagger: a.stagger
-      }, 0);
+    tl.fromTo(this.heroBody,
+      { clipPath: clipIn, y: dir * 28, opacity: 0.35 },
+      { clipPath: 'inset(0% 0% 0% 0%)', y: 0, opacity: 1, duration: 0.48, ease: 'power3.out' },
+      0);
+    if (this.heroTopic) {
+      tl.from(this.heroTopic, { y: dir * 16, duration: 0.42, ease: 'power3.out' }, 0.04);
     }
-
-    /* --- the 7-day graphic, drawn rather than faded in ---
-       Order matters: the grid and its labels establish the axes, then the series
-       is drawn on left-to-right, then the end marker arrives. Animating the whole
-       SVG's opacity instead said nothing about the shape, which is the one thing
-       the chart is for. */
-    if (this.chart && this.chart.style.display !== 'none') {
-      var chartTl = 0.08;
-      tl.from(this.chart, { opacity: 0, duration: a.fadeDuration * 0.6, ease: 'power1.out' }, chartTl);
-
-      var grid = this.chartGrid || [];
-      if (grid.length) {
-        tl.from(grid, { opacity: 0, duration: 0.4, ease: 'power1.out', stagger: 0.05 }, chartTl + 0.05);
-      }
-      /* the area fades in as the line passes over it */
-      if (this.chartArea) {
-        tl.from(this.chartArea, { opacity: 0, duration: 0.7, ease: 'power1.out' }, chartTl + 0.22);
-      }
-      /* the series itself draws from left to right via stroke-dashoffset. The
-         length comes from the rendered geometry (chartLineLen) because
-         getTotalLength() returns 0 in a hidden OBS browser source, where the
-         element has no layout. */
-      if (this.chartPath) {
-        var len = this.chartLineLen || 0;
-        if (!len) {
-          try { len = this.chartPath.getTotalLength ? this.chartPath.getTotalLength() : 0; } catch (e) { len = 0; }
-        }
-        if (len) {
-          gsap.set(this.chartPath, { strokeDasharray: len, strokeDashoffset: len });
-          tl.to(this.chartPath, { strokeDashoffset: 0, duration: 1.15, ease: 'power2.out' }, chartTl + 0.18);
-        }
-      }
-      /* the end marker lands once the line reaches it */
-      if (this.chartDot) {
-        tl.from(this.chartDot, { scale: 0, transformOrigin: 'center center', duration: 0.45, ease: 'back.out(2)' }, chartTl + 1.1);
-      }
+    if (this.hugeNum) {
+      tl.from(this.hugeNum, { scale: 0.94, transformOrigin: 'left bottom', duration: 0.44, ease: 'power3.out' }, 0.08);
     }
-
+    if (rows.length) {
+      tl.from(rows, { opacity: 0, y: dir * 14, duration: 0.36, ease: 'power2.out', stagger: 0.045 }, 0.12);
+    }
     this._switchTl = tl;
+    var self = this;
     this._armSwitch(tl, function () {
-      /* The entrance of the new topic must never be able to leave the hero
-         invisible. GSAP's .from() applies its invisible start state at once, so a
-         timeline that never ticks would strand the board blank — clear the
-         properties instead of trusting the tween to finish. */
-      gsap.set(bits, { clearProps: 'opacity,transform' });
-      if (this.chart) gsap.set(this.chart, { clearProps: 'opacity' });
-      var extra = [this.chartArea, this.chartDot].concat(this.chartGrid || []).filter(Boolean);
-      if (extra.length) gsap.set(extra, { clearProps: 'opacity,transform' });
-      if (this.chartPath) gsap.set(this.chartPath, { clearProps: 'strokeDasharray,strokeDashoffset' });
-      settleChartLine(this.chartPath);
+      gsap.set([self.heroBody].concat(bits), { clearProps: 'opacity,transform,clipPath' });
+      if (rows.length) gsap.set(rows, { clearProps: 'opacity,transform' });
     });
     tl.play();
-    /* A second, tween-free net for the line: once the draw window has passed the
-       dash properties are removed outright. If the engine ran, this is a no-op on
-       a completed path; if it stalled, it is what stops the series sitting
-       half-drawn. */
-    var selfLine = this;
-    clearTimeout(this._lineNet);
-    this._lineNet = setTimeout(function () { settleChartLine(selfLine.chartPath); },
-      ((typeof tl.duration === 'function' ? tl.duration() : 1.5) + 0.8) * 1000);
     return tl;
   };
 
-  /* Fade out the elements that were on screen BEFORE the swap. They are passed
-     in rather than read from the DOM because the DOM already holds the new
-     topic by the time this runs. */
   Board.prototype.animateHeroOut = function (bits, chart, done) {
-    var a = this.cfg.animation;
     if (!HAS_GSAP || !bits || !bits.length) { if (done) done(); return null; }
     if (this._switchTl) this._switchTl.kill();
+    var dir = this._switchDir || 1;
+    var clipOut = dir > 0 ? 'inset(0% 0% 100% 0%)' : 'inset(100% 0% 0% 0%)';
     var fired = false;
     var once = function () { if (fired) return; fired = true; if (done) done(); };
+    var target = this.heroBody || bits;
     var tl = gsap.timeline({ onComplete: once });
-    tl.to(bits, { opacity: 0, y: -10, duration: a.rowDuration * 0.6, ease: 'power1.in', stagger: 0.03 }, 0);
-    if (chart) tl.to(chart, { opacity: 0, duration: a.rowDuration * 0.5 }, 0);
+    tl.to(target, {
+      clipPath: clipOut, y: dir * -18, opacity: 0.25,
+      duration: 0.28, ease: 'power2.in'
+    }, 0);
+    if (this.contracts && this.contracts.style.display !== 'none') {
+      tl.to(this.contracts, { opacity: 0, y: dir * -10, duration: 0.22, ease: 'power2.in' }, 0);
+    }
     this._switchTl = tl;
     tl.play();
-    /* The fade-OUT needs the safety net as much as the fade-in does: it owns the
-       handover, so a stalled ticker here would freeze the outgoing topic on screen
-       and the new one would never arrive. `once` keeps a stall from double-firing
-       the handover if the timeline also completes normally. */
     this._armSwitch(tl, once);
     return tl;
   };
 
-  /* A config edit re-renders the board: the hero text changes under the
-     operator. Fade the whole block rather than re-running the entrance. */
   Board.prototype.animateSoftRefresh = function () {
     if (!HAS_GSAP) return;
     var a = this.cfg.animation;

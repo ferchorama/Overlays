@@ -910,3 +910,54 @@ body, .board { font-family: var(--font-text); }
 /* beats the older .side .kv .v { 19px } rule, which was quietly winning */
 .board__main.is-solo .side .kv .v { font-size: 38px; }
 .board__main.is-solo .side .kv .v small { font-size: 22px; }
+
+/* one right edge for the whole board: the contract pills line up with the header
+   rule and the TOP MARKETS block, and the pager sits out in the stage margin
+   instead of pushing the content inward */
+.board__main.is-solo .contracts { padding-right: 0; }
+.board__main.is-solo .nav { right: 22px; }
+
+/* slimmer pager so it can live in the margin without asking the board for room */
+.board__main.is-solo .nav { right: 14px; gap: 10px; }
+.board__main.is-solo .nav__btn { width: 40px; height: 40px; font-size: 21px; }
+.board__main.is-solo .nav__count { font-size: 14px; letter-spacing: .04em; min-width: 0; }
+
+/* the pager lives on the stage, not inside .board__main — plain selectors win */
+.nav { right: 14px; gap: 10px; }
+.nav__btn { width: 40px; height: 40px; font-size: 21px; }
+.nav__count { font-size: 14px; letter-spacing: .04em; min-width: 0; }
+
+/* top-align the solo hero: centred content re-flows every time a row is dropped,
+   which made the fit routine chase its own tail */
+.board__main.is-solo .hero__body { justify-content: flex-start; }
+
+/* the outcome the hero number belongs to */
+.hero__lead {
+  font: 400 26px/1.1 var(--font-mono); letter-spacing: .04em;
+  color: var(--inkSoft); margin: -2px 0 10px;
+}
+
+/* the hero body was expanding to fill the column, which pinned the contracts
+   block to the bottom edge and left room for a single row */
+.board__main.is-solo .hero__body { flex: 0 0 auto; }
+.board__main.is-solo .contract { padding: 7px 2px; }
+.hero__lead { font-size: 30px; margin: 2px 0 8px; }
+
+/* long questions wrap instead of being cropped to 30ch / 2 lines */
+.board__main.is-solo .hero__topic {
+  max-width: 28ch;
+  -webkit-line-clamp: 3;
+  white-space: normal;
+}
+
+/* Yes/No frames: one size, one padding, every row. The pair is a two-column
+   grid so "Yes 3.6%" and "No 96.4%" occupy the same box. */
+.board__main.is-solo .contract__pills {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  width: 264px; flex: none;
+}
+.board__main.is-solo .cpill {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  padding: 11px 10px; font-size: 21px; line-height: 1; white-space: nowrap;
+}

@@ -74,7 +74,7 @@ window.PM_DEFAULT_CONFIG = {
     },
     right: {
       text: 'Top markets',
-      sub: 'by 7-day volume',
+      sub: 'by volume',
       size: 19,
       color: '#c9ccd3',
       subColor: '#7d828c',

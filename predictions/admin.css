@@ -162,7 +162,7 @@ html, body {
 /* ------------------------------------------------------------------ layout */
 .layout {
   display: grid;
-  grid-template-columns: minmax(380px, 0.85fr) minmax(520px, 1.15fr);
+  grid-template-columns: minmax(520px, 1.25fr) minmax(460px, 0.75fr);
   gap: 16px;
   padding: 16px;
   align-items: start;
@@ -651,4 +651,17 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
   border: 1px solid var(--danger-line); border-radius: 5px;
   font: 600 9px/1.6 ui-monospace, monospace; letter-spacing: .1em;
   text-transform: uppercase; color: var(--danger);
+}
+
+/* ------------------------------------------------------ preview, full frame
+   The preview renders the overlay at its true 1920x1080 and scales the whole
+   frame down, so the operator sees the complete board instead of the crop that
+   a small iframe viewport produced. */
+.preview__stage { overflow: hidden; }
+#preview {
+  position: absolute; top: 0; left: 0;
+  width: 1920px; height: 1080px;
+  transform-origin: top left;
+  transform: scale(var(--pv-scale, 0.3));
+  border: 0; display: block; background: transparent;
 }

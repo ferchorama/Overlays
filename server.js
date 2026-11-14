@@ -191,6 +191,35 @@ function clampInt(raw, lo, hi, fallback) {
 }
 /* A tag binding is either a numeric id or a slug. Anything else is refused
    rather than interpolated into an upstream URL. */
+/* The contracts inside one event: each market is an outcome with a Yes/No pair.
+   This is what the overlay renders instead of the 7-day line for a pasted URL —
+   "Next CEO of Nvidia" is a list of people, not a price history. */
+function polyContracts(ev) {
+  const list = Array.isArray(ev && ev.markets) ? ev.markets : [];
+  const rows = list.map((m) => {
+    if (!m || typeof m !== 'object') return null;
+    /* a pasted URL must still show its outcomes even if Gamma flags one leg closed */
+    let prices = m.outcomePrices;
+    if (typeof prices === 'string') { try { prices = JSON.parse(prices); } catch (e) { prices = []; } }
+    if (!Array.isArray(prices)) prices = [];
+    const yes = polyNum(prices[0]);
+    const no = polyNum(prices[1]);
+    const change = polyNum(m.oneDayPriceChange);
+    const name = String(m.groupItemTitle || m.question || '').trim();
+    if (!name) return null;
+    return {
+      name,
+      yes: yes === null ? null : Math.round(yes * 1000) / 10,
+      no: no === null ? null : Math.round(no * 1000) / 10,
+      change: change === null ? null : Math.round(change * 1000) / 10,
+      image: String(m.icon || m.image || ''),
+      volume: polyNum(m.volume24hr) || 0
+    };
+  }).filter(Boolean);
+  rows.sort((a, b) => (b.yes === null ? -1 : b.yes) - (a.yes === null ? -1 : a.yes));
+  return rows;
+}
+
 function polyTagBinding(idRaw, slugRaw) {
   const id = String(idRaw == null ? '' : idRaw).trim();
   if (/^\d+$/.test(id)) return { key: 'tag_id', value: id };
@@ -284,6 +313,39 @@ function normalisePolymarket(body, params) {
        so the response is capped to keep it from being a multi-megabyte payload
        handed to a browser. */
     return JSON.stringify({ what: 'tags', total: tags.length, tags: tags.slice(0, 4000) });
+  }
+
+  if (what === 'resolve') {
+    const resEntity = params.get('entity') === 'markets' ? 'markets' : 'events';
+    const rows = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : []);
+    const found = rows.map((r) => {
+      const item = polyItem(r, resEntity);
+      if (item) {
+        item.contracts = resEntity === 'events' ? polyContracts(r) : polyContracts({ markets: [r] });
+        if ((!item.contracts || !item.contracts.length) && item.probability != null) {
+          const y = item.probability;
+          item.contracts = [{
+            name: item.outcome || 'Yes',
+            yes: y,
+            no: Math.round((100 - y) * 10) / 10,
+            change: item.change,
+            image: item.image || '',
+            volume: item.volume || 0
+          }];
+        }
+      }
+      return item;
+    }).filter(Boolean);
+    /* An unknown slug is a typo in the pasted URL, not an upstream failure:
+       answer 200 with no items so the panel can say "not found" instead of
+       turning a typo into a 502. */
+    return JSON.stringify({
+      what: 'resolve',
+      entity: resEntity,
+      fetchedAt: Date.now(),
+      count: found.length,
+      items: found
+    });
   }
 
   const entity = POLY_ENTITIES.indexOf(params.get('entity')) === -1 ? 'events' : params.get('entity');
@@ -860,6 +922,15 @@ const APPS = [
         build: function (params) {
           var what = params.get('what') || 'top';
           if (what === 'tags') return POLYMARKET_API_BASE + '/tags';
+          /* One headline, identified by the slug in a pasted URL. Lets the panel
+             turn https://polymarket.com/event/<slug> into a board row without
+             asking the operator for a tag id. */
+          if (what === 'resolve') {
+            var slug = String(params.get('slug') || '').trim().toLowerCase();
+            if (!/^[a-z0-9][a-z0-9-]{0,120}$/.test(slug)) return null;
+            var resEntity = params.get('entity') === 'markets' ? 'markets' : 'events';
+            return POLYMARKET_API_BASE + '/' + resEntity + '?slug=' + encodeURIComponent(slug);
+          }
 
           var entity = POLY_ENTITIES.indexOf(params.get('entity')) === -1 ? 'events' : params.get('entity');
           var bind = polyTagBinding(params.get('tagId'), params.get('tagSlug'));
