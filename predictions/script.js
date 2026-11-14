@@ -308,11 +308,25 @@
       if (!cat) return;
       categoryHeadlines(cat).forEach(function (it) {
         if (!isObj(it)) return;
+        var cs = Array.isArray(it.contracts) && it.contracts.length ? it.contracts : null;
+        var prob = it.probability;
+        var chg = it.change;
+        /* A multi-outcome event borrows its number from one of its markets, and a
+           resolved one reads 100% — leading the board with that is a lie. Use the
+           strongest live outcome instead. */
+        if (cs && cs.length > 1 && (prob == null || prob >= 99.5 || prob <= 0.5)) {
+          var best = cs[0];
+          cs.forEach(function (c) { if (c && Number(c.yes) > Number(best.yes)) best = c; });
+          if (best && best.yes != null) {
+            prob = best.yes;
+            if (best.change != null) chg = best.change;
+          }
+        }
         out.push({
           topic: it.title,
-          probability: it.probability,
+          probability: prob,
           volume: it.volume,
-          change: it.change,
+          change: chg,
           category: String(cat.label || ''),
           ends: it.endDate,
           thumb: it.image,
@@ -1287,12 +1301,19 @@
      Mirrors the market page it came from, in the board's own type and palette. */
   Board.prototype.renderContracts = function (contracts) {
     var wrap = this.contracts;
+    this._contractTotal = contracts.length;
     wrap.innerHTML = '';
     var head = el('div', 'contracts__head', wrap);
     var h1 = el('div', null, head);
     h1.textContent = 'Contracts';
     var h2 = el('div', 'contracts__count', head);
     h2.textContent = contracts.length + (contracts.length === 1 ? ' outcome' : ' outcomes');
+
+    /* a 17-outcome price ladder cannot fit a 1080 frame; the board shows the
+       top rows and says how many are behind them */
+    var maxRows = (this.cfg && this.cfg.contracts && this.cfg.contracts.maxRows) || 7;
+    var shown = contracts.slice(0, maxRows);
+    contracts = shown;
 
     contracts.forEach(function (c) {
       var row = el('div', 'contract', wrap);
@@ -1322,6 +1343,24 @@
       var no = el('span', 'cpill cpill--no', pills);
       no.textContent = 'No ' + (c.no === null || c.no === undefined ? '\u2014' : pctText(c.no) + '%');
     });
+
+    /* fit whatever is left of the frame: the hero above grows with the length of
+       the question, so the row count has to follow the space, not a constant. */
+    var stage = this.board || wrap.closest('.board') || document.body;
+    var room = stage.getBoundingClientRect().bottom - 18 - wrap.getBoundingClientRect().top;
+    /* keep a line spare for the "+N more" note instead of letting it fall off */
+    if ((this._contractTotal || 0) > shown.length) room -= 48;
+    var rows = Array.prototype.slice.call(wrap.querySelectorAll('.contract'));
+    while (rows.length > 1 && wrap.scrollHeight > room) {
+      var last = rows.pop();
+      last.remove();
+    }
+    var hidden = (this._contractTotal || 0) - rows.length;
+    if (hidden > 0) {
+      var more = el('div', 'contract__more', wrap);
+      more.textContent = '+ ' + hidden + ' more outcome' + (hidden === 1 ? '' : 's');
+      if (wrap.scrollHeight > room) more.remove();
+    }
   };
 
   Board.prototype.renderHero = function (m) {
