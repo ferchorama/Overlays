@@ -238,36 +238,96 @@
      the hero's height with the media out of the flow, subtract it from the space
      the frame actually has, and give the remainder to the images. Text steps down
      only if that remainder would fall under a readable plate. */
-  function fitFrame() {
-    var h = cfg.hero || {};
-    var t = heroBody.querySelector('.post__text');
-    var media = heroBody.querySelector('.post__media');
+  function availableHeight() {
     var cs = getComputedStyle(board);
     var head = board.querySelector('.board__header');
-    var avail = board.clientHeight
+    return board.clientHeight
       - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
       - (head ? head.offsetHeight : 0);
+  }
 
-    var minSize = h.minTextSize || 40;
-    var cap = h.mediaMaxHeight || 560;
-    var maxText = t ? (media ? 96 : 128) : 0;
+  /* ------------------------------------------------------------------------
+     Layout is measured once per post, off screen, and remembered. Cycling then
+     applies two numbers instead of re-running a measure/shrink loop in front of
+     the audience — which is what made a switch look like it settled late.
+     ---------------------------------------------------------------------- */
+  var layoutCache = {};
+  var layoutSig = '';
+  var probe = null;
 
-    /* Images are the thing that can be enlarged on click, so they take a modest
-       plate and the copy gets the rest of the frame. Type then grows until it
-       fills what is left instead of being set to a guessed size. */
-    if (media) {
-      var plate = Math.max(320, Math.min(cap, Math.round(avail * 0.34)));
-      media.style.setProperty('--media-max', plate + 'px');
+  function signature() {
+    var h = cfg.hero || {};
+    return [
+      board.clientWidth, availableHeight(),
+      h.textSize, h.minTextSize, h.mediaMaxHeight,
+      (cfg.type || {}).display, (cfg.type || {}).text,
+      posts.map(function (x) { return x && x.id; }).join(',')
+    ].join('|');
+  }
+
+  function measurePost(p) {
+    if (!probe) {
+      probe = el('div', 'probe', stage);
+      probe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;z-index:-1';
     }
+    probe.style.width = heroBody.clientWidth + 'px';
+    probe.innerHTML = '';
+    var body = el('div', 'hero__body', probe);
+    body.appendChild(postNode(p, true));
 
-    if (!t) return;
-    var size = maxText;
-    t.style.fontSize = size + 'px';
-    var guard = 0;
-    while (overflowing() && size > minSize && guard++ < 60) {
-      size -= 2;
+    var t = body.querySelector('.post__text');
+    var media = body.querySelector('.post__media');
+    var h = cfg.hero || {};
+    var avail = availableHeight();
+    var plate = media ? Math.max(320, Math.min(h.mediaMaxHeight || 560, Math.round(avail * 0.34))) : 0;
+    if (media) media.style.setProperty('--media-max', plate + 'px');
+
+    var size = t ? (media ? 96 : 128) : 0;
+    var min = h.minTextSize || 40;
+    if (t) {
       t.style.fontSize = size + 'px';
+      var guard = 0;
+      while (body.scrollHeight > avail && size > min && guard++ < 60) {
+        size -= 2;
+        t.style.fontSize = size + 'px';
+      }
     }
+    return { size: size, plate: plate };
+  }
+
+  function precompute() {
+    var sig = signature();
+    if (sig === layoutSig) return;
+    layoutSig = sig;
+    layoutCache = {};
+    posts.forEach(function (p) {
+      if (!p) return;
+      try { layoutCache[p.id] = measurePost(p); } catch (e) { /* keep the fallback */ }
+    });
+    if (probe) probe.innerHTML = '';
+  }
+
+  function applyLayout(p) {
+    var t = heroBody.querySelector('.post__text');
+    var media = heroBody.querySelector('.post__media');
+    var hit = layoutCache[p && p.id];
+    if (hit) {
+      if (t && hit.size) t.style.fontSize = hit.size + 'px';
+      if (media && hit.plate) media.style.setProperty('--media-max', hit.plate + 'px');
+      return true;
+    }
+    return false;
+  }
+
+  /* Fallback for the very first paint of a post that has not been measured yet:
+     same maths as the probe, run in place once, then cached. */
+  function fitFrame() {
+    var p = posts[index];
+    if (!p) return;
+    if (applyLayout(p)) return;
+    layoutCache[p.id] = measurePost(p);
+    layoutSig = signature();
+    applyLayout(p);
   }
 
   function renderNav() {
@@ -294,7 +354,7 @@
     var navEl = $('nav');
     if (navEl) navEl.style.display = '';
     heroBody.appendChild(postNode(p, true));
-    fitFrame();
+    applyLayout(p) || fitFrame();
 
     var imgs = heroBody.querySelectorAll('.post__media img');
     if (imgs.length && imgs[0].decode) {
@@ -332,9 +392,9 @@
     renderHero();
     renderQueue();
     renderNav();
-    fitFrame();
     warm();
     warmFonts();
+    requestAnimationFrame(precompute);
   }
 
   /* --------------------------------------------------------------- animation */
@@ -424,6 +484,19 @@
         x: back.x, y: back.y, width: back.w, height: back.h, borderRadius: 18,
         duration: 0.34, ease: 'power3.inOut'
       });
+      var shade = layer.querySelector('.zoom__shade');
+      if (shade) {
+        var cur = parseFloat(getComputedStyle(shade).getPropertyValue('--zoom-blur')) || 13;
+        var curDim = parseFloat(getComputedStyle(shade).getPropertyValue('--zoom-dim')) || 0.42;
+        var back2 = { b: cur, d: curDim };
+        window.gsap.to(back2, {
+          b: 0, d: 0, duration: 0.34, ease: 'power2.in',
+          onUpdate: function () {
+            shade.style.setProperty('--zoom-blur', back2.b.toFixed(2) + 'px');
+            shade.style.setProperty('--zoom-dim', back2.d.toFixed(3));
+          }
+        });
+      }
       window.gsap.to(layer.querySelectorAll('.zoom__close, .zoom__nav, .zoom__cap, .zoom__hint'),
         { opacity: 0, duration: 0.18 });
       window.gsap.to(layer, { opacity: 0, duration: 0.3, delay: 0.06, onComplete: function () { layer.remove(); } });
@@ -442,7 +515,9 @@
 
     var layer = el('div', 'zoom', stage);
     layer.id = 'zoomLayer';
-    el('div', 'zoom__shade', layer);
+    var shade = el('div', 'zoom__shade', layer);
+    shade.style.setProperty('--zoom-blur', '0px');
+    shade.style.setProperty('--zoom-dim', '0');
 
     var frame = el('div', 'zoom__frame', layer);
     var img = el('img', null, frame);
@@ -518,6 +593,15 @@
       if (from) {
         g.set(frame, { x: from.x, y: from.y, width: from.w, height: from.h, borderRadius: 18, transformOrigin: '0 0' });
         g.to(frame, { x: b.x, y: b.y, width: b.w, height: b.h, borderRadius: 0, duration: 0.46, ease: 'power3.inOut' });
+        /* the blur arrives with the picture instead of being switched on */
+        var st = { b: 0, d: 0 };
+        g.to(st, {
+          b: 13, d: 0.42, duration: 0.46, ease: 'power2.out',
+          onUpdate: function () {
+            shade.style.setProperty('--zoom-blur', st.b.toFixed(2) + 'px');
+            shade.style.setProperty('--zoom-dim', st.d.toFixed(3));
+          }
+        });
       } else {
         g.fromTo(frame, { scale: 0.9, opacity: 0, transformOrigin: '50% 50%' },
           { scale: 1, opacity: 1, duration: 0.4, ease: 'power3.out' });
@@ -593,6 +677,11 @@
     get zoomed() { return !!zoomLayer; },
     render: render
   };
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { layoutSig = ''; precompute(); });
+  }
+  window.addEventListener('resize', function () { layoutSig = ''; precompute(); });
 
   load();
   setInterval(load, 4000);      /* picks up panel edits without a reload */

@@ -137,7 +137,14 @@ body { font-family: var(--font-text); color: var(--ink); }
 .post__text a { color: var(--link); text-decoration: none; }
 
 .post__media { display: flex; gap: 16px; align-items: flex-start; }
-.post__media { align-items: center; }
+/* The media row occupies exactly the plate height, whatever the files do. Its
+   geometry therefore never depends on an image having loaded — which is what
+   lets every post be measured off screen and cycled without a reflow. */
+.post__media {
+  align-items: flex-start;
+  height: var(--media-max, 430px);
+  flex: none;
+}
 /* Never crop a pasted image: it is bounded by height AND width with no explicit
    size, so the browser scales it along its own ratio and the element itself is
    the exact shape of the file. */
@@ -145,7 +152,7 @@ body { font-family: var(--font-text); color: var(--ink); }
   display: block; border-radius: 18px;
   border: 1px solid var(--line);
   width: auto; height: auto;
-  max-height: var(--media-max, 430px);
+  max-height: 100%;
   max-width: 100%;
   object-fit: contain;
 }
@@ -221,10 +228,11 @@ body { font-family: var(--font-text); color: var(--ink); }
 }
 .zoom__shade {
   position: absolute; inset: 0;
-  /* the post stays visible behind the enlarged image, blurred and dimmed just
-     enough that the picture reads first */
-  background: rgba(6, 6, 7, 0.42);
-  backdrop-filter: blur(13px) saturate(0.9);
+  /* the post stays visible behind the enlarged image. Blur and dim are driven by
+     variables so they can travel with the morph: sharp while the picture is a
+     thumbnail, soft once it fills the frame, and back again on close. */
+  background: rgba(6, 6, 7, var(--zoom-dim, 0.42));
+  backdrop-filter: blur(var(--zoom-blur, 13px)) saturate(0.9);
 }
 .zoom__fig {
   position: absolute; inset: 0; margin: 0;
