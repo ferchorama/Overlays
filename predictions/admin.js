@@ -817,6 +817,28 @@
     if (local.length) { boardCfg = null; return local; }
     return itemsFrom(boardCfg);
   }
+  /* Removing a row has to touch BOTH copies (the panel draft and the cached
+     board config the list can be painted from) and repaint from local state, or
+     the row is still on screen a moment later. */
+  function editedPasted() {
+    push({ msg: 'headlines updated' });
+    renderPastedList({ local: true });
+  }
+
+  function removePastedItem(it) {
+    var id = String(it.id);
+    [cfg, boardCfg].forEach(function (root) {
+      if (!root || !root.polymarket) return;
+      (root.polymarket.categories || []).forEach(function (cat) {
+        if (!cat || !Array.isArray(cat.items)) return;
+        cat.items = cat.items.filter(function (x) { return String(x.id) !== id; });
+        cat.selection = cat.items.map(function (x) { return String(x.id); });
+        cat.count = cat.items.length;
+      });
+    });
+    editedPasted();
+  }
+
   function savePasted() {
     if (boardCfg) {
       return fetch('api/config', {
@@ -915,7 +937,7 @@
         /* the on-air order follows this array when the board is in pasted order */
         cat.selection = items.map(function (x) { return String(x.id); });
         cat.count = items.length;
-        savePasted();
+        editedPasted();
       }
 
       var up = document.createElement('button');
@@ -935,10 +957,7 @@
       del.title = 'Remove from the board';
       del.setAttribute('aria-label', 'Remove ' + (it.title || ''));
       del.addEventListener('click', function () {
-        cat.items = cat.items.filter(function (x) { return x !== it; });
-        cat.selection = cat.items.map(function (x) { return String(x.id); });
-        cat.count = cat.items.length;
-        savePasted();
+        removePastedItem(it);
         status('removed from the board', 'ok');
       });
 
