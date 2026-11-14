@@ -83,68 +83,25 @@
              a stack of identical cards. -->
         <section class="group">
           <header class="group__head">
-            <h2 class="group__title">Markets</h2>
-            <p class="group__note">type by hand &middot; drag to reorder</p>
-            <span class="group__meta" id="marketCount">0 markets</span>
-          </header>
-          <div class="markets">
-            <div class="markethead" aria-hidden="true">
-            <span class="mh" title="drag to reorder"></span>
-            <span class="mh" title="the market question">Topic</span>
-            <span class="mh" title="asset id — drives the price chart and Fetch">Asset</span>
-            <span class="mh" title="probability in percent">Prob %</span>
-            <span class="mh" title="volume in dollars">Volume</span>
-            <span class="mh" title="move in percentage points">Chg</span>
-            <span class="mh" title="free-text category">Category</span>
-            <span class="mh" title="closing date">Ends</span>
-            <span class="mh" title="render this market">Live</span>
-            <span class="mh mh--icon" title="fetch live numbers for this asset"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M13.4 8A5.4 5.4 0 1 1 11.8 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M13.5 2.1v3.3h-3.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="mh mh--icon" title="remove market">&#10005;</span>
-            </div>
-            <div id="marketList"></div>
-          </div>
-          <div id="fetchPanel" class="fetchpanel" hidden>
-            <div class="fetchpanel__head">
-              <strong id="fetchTitle">Fetched values</strong>
-              <span class="muted" id="fetchSource"></span>
-            </div>
-            <div class="fetchpanel__rows" id="fetchRows"></div>
-            <p class="hint" id="fetchNote"></p>
-            <div class="btnrow">
-              <button id="btnFetchApply" class="btn btn--primary">Apply to market</button>
-              <button id="btnFetchDiscard" class="btn">Discard</button>
-            </div>
-          </div>
-          <div class="group__foot">
-            <button id="btnAddMarket" class="btn btn--add">+ Add market</button>
-            <span class="grow"></span>
-            <label class="inlinefield">Sort
-              <select id="c_marketSort">
-                <option value="manual">manual</option>
-                <option value="volume">volume</option>
-                <option value="probability">probability</option>
-                <option value="change">change</option>
-                <option value="topic">topic</option>
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <section class="group">
-          <header class="group__head">
             <h2 class="group__title">Paste list</h2>
-            <p class="group__note">one market per line: <code>topic | probability | volume | change</code></p>
+            <p class="group__note">one Polymarket URL per line &mdash; each is fetched and added to the board</p>
           </header>
           <div class="paste">
             <textarea id="pasteIn" rows="4" spellcheck="false"
-              placeholder="Will Ethereum close above $6,000 this quarter? | 68 | $4,820,000 | +4.2&#10;Will the Fed cut rates in December? | 74% | 3.96m | -1.8"></textarea>
+              placeholder="https://polymarket.com/event/what-price-will-bitcoin-hit-before-2027&#10;https://polymarket.com/event/fed-decision-in-december"></textarea>
             <div class="paste__foot">
-              <button id="btnPasteAppend" class="btn">Append <span id="pasteCountHint" class="muted">0</span> rows</button>
+              <button id="btnPasteAppend" class="btn btn--primary">Add <span id="pasteCountHint" class="muted">0</span> headlines</button>
               <button id="btnPasteClear" class="btn btn--ghost">Clear</button>
               <span class="grow"></span>
-              <span class="muted tiny">prob 0&ndash;100 &middot; volume in dollars &middot; change in points</span>
+              <span class="muted tiny">polymarket.com/event/&hellip; or a bare slug &middot; no numbers to type</span>
             </div>
           </div>
+          <div class="group__foot">
+            <span class="muted tiny" id="pastedCount">0 headlines on the board</span>
+            <span class="grow"></span>
+            <button id="btnPastedClear" class="btn btn--ghost btn--danger">Remove all</button>
+          </div>
+          <div id="pastedList" class="pasted" aria-live="polite"></div>
         </section>
 
         <section class="group">
@@ -301,6 +258,16 @@
           </div>
           <div class="row2">
             <div class="field">
+              <label>Order on air</label>
+              <select id="c_marketSort">
+                <option value="manual">pasted order</option>
+                <option value="volume">volume</option>
+                <option value="probability">probability</option>
+                <option value="change">change</option>
+                <option value="topic">topic</option>
+              </select>
+            </div>
+            <div class="field">
               <label>Entity</label>
               <select id="c_polyEntity">
                 <option value="events">events &mdash; headline questions</option>
@@ -325,6 +292,27 @@
 
       <!-- LOOK -->
       <div class="panel-body" data-panel="look">
+        <section class="group">
+          <header class="group__head">
+            <h2 class="group__title">Background</h2>
+            <p class="group__note">one plate behind the board &mdash; the same idea as the weather widget</p>
+          </header>
+          <label class="check"><input type="checkbox" id="c_backdropOn" /> plate on air</label>
+          <div class="bd-grid" id="backdropGrid" role="group" aria-label="Background plate"></div>
+          <div class="row2">
+            <div class="field"><label>Opacity 0&ndash;1</label><input id="c_backdropOpacity" type="number" min="0" max="1" step="0.05" /></div>
+            <div class="field"><label>Blur (px)</label><input id="c_backdropBlur" type="number" min="0" max="40" step="1" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Pan (seconds)</label><input id="c_backdropPan" type="number" min="10" max="600" step="5" /></div>
+            <div class="field"><label>Tint</label><span class="swatch__line"><input id="c_backdropTintColor" type="color" /></span></div>
+          </div>
+          <div class="field field--wide">
+            <label>Tint (css colour, alpha included)</label>
+            <input id="c_backdropTint" type="text" placeholder="rgba(10, 10, 11, 0.72)" />
+          </div>
+        </section>
+
         <section class="group">
           <header class="group__head">
             <h2 class="group__title">Palette</h2>

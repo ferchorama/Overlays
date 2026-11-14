@@ -1,15 +1,15 @@
 {
   "meta": {
     "name": "Prediction Markets",
-    "version": "1.3.0",
-    "migratedFrom": "1.0.0"
+    "version": "1.4.1",
+    "migratedFrom": "1.3.0"
   },
   "stage": {
     "width": 1920,
     "height": 1080,
-    "fit": "contain",
+    "fit": "none",
     "alignX": "left",
-    "background": "#0f1013"
+    "background": "#0b0b0c"
   },
   "header": {
     "visible": true,
@@ -22,26 +22,26 @@
     "rule": true,
     "kicker": {
       "text": "Live from New York",
-      "size": 17,
-      "color": "#9a9fa9",
-      "tracking": 0.32,
+      "size": 18,
+      "color": "#c8a44d",
+      "tracking": 0.4,
       "uppercase": true
     },
     "title": {
       "text": "Prediction Markets",
-      "fontFamily": "'Playfair Display', Georgia, 'Times New Roman', serif",
+      "fontFamily": "'Instrument Serif', 'Playfair Display', Georgia, serif",
       "weight": 600,
-      "size": 58,
-      "color": "#f4f4f6",
+      "size": 72,
+      "color": "#f8f3e8",
       "tracking": 0,
       "uppercase": false
     },
     "right": {
       "text": "Top markets",
       "sub": "by 7-day volume",
-      "size": 19,
-      "color": "#c9ccd3",
-      "subColor": "#7d828c",
+      "size": 20,
+      "color": "#ded5c4",
+      "subColor": "#b3aa96",
       "tracking": 0.28,
       "uppercase": true,
       "align": "right"
@@ -65,15 +65,15 @@
     "listPadLeft": 48
   },
   "hero": {
-    "mode": "volume",
-    "index": 0,
+    "mode": "index",
+    "index": 15,
     "showEyebrow": true,
     "eyebrowLabel": "#1 by volume",
     "showEyebrowVolume": true,
-    "topicSize": 52,
+    "topicSize": 76,
     "topicMaxLines": 2,
     "showProbability": true,
-    "probabilitySize": 176,
+    "probabilitySize": 236,
     "probabilitySuffix": "%",
     "showStats": true,
     "showHistory": true,
@@ -164,7 +164,11 @@
     "showCategory": true,
     "showEnds": true
   },
+  "nav": {
+    "visible": true
+  },
   "list": {
+    "visible": false,
     "maxRows": 6,
     "rowHeight": 124,
     "showRank": true,
@@ -178,7 +182,7 @@
     "clickOpensDetail": true
   },
   "footer": {
-    "visible": true,
+    "visible": false,
     "progress": false,
     "left": {
       "text": "Live",
@@ -195,17 +199,26 @@
     "uppercase": true
   },
   "palette": {
-    "name": "graphite",
-    "stage": "#0f1013",
-    "ink": "#f4f4f6",
-    "inkSoft": "#e8e9ec",
-    "dim": "#7d828c",
-    "dimmer": "#5d626b",
-    "line": "#2a2d33",
-    "lineSoft": "#22252b",
-    "up": "#4cc38a",
-    "down": "#e5605e",
-    "flat": "#9a9fa9"
+    "name": "empire-state",
+    "stage": "#0b0b0c",
+    "ink": "#f8f3e8",
+    "inkSoft": "#eee6d6",
+    "dim": "#c2b9a6",
+    "dimmer": "#a9a08d",
+    "line": "#38332a",
+    "lineSoft": "#262119",
+    "up": "#7fcf9b",
+    "down": "#e8806e",
+    "flat": "#b3aa96",
+    "brass": "#d8b45f"
+  },
+  "backdrop": {
+    "enabled": true,
+    "image": "fog",
+    "opacity": 0.45,
+    "blur": 2,
+    "panSeconds": 70,
+    "tint": "rgba(8, 8, 9, 0.80)"
   },
   "markets": {
     "items": [
@@ -266,7 +279,7 @@
     ],
     "sort": "manual"
   },
-  "source": "manual",
+  "source": "polymarket",
   "polymarket": {
     "endpoint": "api/polymarket",
     "entity": "events",
@@ -276,36 +289,1033 @@
       {
         "id": "crypto",
         "label": "Crypto",
-        "tagId": "",
+        "tagId": "21",
         "tagSlug": "crypto",
-        "count": 3,
-        "selection": [],
-        "items": [],
-        "error": "no tag binding for \"crypto\" — press Load tags and pick one"
+        "count": 5,
+        "selection": [
+          "89502",
+          "1292829",
+          "1346285",
+          "1384356",
+          "1342183"
+        ],
+        "items": [
+          {
+            "id": "89502",
+            "title": "What price will Bitcoin hit in 2026?",
+            "slug": "what-price-will-bitcoin-hit-before-2027",
+            "url": "https://polymarket.com/event/what-price-will-bitcoin-hit-before-2027",
+            "probability": 100,
+            "change": 34.5,
+            "volume24hr": 1398716.6348980002,
+            "volume": 87440985.07018699,
+            "liquidity": 3960304.72629,
+            "endDate": "2027-01-01T05:00:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+            "outcome": "Yes",
+            "entity": "events",
+            "contracts": [
+              {
+                "name": "↓ 60,000",
+                "yes": 58.5,
+                "no": 41.5,
+                "change": 23,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 259438.66294300012
+              },
+              {
+                "name": "↓ 55,000",
+                "yes": 30.5,
+                "no": 69.5,
+                "change": 12,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 172206.11676
+              },
+              {
+                "name": "↓ 50,000",
+                "yes": 17.2,
+                "no": 82.8,
+                "change": 8.5,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 180944.831273
+              },
+              {
+                "name": "↓ 45,000",
+                "yes": 9,
+                "no": 91.1,
+                "change": 2.9,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 110764.779242
+              },
+              {
+                "name": "↑ 90,000",
+                "yes": 7.5,
+                "no": 92.5,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 136151.301153
+              },
+              {
+                "name": "↓ 40,000",
+                "yes": 5.4,
+                "no": 94.7,
+                "change": 1.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 15607.548363999998
+              },
+              {
+                "name": "↑ 95,000",
+                "yes": 3.1,
+                "no": 97,
+                "change": -2.4,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 14073.942815
+              },
+              {
+                "name": "↑ 100,000",
+                "yes": 2.8,
+                "no": 97.3,
+                "change": -0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 34337.291504
+              },
+              {
+                "name": "↓ 35,000",
+                "yes": 2.7,
+                "no": 97.4,
+                "change": 0.5,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 20160.873621
+              },
+              {
+                "name": "↓ 30,000",
+                "yes": 2.4,
+                "no": 97.7,
+                "change": 0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 2583.476813
+              },
+              {
+                "name": "↑ 110,000",
+                "yes": 1.7,
+                "no": 98.4,
+                "change": 0.4,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 6199.583531
+              },
+              {
+                "name": "↓ 25,000",
+                "yes": 1.6,
+                "no": 98.4,
+                "change": 0.3,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 199.275
+              },
+              {
+                "name": "↓ 20,000",
+                "yes": 1.4,
+                "no": 98.6,
+                "change": 0.8,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 18942.553677
+              },
+              {
+                "name": "↓ 15,000",
+                "yes": 1.3,
+                "no": 98.7,
+                "change": 0.7,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 30538.377778
+              },
+              {
+                "name": "↑ 120,000",
+                "yes": 1.2,
+                "no": 98.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 16266.306667
+              },
+              {
+                "name": "↑ 130,000",
+                "yes": 1.1,
+                "no": 99,
+                "change": 0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 28754.895295
+              },
+              {
+                "name": "↓ 10,000",
+                "yes": 1.1,
+                "no": 98.9,
+                "change": 0.6,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 14751.161667
+              },
+              {
+                "name": "↑ 140,000",
+                "yes": 1,
+                "no": 99.1,
+                "change": 0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 16596.47
+              },
+              {
+                "name": "↑ 150,000",
+                "yes": 0.9,
+                "no": 99.2,
+                "change": 0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 720.36
+              },
+              {
+                "name": "↑ 160,000",
+                "yes": 0.6,
+                "no": 99.5,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 10
+              },
+              {
+                "name": "↓ 5,000",
+                "yes": 0.6,
+                "no": 99.5,
+                "change": 0.3,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 9300.831668
+              },
+              {
+                "name": "↑ 190,000",
+                "yes": 0.5,
+                "no": 99.6,
+                "change": 0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 53.16
+              },
+              {
+                "name": "↑ 180,000",
+                "yes": 0.5,
+                "no": 99.6,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 0.62
+              },
+              {
+                "name": "↑ 170,000",
+                "yes": 0.5,
+                "no": 99.6,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 903.29
+              },
+              {
+                "name": "↑ 200,000",
+                "yes": 0.4,
+                "no": 99.7,
+                "change": 0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 5
+              },
+              {
+                "name": "↑ 500,000",
+                "yes": 0.3,
+                "no": 99.8,
+                "change": 0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 10869.900000000001
+              },
+              {
+                "name": "↑ 250,000",
+                "yes": 0.2,
+                "no": 99.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 0
+              },
+              {
+                "name": "↑ 1,000,000",
+                "yes": 0.2,
+                "no": 99.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 17384.677
+              }
+            ]
+          },
+          {
+            "id": "1292829",
+            "title": "What price will Bitcoin hit in November?",
+            "slug": "what-price-will-bitcoin-hit-in-november-2026",
+            "url": "https://polymarket.com/event/what-price-will-bitcoin-hit-in-november-2026",
+            "probability": 100,
+            "change": 50.4,
+            "volume24hr": 1311268.175334,
+            "volume": 8222331.661149,
+            "liquidity": 1508444.94194,
+            "endDate": "2026-12-01T05:00:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+            "outcome": "Yes",
+            "entity": "events",
+            "contracts": [
+              {
+                "name": "↓ 65,000",
+                "yes": 95.5,
+                "no": 4.5,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 1114.13955
+              },
+              {
+                "name": "↑ 67,500",
+                "yes": 73.5,
+                "no": 26.5,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 4153.873379
+              },
+              {
+                "name": "↓ 62,500",
+                "yes": 62.5,
+                "no": 37.5,
+                "change": 37,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 135295.024959
+              },
+              {
+                "name": "↑ 70,000",
+                "yes": 45.5,
+                "no": 54.5,
+                "change": -39.5,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 52031.206677999995
+              },
+              {
+                "name": "↓ 60,000",
+                "yes": 35.5,
+                "no": 64.5,
+                "change": 22,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 65559.35478
+              },
+              {
+                "name": "↓ 57,500",
+                "yes": 25.5,
+                "no": 74.5,
+                "change": 17.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 77879.521737
+              },
+              {
+                "name": "↑ 72,500",
+                "yes": 25.5,
+                "no": 74.5,
+                "change": -29,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 12667.491539
+              },
+              {
+                "name": "↓ 55,000",
+                "yes": 14.3,
+                "no": 85.8,
+                "change": 9.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 188237.69462000002
+              },
+              {
+                "name": "↑ 75,000",
+                "yes": 11.5,
+                "no": 88.5,
+                "change": -17,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 54990.08011799999
+              },
+              {
+                "name": "↓ 52,500",
+                "yes": 8,
+                "no": 92,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 1781.935257
+              },
+              {
+                "name": "↑ 77,500",
+                "yes": 6.5,
+                "no": 93.5,
+                "change": -7,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 50796.92653499999
+              },
+              {
+                "name": "↑ 80,000",
+                "yes": 4.3,
+                "no": 95.8,
+                "change": -2.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 33601.448959
+              },
+              {
+                "name": "↑ 82,500",
+                "yes": 2.8,
+                "no": 97.3,
+                "change": -1.5,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 65307.794361
+              },
+              {
+                "name": "↑ 85,000",
+                "yes": 2,
+                "no": 98.1,
+                "change": -0.6,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 15244.921542999999
+              },
+              {
+                "name": "↑ 87,500",
+                "yes": 1.5,
+                "no": 98.6,
+                "change": -0.3,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 24032.625746
+              },
+              {
+                "name": "↑ 90,000",
+                "yes": 1.4,
+                "no": 98.7,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 19660.077777000002
+              },
+              {
+                "name": "↑ 95,000",
+                "yes": 1.1,
+                "no": 99,
+                "change": 0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 21707.69636
+              },
+              {
+                "name": "↑ 92,500",
+                "yes": 1.1,
+                "no": 98.9,
+                "change": 0.3,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 21011.526343999998
+              },
+              {
+                "name": "↑ 100,000",
+                "yes": 0.6,
+                "no": 99.5,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 13614.018261
+              },
+              {
+                "name": "↑ 97,500",
+                "yes": 0.6,
+                "no": 99.5,
+                "change": -0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 17888.928669999998
+              }
+            ]
+          },
+          {
+            "id": "1346285",
+            "title": "What price will Bitcoin hit November 9-15?",
+            "slug": "what-price-will-bitcoin-hit-november-9-15-2026",
+            "url": "https://polymarket.com/event/what-price-will-bitcoin-hit-november-9-15-2026",
+            "probability": 49.9,
+            "change": 47.8,
+            "volume24hr": 872524.812698,
+            "volume": 2373179.749542,
+            "liquidity": 793306.53085,
+            "endDate": "2026-11-16T05:00:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+            "outcome": "Yes",
+            "entity": "events",
+            "contracts": [
+              {
+                "name": "↓ 64,000",
+                "yes": 49.9,
+                "no": 50.1,
+                "change": 47.8,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 174408.459298
+              },
+              {
+                "name": "↑ 68,000",
+                "yes": 26,
+                "no": 74,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 285
+              },
+              {
+                "name": "↓ 62,000",
+                "yes": 18.7,
+                "no": 81.3,
+                "change": 17.7,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 110004.368279
+              },
+              {
+                "name": "↓ 60,000",
+                "yes": 5.4,
+                "no": 94.7,
+                "change": 4.8,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 49971.80652199999
+              },
+              {
+                "name": "↑ 70,000",
+                "yes": 5.1,
+                "no": 94.9,
+                "change": -42.9,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 37120.867107
+              },
+              {
+                "name": "↓ 58,000",
+                "yes": 2.1,
+                "no": 98,
+                "change": 1.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 63676.441331
+              },
+              {
+                "name": "↑ 72,000",
+                "yes": 1.4,
+                "no": 98.7,
+                "change": -5.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 36993.149451
+              },
+              {
+                "name": "↓ 54,000",
+                "yes": 1,
+                "no": 99.1,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 0
+              },
+              {
+                "name": "↑ 74,000",
+                "yes": 0.9,
+                "no": 99.2,
+                "change": -0.4,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 35098.65816099999
+              },
+              {
+                "name": "↑ 76,000",
+                "yes": 0.5,
+                "no": 99.6,
+                "change": 0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 14006.409760999999
+              },
+              {
+                "name": "↑ 82,000",
+                "yes": 0.2,
+                "no": 99.8,
+                "change": 0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 66302.171106
+              },
+              {
+                "name": "↓ 56,000",
+                "yes": 0.2,
+                "no": 99.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 0
+              },
+              {
+                "name": "↑ 88,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 60105.545
+              },
+              {
+                "name": "↑ 86,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 1801.858583
+              },
+              {
+                "name": "↑ 84,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": -0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 46666.10666699999
+              },
+              {
+                "name": "↑ 80,000",
+                "yes": 0.1,
+                "no": 99.9,
+                "change": -0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 11742.49
+              },
+              {
+                "name": "↑ 78,000",
+                "yes": 0.1,
+                "no": 99.9,
+                "change": -0.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 3596.893
+              }
+            ]
+          },
+          {
+            "id": "1384356",
+            "title": "What price will Bitcoin hit on November 14?",
+            "slug": "what-price-will-bitcoin-hit-on-november-14-2026",
+            "url": "https://polymarket.com/event/what-price-will-bitcoin-hit-on-november-14-2026",
+            "probability": 100,
+            "change": null,
+            "volume24hr": 506785.859797,
+            "volume": 505285.501744,
+            "liquidity": 449016.47659,
+            "endDate": "2026-11-15T05:00:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+            "outcome": "Yes",
+            "entity": "events",
+            "contracts": [
+              {
+                "name": "↓ 64,000",
+                "yes": 22.8,
+                "no": 77.3,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 111410.770576
+              },
+              {
+                "name": "↓ 63,000",
+                "yes": 8.8,
+                "no": 91.2,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 36205.028995
+              },
+              {
+                "name": "↑ 68,000",
+                "yes": 5.1,
+                "no": 94.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 30331.262486000007
+              },
+              {
+                "name": "↓ 62,000",
+                "yes": 3.8,
+                "no": 96.3,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 20237.886107000002
+              },
+              {
+                "name": "↓ 61,000",
+                "yes": 1.2,
+                "no": 98.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 11670.999043999998
+              },
+              {
+                "name": "↑ 69,000",
+                "yes": 1.1,
+                "no": 98.9,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 36564.719508
+              },
+              {
+                "name": "↑ 74,000",
+                "yes": 0.8,
+                "no": 99.2,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 20
+              },
+              {
+                "name": "↑ 72,000",
+                "yes": 0.7,
+                "no": 99.4,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 249.12389500000003
+              },
+              {
+                "name": "↑ 73,000",
+                "yes": 0.6,
+                "no": 99.5,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 83.78
+              },
+              {
+                "name": "↑ 75,000",
+                "yes": 0.5,
+                "no": 99.6,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 1326.595112
+              },
+              {
+                "name": "↑ 71,000",
+                "yes": 0.5,
+                "no": 99.6,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 12064.777444
+              },
+              {
+                "name": "↑ 70,000",
+                "yes": 0.4,
+                "no": 99.7,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 29538.211957999996
+              },
+              {
+                "name": "↓ 60,000",
+                "yes": 0.3,
+                "no": 99.8,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 9425.526321000001
+              }
+            ]
+          },
+          {
+            "id": "1342183",
+            "title": "Bitcoin above ___ on November 15?",
+            "slug": "bitcoin-above-on-november-15-2026",
+            "url": "https://polymarket.com/event/bitcoin-above-on-november-15-2026",
+            "probability": 1.7,
+            "change": -17.9,
+            "volume24hr": 307623.04499200004,
+            "volume": 452049.87724199996,
+            "liquidity": 666505.49601,
+            "endDate": "2026-11-15T17:00:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+            "outcome": "Yes",
+            "entity": "events",
+            "contracts": [
+              {
+                "name": "66,000",
+                "yes": 41,
+                "no": 59.1,
+                "change": -56.1,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 60291.613071
+              },
+              {
+                "name": "68,000",
+                "yes": 6.5,
+                "no": 93.6,
+                "change": -76.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 54105.065537999995
+              },
+              {
+                "name": "70,000",
+                "yes": 1.7,
+                "no": 98.3,
+                "change": -17.9,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 60541.634376
+              },
+              {
+                "name": "72,000",
+                "yes": 0.4,
+                "no": 99.7,
+                "change": -1.6,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 43872.649842
+              },
+              {
+                "name": "74,000",
+                "yes": 0.2,
+                "no": 99.8,
+                "change": -0.8,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 42456.484665
+              },
+              {
+                "name": "76,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": -0.4,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 39111.607500000006
+              },
+              {
+                "name": "78,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": -0.3,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 6333.99
+              },
+              {
+                "name": "80,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": -0.3,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 635
+              },
+              {
+                "name": "82,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": -0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 130
+              },
+              {
+                "name": "84,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": -0.2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 145
+              },
+              {
+                "name": "86,000",
+                "yes": 0.1,
+                "no": 100,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+                "volume": 0
+              }
+            ]
+          }
+        ]
       },
       {
         "id": "economy",
         "label": "Economy",
-        "tagId": "",
+        "tagId": "100328",
         "tagSlug": "economy",
-        "count": 3,
-        "selection": [],
-        "items": [],
-        "error": "no tag binding for \"economy\" — press Load tags and pick one"
+        "count": 4,
+        "selection": [
+          "770450",
+          "79041",
+          "455875",
+          "770451"
+        ],
+        "items": [
+          {
+            "id": "770450",
+            "title": "Fed Decision in December?",
+            "slug": "fed-decision-in-december-20260729232808632",
+            "url": "https://polymarket.com/event/fed-decision-in-december-20260729232808632",
+            "probability": 63.5,
+            "change": -14,
+            "volume24hr": 1749675.068925,
+            "volume": 14550273.272620998,
+            "liquidity": 1105905.87187,
+            "endDate": "2026-12-10T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/fed-decision-in-september-762-c4RyWuxRPo1L.jpg",
+            "outcome": "Yes",
+            "entity": "events"
+          },
+          {
+            "id": "79041",
+            "title": "Largest Company end of December 2026?",
+            "slug": "largest-company-end-of-december-2026",
+            "url": "https://polymarket.com/event/largest-company-end-of-december-2026",
+            "probability": 0.6,
+            "change": -0.1,
+            "volume24hr": 229141.225627,
+            "volume": 9790188.539564,
+            "liquidity": 1108058.52448,
+            "endDate": "2027-01-01T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/largest-company-eoy-KS99l6lbxfCc.jpg",
+            "outcome": "Yes",
+            "entity": "events"
+          },
+          {
+            "id": "455875",
+            "title": "Strait of Hormuz traffic returns to normal by December 31?",
+            "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+            "url": "https://polymarket.com/event/strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+            "probability": 10.5,
+            "change": null,
+            "volume24hr": 141629.557899,
+            "volume": 16760014.474508999,
+            "liquidity": 364470.0032,
+            "endDate": "2027-01-01T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-ships-transit-the-strait-of-hormuz-on-any-day-in-march-ERARnetK0FJm.jpg",
+            "outcome": "Yes",
+            "entity": "events"
+          },
+          {
+            "id": "770451",
+            "title": "Fed Decision in January?",
+            "slug": "fed-decision-in-january-20260729233815502",
+            "url": "https://polymarket.com/event/fed-decision-in-january-20260729233815502",
+            "probability": 18.5,
+            "change": null,
+            "volume24hr": 80141.092918,
+            "volume": 1207459.2635529998,
+            "liquidity": 470196.12827,
+            "endDate": "2027-01-28T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/fed-decision-in-september-762-c4RyWuxRPo1L.jpg",
+            "outcome": "Yes",
+            "entity": "events"
+          }
+        ],
+        "error": ""
       },
       {
         "id": "finance",
         "label": "Finance",
-        "tagId": "",
+        "tagId": "120",
         "tagSlug": "finance",
-        "count": 3,
-        "selection": [],
-        "items": [],
-        "error": "no tag binding for \"finance\" — press Load tags and pick one"
+        "count": 4,
+        "selection": [
+          "548858",
+          "79041",
+          "1250301",
+          "435099"
+        ],
+        "items": [
+          {
+            "id": "548858",
+            "title": "Anthropic IPO Closing Market Cap",
+            "slug": "anthropic-ipo-closing-market-cap-higher-strikes",
+            "url": "https://polymarket.com/event/anthropic-ipo-closing-market-cap-higher-strikes",
+            "probability": 16.3,
+            "change": 5.5,
+            "volume24hr": 234671.224927,
+            "volume": 3564288.947444,
+            "liquidity": 356366.39358,
+            "endDate": "2028-01-01T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/anthropic-ipo-closing-market-cap-jdfele1g0krx.png",
+            "outcome": "Yes",
+            "entity": "events"
+          },
+          {
+            "id": "79041",
+            "title": "Largest Company end of December 2026?",
+            "slug": "largest-company-end-of-december-2026",
+            "url": "https://polymarket.com/event/largest-company-end-of-december-2026",
+            "probability": 0.6,
+            "change": -0.1,
+            "volume24hr": 229141.225627,
+            "volume": 9790188.539564,
+            "liquidity": 1108058.52448,
+            "endDate": "2027-01-01T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/largest-company-eoy-KS99l6lbxfCc.jpg",
+            "outcome": "Yes",
+            "entity": "events"
+          },
+          {
+            "id": "1250301",
+            "title": "What will WTI Crude Oil (WTI) hit in November 2026?",
+            "slug": "what-price-will-wti-hit-in-november-2026",
+            "url": "https://polymarket.com/event/what-price-will-wti-hit-in-november-2026",
+            "probability": 1.9,
+            "change": -0.3,
+            "volume24hr": 212261.086774,
+            "volume": 1313517.060899,
+            "liquidity": 856703.2164,
+            "endDate": "2026-12-01T04:59:59.999Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/crude-oil-9a850ce2a2.png",
+            "outcome": "Yes",
+            "entity": "events"
+          },
+          {
+            "id": "435099",
+            "title": "Crude Oil all time high by...?",
+            "slug": "crude-oil-all-time-high-by",
+            "url": "https://polymarket.com/event/crude-oil-all-time-high-by",
+            "probability": 8.5,
+            "change": null,
+            "volume24hr": 100488.327503,
+            "volume": 5608037.654126001,
+            "liquidity": 203862.624,
+            "endDate": "2027-01-01T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/crude-oil-9a850ce2a2.png",
+            "outcome": "Yes",
+            "entity": "events"
+          }
+        ],
+        "error": ""
+      },
+      {
+        "id": "pasted",
+        "label": "Pasted",
+        "tagId": "",
+        "tagSlug": "",
+        "count": 1,
+        "selection": [
+          "16183"
+        ],
+        "items": [
+          {
+            "id": "16183",
+            "title": "Kraken IPO by ___ ?",
+            "slug": "kraken-ipo-in-2025",
+            "url": "https://polymarket.com/event/kraken-ipo-in-2025",
+            "probability": 3.6,
+            "change": null,
+            "volume24hr": 14.75,
+            "volume": 1631088.969361,
+            "liquidity": 7361.60548,
+            "endDate": "2028-01-01T04:59:00Z",
+            "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+            "outcome": "Yes",
+            "entity": "events",
+            "contracts": [
+              {
+                "name": "December 31, 2027",
+                "yes": 63,
+                "no": 37,
+                "change": 0.5,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+                "volume": 0
+              },
+              {
+                "name": "June 30, 2027",
+                "yes": 32,
+                "no": 68,
+                "change": -2,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+                "volume": 0
+              },
+              {
+                "name": "March 31, 2027",
+                "yes": 6.5,
+                "no": 93.5,
+                "change": -0.5,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+                "volume": 0
+              },
+              {
+                "name": "December 31, 2026",
+                "yes": 3.6,
+                "no": 96.4,
+                "change": null,
+                "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+                "volume": 14.75
+              }
+            ]
+          }
+        ],
+        "error": "not found: does-this-exist-at-all-xyz"
       }
     ],
-    "updatedAt": 1792537388539,
-    "lastError": "failed: Crypto, Economy, Finance"
+    "updatedAt": 1794683130691,
+    "lastError": ""
   },
   "animation": {
     "autoPlay": true,
@@ -325,7 +1335,7 @@
     "pauseOnCommand": true
   },
   "data": {
-    "proxyUrl": "/market/api/market",
+    "proxyUrl": "api/data",
     "directUrl": "https://api.coingecko.com/api/v3/coins/markets",
     "currency": "usd",
     "refreshSeconds": 300,
@@ -339,9 +1349,9 @@
     "useLocalStorage": true
   },
   "googleFonts": [
-    "Playfair+Display:wght@500;600;700",
+    "Instrument+Serif:ital@0;1",
     "Inter:wght@400;500;600;700",
-    "IBM+Plex+Mono:wght@500"
+    "IBM+Plex+Mono:wght@400;500"
   ],
   "fontUrls": []
 }

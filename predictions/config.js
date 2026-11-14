@@ -65,7 +65,7 @@ window.PM_DEFAULT_CONFIG = {
     },
     title: {
       text: 'Prediction Markets',
-      fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
+      fontFamily: "'Instrument Serif', 'Playfair Display', Georgia, serif",
       weight: 600,
       size: 58,
       color: '#f4f4f6',
@@ -165,7 +165,13 @@ window.PM_DEFAULT_CONFIG = {
     showEnds: true
   },
 
+  /* Manual navigation: the ‹ › buttons over the board. Kept as its own key so a
+     board can hide them when it is driven by Stream Deck instead. */
+  nav: { visible: true },
+
   list: {
+    /* false = no ranked column: one hero on air, advanced by hand or by command */
+    visible: true,
     maxRows: 6,
     rowHeight: 124,
     showRank: true,
@@ -213,18 +219,35 @@ window.PM_DEFAULT_CONFIG = {
   /* ---------------- Palette ----------------
      Any value above may reference these with palette(ink) / palette(up) etc.
      Editing one swatch here re-themes the whole board. */
+  /* Empire State: ink black, ivory text, one brass accent, hairlines only.
+     The name is the reading of the room — 1930s New York editorial, not a
+     dashboard: nothing saturated, nothing rounded, no second accent colour. */
   palette: {
-    name: 'graphite',
-    stage: '#0f1013',
-    ink: '#f4f4f6',
-    inkSoft: '#e8e9ec',
-    dim: '#7d828c',
-    dimmer: '#5d626b',
-    line: '#2a2d33',
-    lineSoft: '#22252b',
-    up: '#4cc38a',
-    down: '#e5605e',
-    flat: '#9a9fa9'
+    name: 'empire-state',
+    stage: '#0b0b0c',
+    ink: '#f3ede1',
+    inkSoft: '#e3dbcb',
+    dim: '#9c9483',
+    dimmer: '#6b6458',
+    line: '#2a2620',
+    lineSoft: '#1c1915',
+    up: '#6fbf8b',
+    down: '#d9705f',
+    flat: '#8a8274',
+    brass: '#c8a44d'
+  },
+
+  /* ---------------- Background plates ----------------
+     Selectable, like the weather widget's: one plate behind the board, tinted
+     and slowly panned, never a video and never a moving element over the type.
+     `image` is a file stem from backdrops/ (plates.json lists them). */
+  backdrop: {
+    enabled: false,
+    image: '',
+    opacity: 0.5,
+    blur: 2,
+    panSeconds: 70,
+    tint: 'rgba(10, 10, 11, 0.72)'
   },
 
   /* ---------------- Markets (the operator's content) ----------------
@@ -424,10 +447,6 @@ window.PM_DEFAULT_CONFIG = {
   },
 
   /* ---------------- Fonts ---------------- */
-  googleFonts: [
-    'Playfair+Display:wght@500;600;700',
-    'Inter:wght@400;500;600;700',
-    'IBM+Plex+Mono:wght@500'
-  ],
+    googleFonts: ['Instrument+Serif:ital@0;1', 'Inter:wght@400;500;600;700', 'IBM+Plex+Mono:wght@400;500'],
   fontUrls: []
 };

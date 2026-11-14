@@ -599,3 +599,56 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
   .polyitem { grid-template-columns: 16px 1fr; }
   .polyitem__meta { grid-column: 2; }
 }
+
+/* ---- background plate picker ---------------------------------------------- */
+.bd-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px; margin: 10px 0 4px;
+}
+.bd-tile {
+  position: relative; padding: 0; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-2); overflow: hidden; cursor: pointer; aspect-ratio: 4 / 3;
+}
+.bd-tile img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .85; }
+.bd-tile:hover { border-color: var(--line-hover); }
+.bd-tile:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.bd-tile.is-active { border-color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent-2); }
+.bd-tile.is-active::after {
+  content: '✓'; position: absolute; right: 6px; bottom: 4px;
+  font: 700 12px/1 system-ui, sans-serif; color: #fff;
+  background: rgba(0,0,0,.55); border-radius: 4px; padding: 2px 5px;
+}
+.bd-tile span {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  color: #f2f2f2; background: linear-gradient(transparent, rgba(0,0,0,.75));
+  padding: 10px 6px 4px; text-align: left;
+}
+
+/* ---- added headlines: sort + remove --------------------------------------- */
+.pasted { display: flex; flex-direction: column; margin-top: 10px; }
+.pasted__row {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) 74px auto;
+  align-items: center; gap: 10px;
+  padding: 8px 6px; border-top: 1px solid var(--line-soft);
+}
+.pasted__row:first-child { border-top: 1px solid var(--line); }
+.pasted__idx { font: 500 11px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: .08em; }
+.pasted__title { font-size: 13px; color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pasted__pct { font: 500 12.5px/1 ui-monospace, monospace; color: var(--txt); text-align: right; }
+.pasted__acts { display: flex; gap: 4px; }
+.pasted__acts button {
+  width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
+  font-size: 12px; line-height: 1; border-radius: 6px;
+}
+.pasted__acts button:disabled { opacity: .3; cursor: default; }
+.pasted__empty { padding: 12px 6px; font-size: 12.5px; color: var(--muted); }
+
+/* an added headline whose market has already closed */
+.pasted__row.is-past .pasted__title { color: var(--muted); }
+.pastflag {
+  display: inline-block; margin-left: 8px; padding: 1px 6px;
+  border: 1px solid var(--danger-line); border-radius: 5px;
+  font: 600 9px/1.6 ui-monospace, monospace; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--danger);
+}

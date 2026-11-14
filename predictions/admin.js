@@ -257,10 +257,94 @@
     paintAllHex();
   }
 
+  /* ------------------------------------------------------- background plate
+     The plates are files in backdrops/ (plates.json lists them), so adding one
+     is a file drop, never a code change. Same idea as the weather widget: one
+     photograph, tinted, panned slowly; the board stays the only thing that
+     moves quickly. */
+  var BACKDROP_PLATES = null;
+  function loadPlates() {
+    if (BACKDROP_PLATES) return Promise.resolve(BACKDROP_PLATES);
+    return fetch('backdrops/plates.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : { plates: [] }; })
+      .then(function (body) { BACKDROP_PLATES = (body && body.plates) || []; return BACKDROP_PLATES; })
+      .catch(function () { BACKDROP_PLATES = []; return BACKDROP_PLATES; });
+  }
+  function renderBackdropGrid() {
+    var grid = $('backdropGrid');
+    if (!grid) return;
+    loadPlates().then(function (plates) {
+      grid.innerHTML = '';
+      var bd = cfg.backdrop = cfg.backdrop || {};
+      var live = bd.enabled === true;
+      plates.forEach(function (p) {
+        var tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'bd-tile' + (live && bd.image === p.src ? ' is-active' : '');
+        tile.setAttribute('aria-pressed', live && bd.image === p.src ? 'true' : 'false');
+        tile.title = p.label;
+        var img = document.createElement('img');
+        img.src = p.src; img.alt = ''; img.loading = 'lazy';
+        var cap = document.createElement('span');
+        cap.textContent = p.label;
+        tile.appendChild(img); tile.appendChild(cap);
+        tile.addEventListener('click', function () {
+          bd.image = p.src;
+          if (bd.enabled !== true) bd.enabled = true;
+          if (bd.opacity == null) bd.opacity = 0.45;
+          if (bd.blur == null) bd.blur = 2;
+          if (bd.panSeconds == null) bd.panSeconds = 70;
+          if (!bd.tint) bd.tint = 'rgba(10, 10, 11, 0.72)';
+          setField($('c_backdropOn'), true);
+          refreshFields();
+          renderBackdropGrid();
+          syncTintPicker();
+          push();
+        });
+        grid.appendChild(tile);
+      });
+    });
+  }
+  /* the picker speaks #rrggbb, the config speaks rgba(...): keep them in step */
+  function tintAlpha() {
+    var m = String((cfg.backdrop || {}).tint || '').match(/rgba?\([^)]*,\s*([0-9.]+)\s*\)/);
+    return m ? parseFloat(m[1]) : 1;
+  }
+  function syncTintPicker() {
+    var inp = $('c_backdropTintColor');
+    if (!inp) return;
+    var hex = parseColor(String((cfg.backdrop || {}).tint || '')) || '#0a0a0b';
+    inp.value = /^#[0-9a-f]{6}$/i.test(hex) ? hex : '#0a0a0b';
+  }
+  (function () {
+    var inp = $('c_backdropTintColor');
+    if (!inp) return;
+    inp.addEventListener('input', function () {
+      var rgb = parseColor(inp.value);
+      if (!rgb || !/^#[0-9a-f]{6}$/i.test(rgb)) return;
+      var r = parseInt(rgb.slice(1, 3), 16), g = parseInt(rgb.slice(3, 5), 16), b = parseInt(rgb.slice(5, 7), 16);
+      var val = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + tintAlpha() + ')';
+      cfg.backdrop = cfg.backdrop || {};
+      cfg.backdrop.tint = val;
+      setField($('c_backdropTint'), val);
+      push();
+    });
+  })();
+
   function syncUI() {
     /* ---- content: markets first, it is the whole point of this panel ---- */
     renderMarkets();
     bind('markets.sort', 'c_marketSort');
+
+    /* ---- background plate ---- */
+    bind('backdrop.enabled', 'c_backdropOn');
+    bind('backdrop.opacity', 'c_backdropOpacity');
+    bind('backdrop.blur', 'c_backdropBlur');
+    bind('backdrop.panSeconds', 'c_backdropPan');
+    bind('backdrop.tint', 'c_backdropTint');
+    renderBackdropGrid();
+    syncTintPicker();
+    renderPastedList();
 
     bind('header.kicker.text', 'c_kicker');
     bind('header.title.text', 'c_title');
@@ -570,80 +654,56 @@
   }
 
   /* ------------------------------------------------------------ paste list
-     topic | probability | volume | change — trailing fields optional. `%`, `$`,
-     commas and a leading `+` are stripped so an operator can paste straight out
-     of a spreadsheet. One bad line is reported, never silently swallowed. */
-  function money(s) {
-    var t = String(s).toLowerCase().replace(/[^0-9.\-kmb]/g, '');
-    var mult = /b$/.test(t) ? 1e9 : /m$/.test(t) ? 1e6 : /k$/.test(t) ? 1e3 : 1;
-    var v = parseFloat(t.replace(/[kmb]$/, ''));
-    if (isNaN(v)) return null;
-    return v * mult;
-  }
-  /* A topic may contain the delimiter (`Will Ethereum close above $6,000?`) and
-     may be quoted for that reason, so the split is quote-aware rather than a
-     plain `.split()`, and the delimiter is whichever of `|` / `,` actually
-     yields numeric fields — a lone question, commas and all, stays whole. */
-  function splitOn(line, ch) {
-    var s = String(line);
-    var out = [], cur = '', q = false;
-    for (var i = 0; i < s.length; i++) {
-      var c = s.charAt(i);
-      if (c === '"') { q = !q; cur += c; }
-      else if (c === ch && !q) { out.push(cur); cur = ''; }
-      else cur += c;
-    }
-    out.push(cur);
-    return out.map(function (x) { return String(x).replace(/^\s*"|"\s*$/g, '').trim(); });
-  }
-  function looksNumeric(s) {
-    return /^[+-]?\s*[$€£]?\s*[\d,]+(\.\d+)?\s*[%kmb]?$/i.test(String(s).trim());
-  }
-  function scoreParts(p) {
-    if (p.length < 2 || p[0] === '') return -1;
-    var n = 0;
-    for (var i = 1; i < Math.min(p.length, 4); i++) {
-      if (p[i] !== '' && looksNumeric(p[i])) n++;
-    }
-    return n;
-  }
-  function splitLine(line) {
-    var pipe = splitOn(line, '|');
-    var comma = splitOn(line, ',');
-    /* no pipe at all → the line is either one whole question or a CSV row */
-    if (scoreParts(pipe) <= 0) return scoreParts(comma) > 0 ? comma : [String(line).trim()];
-    return pipe;
+     One Polymarket URL (or bare slug) per line. Each line is resolved through
+     the hub's proxy — the panel never talks to Polymarket itself — and lands in
+     the "Pasted" category, so nobody types a probability by hand any more. */
+  function slugFromLine(line) {
+    var raw = String(line || '').trim();
+    if (!raw) return '';
+    var m = raw.match(/polymarket\.com\/(?:event|market)\/([a-zA-Z0-9][a-zA-Z0-9_-]{0,120})/);
+    if (m) return m[1].toLowerCase();
+    m = raw.match(/^([a-zA-Z0-9][a-zA-Z0-9_-]{0,120})$/);      /* a bare slug */
+    return m ? m[1].toLowerCase() : '';
   }
   function parsePaste(text) {
-    var out = [], bad = 0;
+    var seen = {}, out = [], bad = 0, dupes = 0;
     String(text || '').split(/\r?\n/).forEach(function (line) {
-      if (String(line).replace(/[\s|,\-"']/g, '') === '') return;   /* blank / separator noise */
-      var parts = splitLine(line);
-      var topic = parts[0];
-      /* no topic → the line is a separator or a stray value row, not a market;
-         it is counted as bad so the operator is told, never silently dropped */
-      if (!topic) { bad++; return; }
-      var p = money(parts[1]);
-      var v = money(parts[2]);
-      var c = money(parts[3]);
-      out.push({
-        topic: topic,
-        probability: p == null ? 50 : Math.max(0, Math.min(100, p)),
-        volume: v == null ? 0 : v,
-        change: c == null ? 0 : c,
-        category: (parts[4] || '').trim(),
-        ends: (parts[5] || '').trim(),
-        enabled: true
-      });
+      if (!String(line).trim()) return;
+      var slug = slugFromLine(line);
+      if (!slug) { bad++; return; }
+      if (seen[slug]) { dupes++; return; }
+      seen[slug] = true;
+      out.push(slug);
     });
-    return { items: out, bad: bad };
+    return { slugs: out, bad: bad, dupes: dupes };
+  }
+  function pastedCategory() {
+    var p = cfg.polymarket = cfg.polymarket || {};
+    if (!Array.isArray(p.categories)) p.categories = [];
+    var hit = p.categories.filter(function (c) { return c && c.id === 'pasted'; })[0];
+    if (!hit) {
+      hit = { id: 'pasted', label: 'Pasted', tagId: '', tagSlug: '', count: 0, selection: [], items: [], error: '' };
+      p.categories.push(hit);
+    }
+    return hit;
+  }
+  function resolveSlug(slug) {
+    var p = cfg.polymarket || {};
+    var entity = p.entity === 'markets' ? 'markets' : 'events';
+    var url = String(p.endpoint || 'api/polymarket') + '?what=resolve&entity=' + entity +
+      '&slug=' + encodeURIComponent(slug);
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (body) {
+        return { ok: r.ok, items: (body && Array.isArray(body.items)) ? body.items : [] };
+      });
+    }, function () { return { ok: false, items: [] }; });
   }
   var pasteIn = $('pasteIn');
   var pasteHint = $('pasteCountHint');
   function refreshPasteHint() {
     if (!pasteIn || !pasteHint) return;
-    var n = parsePaste(pasteIn.value).items.length;
-    pasteHint.textContent = n + (n === 1 ? ' row' : ' rows');
+    var n = parsePaste(pasteIn.value).slugs.length;
+    pasteHint.textContent = String(n);   /* the button already reads "Add N headlines" */
   }
   if (pasteIn) pasteIn.addEventListener('input', refreshPasteHint);
 
@@ -651,21 +711,49 @@
   if (pasteBtn) {
     pasteBtn.addEventListener('click', function () {
       var parsed = parsePaste(pasteIn ? pasteIn.value : '');
-      if (!parsed.items.length) {
-        status('nothing to paste — one market per line', 'err');
+      if (!parsed.slugs.length) {
+        status('nothing to add — paste one Polymarket URL per line', 'err');
         return;
       }
-      cfg.markets = cfg.markets || {};
-      if (!Array.isArray(cfg.markets.items)) cfg.markets.items = [];
-      parsed.items.forEach(function (m) { cfg.markets.items.push(m); });
-      if (pasteIn) pasteIn.value = '';
-      refreshPasteHint();
-      refreshFields();
-      renderMarkets();
-      status('added ' + parsed.items.length + ' market' + (parsed.items.length === 1 ? '' : 's') +
-        (parsed.bad ? ' · skipped ' + parsed.bad + ' bad line' + (parsed.bad === 1 ? '' : 's') : ''),
-        parsed.bad ? 'warn' : 'ok');
-      push({ raw: false, msg: 'markets added', server: true });
+      var cat = pastedCategory();
+      var label = pasteBtn.textContent;
+      pasteBtn.disabled = true;
+      var added = 0, missed = [], done = 0;
+      function step() {
+        if (done >= parsed.slugs.length) return Promise.resolve();
+        var slug = parsed.slugs[done++];
+        pasteBtn.textContent = 'Fetching ' + done + '/' + parsed.slugs.length + '\u2026';
+        return resolveSlug(slug).then(function (res) {
+          if (!res.items.length) { missed.push(slug); return step(); }
+          res.items.forEach(function (it) {
+            if (!it) return;
+            var id = String(it.id);
+            var at = -1;
+            for (var i = 0; i < cat.items.length; i++) if (String(cat.items[i].id) === id) { at = i; break; }
+            if (at === -1) { cat.items.push(it); added++; } else { cat.items[at] = it; }
+          });
+          return step();
+        });
+      }
+      step().then(function () {
+        cat.items = cat.items.filter(Boolean);
+        cat.selection = cat.items.map(function (it) { return String(it.id); });
+        cat.count = cat.items.length;
+        cat.error = missed.length ? 'not found: ' + missed.join(', ') : '';
+        var p = cfg.polymarket = cfg.polymarket || {};
+        p.updatedAt = Date.now();
+        p.lastError = '';
+        if (pasteIn) pasteIn.value = '';
+        refreshPasteHint();
+        renderCategories();
+        renderPastedList();
+        pasteBtn.disabled = false;
+        pasteBtn.textContent = label;
+        status(added + ' added' + (missed.length ? ' \u00b7 ' + missed.length + ' not found' : '') +
+          (parsed.bad ? ' \u00b7 skipped ' + parsed.bad + ' bad line' + (parsed.bad === 1 ? '' : 's') : ''),
+          missed.length || parsed.bad ? 'warn' : 'ok');
+        push({ raw: false, msg: 'headlines pasted', server: true });
+      });
     });
   }
   var pasteClear = $('btnPasteClear');
@@ -673,6 +761,160 @@
     pasteClear.addEventListener('click', function () {
       if (pasteIn) pasteIn.value = '';
       refreshPasteHint();
+    });
+  }
+
+  /* ------------------------------------------------------- added headlines
+     The board is one hero now, so this list is the operator's only view of what
+     is on air in order. Each row can move up or down (the on-air order when the
+     board is sorted "pasted order") and can be removed without touching the
+     others. */
+  /* The panel edits a draft that can be missing the fetched headline objects
+     (they are heavy and only the server copy is authoritative). When that
+     happens this list reads the board's own config instead of showing nothing. */
+  var boardCfg = null;
+  function itemsFrom(source) {
+    var p = (source && source.polymarket) || {};
+    var cats = Array.isArray(p.categories) ? p.categories : [];
+    var out = [];
+    cats.forEach(function (cat) {
+      (cat && Array.isArray(cat.items) ? cat.items : []).forEach(function (it) {
+        if (it) out.push({ cat: cat, item: it });
+      });
+    });
+    return out;
+  }
+  function pastedItems() {
+    var local = itemsFrom(cfg);
+    if (local.length) { boardCfg = null; return local; }
+    return itemsFrom(boardCfg);
+  }
+  function savePasted() {
+    if (boardCfg) {
+      return fetch('api/config', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(boardCfg)
+      }).then(function () { renderPastedList(); });
+    }
+    push();
+    return Promise.resolve();
+  }
+  function renderPastedList() {
+    var host = $('pastedList');
+    if (!host) return Promise.resolve();
+    if (!pastedItems().length && !boardCfg) {
+      return fetch('api/config', { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (remote) { boardCfg = remote; return paint(); })
+        .catch(function () { return paint(); });
+    }
+    return Promise.resolve(paint());
+
+    function paint() {
+    var rows = pastedItems();
+    var now = Date.now();
+    var pastCount = rows.filter(function (r) {
+      var t = r.item && r.item.endDate ? Date.parse(r.item.endDate) : NaN;
+      return isFinite(t) && t < now;
+    }).length;
+    var countEl = $('pastedCount');
+    if (countEl) {
+      countEl.textContent = rows.length + (rows.length === 1 ? ' headline on the board' : ' headlines on the board') +
+        (pastCount ? ' \u00b7 ' + pastCount + ' already past' : '');
+    }
+    host.innerHTML = '';
+    if (!rows.length) {
+      var empty = document.createElement('div');
+      empty.className = 'pasted__empty';
+      empty.textContent = 'Nothing added yet — paste a Polymarket URL above.';
+      host.appendChild(empty);
+      return;
+    }
+    rows.forEach(function (entry, i) {
+      var it = entry.item, cat = entry.cat;
+      var row = document.createElement('div');
+      row.className = 'pasted__row';
+
+      var endTs = it.endDate ? Date.parse(it.endDate) : NaN;
+      var isPast = isFinite(endTs) && endTs < now;
+      if (isPast) row.classList.add('is-past');
+
+      var idx = document.createElement('div');
+      idx.className = 'pasted__idx';
+      idx.textContent = (i + 1 < 10 ? '0' : '') + (i + 1);
+
+      var title = document.createElement('div');
+      title.className = 'pasted__title';
+      title.textContent = it.title || '(untitled)';
+      title.title = (it.title || '') + (isPast ? ' \u2014 ended ' + (it.endDate || '').slice(0, 10) : '');
+
+      var pct = document.createElement('div');
+      pct.className = 'pasted__pct';
+      pct.textContent = (it.probability == null ? '\u2014' : it.probability) + '%';
+      if (isPast) {
+        var flag = document.createElement('span');
+        flag.className = 'pastflag';
+        flag.textContent = 'past';
+        flag.title = 'This event ended ' + (it.endDate || '').slice(0, 10);
+        pct.appendChild(flag);
+      }
+
+      var acts = document.createElement('div');
+      acts.className = 'pasted__acts';
+
+      function move(step) {
+        var items = cat.items;
+        var at = items.indexOf(it);
+        var to = at + step;
+        if (at === -1 || to < 0 || to >= items.length) return;
+        items.splice(at, 1);
+        items.splice(to, 0, it);
+        /* the on-air order follows this array when the board is in pasted order */
+        cat.selection = items.map(function (x) { return String(x.id); });
+        cat.count = items.length;
+        savePasted();
+      }
+
+      var up = document.createElement('button');
+      up.type = 'button'; up.className = 'btn'; up.textContent = '\u2191';
+      up.title = 'Move up'; up.setAttribute('aria-label', 'Move ' + (it.title || '') + ' up');
+      up.disabled = i === 0;
+      up.addEventListener('click', function () { move(-1); });
+
+      var down = document.createElement('button');
+      down.type = 'button'; down.className = 'btn'; down.textContent = '\u2193';
+      down.title = 'Move down'; down.setAttribute('aria-label', 'Move ' + (it.title || '') + ' down');
+      down.disabled = i === rows.length - 1;
+      down.addEventListener('click', function () { move(1); });
+
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'btn btn--danger'; del.textContent = '\u2715';
+      del.title = 'Remove from the board';
+      del.setAttribute('aria-label', 'Remove ' + (it.title || ''));
+      del.addEventListener('click', function () {
+        cat.items = cat.items.filter(function (x) { return x !== it; });
+        cat.selection = cat.items.map(function (x) { return String(x.id); });
+        cat.count = cat.items.length;
+        savePasted();
+        status('removed from the board', 'ok');
+      });
+
+      acts.appendChild(up); acts.appendChild(down); acts.appendChild(del);
+      row.appendChild(idx); row.appendChild(title); row.appendChild(pct); row.appendChild(acts);
+      host.appendChild(row);
+    });
+    }
+  }
+  var pastedClear = $('btnPastedClear');
+  if (pastedClear) {
+    pastedClear.addEventListener('click', function () {
+      var p = cfg.polymarket = cfg.polymarket || {};
+      (p.categories || []).forEach(function (cat) {
+        if (!cat) return;
+        cat.items = []; cat.selection = []; cat.count = 0;
+      });
+      savePasted();
+      status('board cleared', 'ok');
     });
   }
 

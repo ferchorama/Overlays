@@ -1,0 +1,118 @@
+{
+ "plates": [
+  {
+   "id": "clear-day",
+   "label": "Clear Day",
+   "file": "clear-day.webp",
+   "src": "backdrops/clear-day.webp"
+  },
+  {
+   "id": "clear-night",
+   "label": "Clear Night",
+   "file": "clear-night.webp",
+   "src": "backdrops/clear-night.webp"
+  },
+  {
+   "id": "drizzle",
+   "label": "Drizzle",
+   "file": "drizzle.webp",
+   "src": "backdrops/drizzle.webp"
+  },
+  {
+   "id": "fog",
+   "label": "Fog",
+   "file": "fog.webp",
+   "src": "backdrops/fog.webp"
+  },
+  {
+   "id": "freezing-rain",
+   "label": "Freezing Rain",
+   "file": "freezing-rain.webp",
+   "src": "backdrops/freezing-rain.webp"
+  },
+  {
+   "id": "mainly-clear-day",
+   "label": "Mainly Clear Day",
+   "file": "mainly-clear-day.webp",
+   "src": "backdrops/mainly-clear-day.webp"
+  },
+  {
+   "id": "mainly-clear-night",
+   "label": "Mainly Clear Night",
+   "file": "mainly-clear-night.webp",
+   "src": "backdrops/mainly-clear-night.webp"
+  },
+  {
+   "id": "overcast",
+   "label": "Overcast",
+   "file": "overcast.webp",
+   "src": "backdrops/overcast.webp"
+  },
+  {
+   "id": "partly-cloudy-day",
+   "label": "Partly Cloudy Day",
+   "file": "partly-cloudy-day.webp",
+   "src": "backdrops/partly-cloudy-day.webp"
+  },
+  {
+   "id": "partly-cloudy-night",
+   "label": "Partly Cloudy Night",
+   "file": "partly-cloudy-night.webp",
+   "src": "backdrops/partly-cloudy-night.webp"
+  },
+  {
+   "id": "rain",
+   "label": "Rain",
+   "file": "rain.webp",
+   "src": "backdrops/rain.webp"
+  },
+  {
+   "id": "showers-day",
+   "label": "Showers Day",
+   "file": "showers-day.webp",
+   "src": "backdrops/showers-day.webp"
+  },
+  {
+   "id": "showers-night",
+   "label": "Showers Night",
+   "file": "showers-night.webp",
+   "src": "backdrops/showers-night.webp"
+  },
+  {
+   "id": "snow",
+   "label": "Snow",
+   "file": "snow.webp",
+   "src": "backdrops/snow.webp"
+  },
+  {
+   "id": "snow-showers-day",
+   "label": "Snow Showers Day",
+   "file": "snow-showers-day.webp",
+   "src": "backdrops/snow-showers-day.webp"
+  },
+  {
+   "id": "snow-showers-night",
+   "label": "Snow Showers Night",
+   "file": "snow-showers-night.webp",
+   "src": "backdrops/snow-showers-night.webp"
+  },
+  {
+   "id": "thunder",
+   "label": "Thunder",
+   "file": "thunder.webp",
+   "src": "backdrops/thunder.webp"
+  },
+  {
+   "id": "thunder-hail",
+   "label": "Thunder Hail",
+   "file": "thunder-hail.webp",
+   "src": "backdrops/thunder-hail.webp"
+  },
+  {
+   "id": "nyc",
+   "label": "New York Banner",
+   "file": "../assets/nyc-banner.jpg",
+   "src": "../assets/nyc-banner.jpg"
+  }
+ ]
+}

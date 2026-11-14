@@ -274,7 +274,9 @@
         /* the asset id feeds the real 7-day price series — dropped here it
            silently disabled the whole asset-history path */
         asset: String(item.asset == null ? '' : item.asset).trim(),
-        history: Array.isArray(item.history) ? item.history.slice() : null
+        history: Array.isArray(item.history) ? item.history.slice() : null,
+        /* a pasted event brings its own outcomes; an empty list keeps the chart */
+        contracts: Array.isArray(item.contracts) && item.contracts.length ? item.contracts.slice() : null
       });
     });
 
@@ -315,7 +317,8 @@
           ends: it.endDate,
           thumb: it.image,
           asset: '',
-          history: null
+          history: null,
+          contracts: Array.isArray(it.contracts) && it.contracts.length ? it.contracts : null
         });
       });
     });
@@ -469,6 +472,34 @@
       this.sky = sky;
     }
 
+    /* ---- manual navigation -------------------------------------------------
+       The ranked list is optional now, so these two buttons are the only way
+       to move the board by hand from a screen the operator can actually touch.
+       Same code path as the `next` / `prev` commands, so one handover
+       animation serves both. */
+    var nav = el('div', 'nav', this.stage);
+    this.nav = nav;
+    var prevBtn = el('button', 'nav__btn', nav);
+    prevBtn.type = 'button';
+    prevBtn.setAttribute('aria-label', 'Previous market');
+    prevBtn.title = 'Previous (\u2190)';
+    prevBtn.textContent = '\u2039';
+    prevBtn.addEventListener('click', function () { self.prev(); });
+    var counter = el('div', 'nav__count', nav);
+    this.navCount = counter;
+    var nextBtn = el('button', 'nav__btn', nav);
+    nextBtn.type = 'button';
+    nextBtn.setAttribute('aria-label', 'Next market');
+    nextBtn.title = 'Next (\u2192)';
+    nextBtn.textContent = '\u203a';
+    nextBtn.addEventListener('click', function () { self.next(); });
+
+    /* ---- background plate, selectable like the weather widget's ---- */
+    var bd = el('div', 'bd', this.stage);
+    this.backdrop = bd;
+    this.bdImg = el('div', 'bd__img', bd);
+    this.bdTint = el('div', 'bd__tint', bd);
+
     /* ---- safe area ---- */
     var board = el('div', 'board', this.stage);
     this.board = board;
@@ -549,6 +580,13 @@
     var chart = el('div', 'chart', hero);
     this.chart = chart;
 
+    /* The outcomes of a pasted event. Rendered instead of the 7-day line: a
+       "next CEO" question is a field of candidates, not a single price series. */
+    /* parent is the hero, NOT hero__body: renderHero() empties hero__body on
+       every redraw, which detached the list the first time round. */
+    this.contracts = el('div', 'contracts', hero);
+    this.contracts.style.display = 'none';
+
     var list = el('div', 'list', main);
     this.list = list;
     setVar(list, '--list-pad-top', cfg.layout.listPadTop + 'px');
@@ -601,6 +639,35 @@
 
     var p = cfg.palette || {};
     var st = this.stage;
+
+    /* ---- the footer is optional: with it off the board keeps the space ---- */
+    var footless = !!(cfg.footer && cfg.footer.visible === false);
+    if (this.footer) this.footer.style.display = footless ? 'none' : '';
+    if (this.board) this.board.classList.toggle('is-footless', footless);
+
+    /* ---- one column when the ranked list is off ---- */
+    var solo = !!(cfg.list && cfg.list.visible === false);
+    if (this.main) this.main.classList.toggle('is-solo', solo);
+    if (this.list) this.list.style.display = solo ? 'none' : '';
+    if (this.hero) this.hero.classList.toggle('is-solo', solo);
+    if (this.nav) this.nav.style.display = (cfg.nav && cfg.nav.visible === false) ? 'none' : '';
+    this.renderNavCount();
+
+    /* ---- background plate ---- */
+    var bd = cfg.backdrop || {};
+    if (this.backdrop) {
+      var on = bd.enabled === true && !!bd.image;
+      this.backdrop.style.display = on ? '' : 'none';
+      if (on) {
+        var img = String(bd.image);
+        var src = img.indexOf('/') !== -1 ? img : 'backdrops/' + img + '.webp';
+        setVar(this.bdImg, '--bd-src', 'url("' + src + '")');
+        setVar(this.bdImg, '--bd-op', bd.opacity == null ? 0.5 : bd.opacity);
+        setVar(this.bdImg, '--bd-blur', (bd.blur || 0) + 'px');
+        setVar(this.bdImg, '--bd-pan', (bd.panSeconds || 70) + 's');
+        setVar(this.bdTint, '--bd-tint', bd.tint || 'rgba(10,10,11,0.72)');
+      }
+    }
     setVar(st, '--ink', p.ink);
     setVar(st, '--ink-soft', p.inkSoft);
     setVar(st, '--ink-mid', '#b9bdc5');
@@ -719,10 +786,13 @@
     }
     this.empty.style.display = 'none';
     this.hero.style.display = '';
-    this.list.style.display = '';
+    /* renderMarkets runs after the solo toggle in apply(); without this it puts
+       the list back on screen a moment after the layout hid it. */
+    this.list.style.display = (cfg.list && cfg.list.visible === false) ? 'none' : '';
 
     this.renderHero(this.markets[this.heroIdx]);
     this.renderList();
+    if (this.renderNavCount) this.renderNavCount();
     this.loadAssetData();
   };
 
@@ -992,6 +1062,7 @@
     /* opening is also a topic change when it is another row: that row becomes the
        hero, so Back returns to the list with that market marked */
     this.heroIdx = next;
+    if (this.renderNavCount) this.renderNavCount();
     rememberHero(m);
     /* An opened market is a deliberate selection: nothing may advance it while it
        is on screen. Rotation is parked here and picked up again by Back, so the
@@ -1212,6 +1283,47 @@
 
   /* Build the hero's inner content for one market. Text only — the animation
      layer treats this whole block as the thing that swaps. */
+  /* One row per contract: name, probability, today's move, and the Yes/No pair.
+     Mirrors the market page it came from, in the board's own type and palette. */
+  Board.prototype.renderContracts = function (contracts) {
+    var wrap = this.contracts;
+    wrap.innerHTML = '';
+    var head = el('div', 'contracts__head', wrap);
+    var h1 = el('div', null, head);
+    h1.textContent = 'Contracts';
+    var h2 = el('div', 'contracts__count', head);
+    h2.textContent = contracts.length + (contracts.length === 1 ? ' outcome' : ' outcomes');
+
+    contracts.forEach(function (c) {
+      var row = el('div', 'contract', wrap);
+      var who = el('div', 'contract__who', row);
+      if (c.image) {
+        var img = el('img', 'contract__icon', who);
+        img.src = c.image;
+        img.alt = '';
+        img.addEventListener('error', function () { img.style.visibility = 'hidden'; });
+      }
+      var name = el('span', 'contract__name', who);
+      name.textContent = c.name;
+
+      var pct = el('div', 'contract__pct num', row);
+      pct.appendChild(document.createTextNode(c.yes === null || c.yes === undefined ? '\u2014' : pctText(c.yes)));
+      var pcSmall = el('small', null, pct);
+      pcSmall.textContent = '%';
+
+      var delta = el('div', 'contract__delta ' + (c.change > 0 ? 'up' : c.change < 0 ? 'down' : 'flat'), row);
+      delta.textContent = c.change === null || c.change === undefined
+        ? ''
+        : (c.change > 0 ? '\u25b2 ' : c.change < 0 ? '\u25bc ' : '') + Math.abs(c.change) + '%';
+
+      var pills = el('div', 'contract__pills', row);
+      var yes = el('span', 'cpill cpill--yes', pills);
+      yes.textContent = 'Yes ' + (c.yes === null || c.yes === undefined ? '\u2014' : pctText(c.yes) + '%');
+      var no = el('span', 'cpill cpill--no', pills);
+      no.textContent = 'No ' + (c.no === null || c.no === undefined ? '\u2014' : pctText(c.no) + '%');
+    });
+  };
+
   Board.prototype.renderHero = function (m) {
     var cfg = this.cfg, h = cfg.hero, self = this;
     this.heroBody.innerHTML = '';
@@ -1232,6 +1344,15 @@
     var q = el('h2', 'hero__topic', this.heroBody);
     q.textContent = m.topic;
     this.heroTopic = q;
+
+    /* a market whose closing date has gone by is flagged on air, not silently
+       presented as live odds */
+    var endedAt = m.ends ? Date.parse(m.ends) : NaN;
+    if (isFinite(endedAt) && endedAt < Date.now()) {
+      var ended = el('span', 'hero__ended', this.heroBody);
+      ended.textContent = 'Closed \u00b7 ' + formatEnds(m.ends);
+      ended.title = 'This market has passed its closing date';
+    }
 
     if (h.showProbability || h.showStats) {
       var figs = el('div', 'figs', this.heroBody);
@@ -1272,14 +1393,19 @@
       }
     }
 
-    /* The 7-day graphic only appears when the market is about an asset, so a
-       macro or policy question is not given a made-up price history. */
+    /* A pasted event replaces the graphic with its own contracts. */
+    var hasContracts = Array.isArray(m.contracts) && m.contracts.length > 0;
     if (this.chart) this.chart.style.height = '';
-    var wantChart = h.showHistory !== false && (h.showWhenNotAsset === true || isAssetMarket(m, cfg));
+    var wantChart = !hasContracts && h.showHistory !== false &&
+      (h.showWhenNotAsset === true || isAssetMarket(m, cfg));
     if (wantChart) { this.chart.style.display = ''; this.renderChart(m); }
     else this.chart.style.display = 'none';
+    if (this.contracts) {
+      if (hasContracts) { this.contracts.style.display = ''; this.renderContracts(m.contracts); }
+      else { this.contracts.style.display = 'none'; this.contracts.innerHTML = ''; }
+    }
     /* marks a hero with no graphic, so the topic can use the freed room */
-    if (this.hero) this.hero.classList.toggle('is-bare', !wantChart);
+    if (this.hero) this.hero.classList.toggle('is-bare', !wantChart && !hasContracts);
 
     /* measure once the fonts have settled, otherwise the shrunk size is decided
        against a fallback font and the row overflows again after the webfont lands */
@@ -1648,6 +1774,7 @@
          outgoing hero now stays on screen for the fade-out, and the swap happens
          at the handover — one clean out-in, nothing rendered twice. */
     this.heroIdx = next;
+    if (this.renderNavCount) this.renderNavCount();
     rememberHero(m);
     /* in the detail view, next/prev moves the opened market too — Back must
        return to the list showing whatever is on screen, not the one first opened */
@@ -1725,6 +1852,13 @@
          on screen rather than the outgoing one frozen mid-fade. */
       if (settle) settle();
     }, (span + 1.0) * 1000);
+  };
+
+  Board.prototype.renderNavCount = function () {
+    if (!this.navCount) return;
+    var n = this.markets ? this.markets.length : 0;
+    var i = n ? this.heroIdx + 1 : 0;
+    this.navCount.textContent = n ? (i < 10 ? '0' + i : String(i)) + ' / ' + (n < 10 ? '0' + n : String(n)) : '';
   };
 
   Board.prototype.next = function () { return this.switchTo(this.heroIdx + 1); };
