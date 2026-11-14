@@ -169,6 +169,7 @@
     refreshFields();
     renderMarkets();
     renderCategories();
+    if (typeof renderPastedList === 'function') renderPastedList();
     paintAllHex();
     var rawEl = $('rawJson');
     if (rawEl) rawEl.value = JSON.stringify(cfg, null, 2);
