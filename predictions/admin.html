@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Prediction Markets — Control</title>
-  <link rel="stylesheet" href="admin.css?v=1.6.2" />
+  <link rel="stylesheet" href="admin.css?v=1.6.7" />
 <script>
   /* The hub is the single source of truth for the theme: same origin, same
      localStorage key, so switching it there switches every panel. Resolved
@@ -50,10 +50,10 @@
           <option value="0.75">75%</option>
           <option value="1">100%</option>
         </select>
-        <a id="linkOut" class="mini" href="index.html?v=1.6.2" target="_blank">open overlay &#8599;</a>
+        <a id="linkOut" class="mini" href="index.html?v=1.6.7" target="_blank">open overlay &#8599;</a>
       </div>
       <div class="preview__stage" id="previewStage">
-        <iframe id="preview" src="index.html?preview=1&v=1.6.2" title="preview"></iframe>
+        <iframe id="preview" src="index.html?preview=1&v=1.6.7" title="preview"></iframe>
       </div>
       <p class="hint">
         In OBS add a <strong>Browser source</strong> pointing at <code id="obsUrl">index.html</code>
@@ -67,7 +67,6 @@
     <section class="editor">
       <nav class="tabs" role="tablist" aria-label="Settings sections">
         <button class="tab is-active" data-tab="content" role="tab" aria-selected="true">Content</button>
-        <button class="tab" data-tab="poly" role="tab" aria-selected="false">Headlines</button>
         <button class="tab" data-tab="look" role="tab" aria-selected="false">Look</button>
         <button class="tab" data-tab="layout" role="tab" aria-selected="false">Layout</button>
         <button class="tab" data-tab="anim" role="tab" aria-selected="false">Animation</button>
@@ -222,75 +221,6 @@
         </section>
       </div>
 
-      <!-- POLYMARKET -->
-      <div class="panel-body" data-panel="poly">
-
-        <!-- The switch that decides what goes on air. It gets a real surface of
-             its own because one mis-click here replaces the whole board. -->
-        <section class="group group--source">
-          <header class="group__head">
-            <h2 class="group__title">Source</h2>
-            <p class="group__note">what the board renders</p>
-          </header>
-          <div class="field field--wide">
-            <label>Headline source</label>
-            <select id="c_source">
-              <option value="manual">manual &mdash; the hand-typed board</option>
-              <option value="polymarket">headlines &mdash; the fetched board</option>
-            </select>
-          </div>
-          <p class="hint">
-            <b>manual</b> is the board typed in the Content tab. <b>headlines</b> is the fetched
-            headlines grouped by category &mdash; selecting it is what puts them on air.
-          </p>
-        </section>
-
-        <section class="group">
-          <header class="group__head">
-            <h2 class="group__title">Headlines</h2>
-            <p class="group__note">fetched by hand &mdash; never on a timer</p>
-            <span class="group__meta" id="polyBoardStatus">never updated</span>
-          </header>
-          <div class="polyactions">
-            <button id="btnPolyUpdate" class="btn btn--primary">Update headlines</button>
-            <button id="btnPolyTags" class="btn">Load tags</button>
-            <span class="muted polytick" id="polyProgress"></span>
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>Order on air</label>
-              <select id="c_marketSort">
-                <option value="manual">pasted order</option>
-                <option value="volume">volume</option>
-                <option value="probability">probability</option>
-                <option value="change">change</option>
-                <option value="topic">topic</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Entity</label>
-              <select id="c_polyEntity">
-                <option value="events">events &mdash; headline questions</option>
-                <option value="markets">markets &mdash; the sub-questions</option>
-              </select>
-            </div>
-            <div class="field"><label>Pull per category</label><input id="c_polyFetched" type="number" min="1" max="20" /></div>
-          </div>
-          <div class="field field--wide">
-            <label>Sort key override <span class="muted">(blank = auto)</span></label>
-            <input id="c_polySortKey" type="text" placeholder="auto" />
-          </div>
-          <p class="hint">
-            <b>events</b> fetches headline questions that carry their own markets; <b>markets</b>
-            fetches the sub-questions directly. The hub derives the upstream sort key from the
-            entity you pick &mdash; leave the override blank unless the upstream rejects it. There is
-            one Update per press and no refresh timer, so the board cannot change under you.
-          </p>
-          <div id="polyCategories"></div>
-        </section>
-      </div>
-
-      <!-- LOOK -->
       <div class="panel-body" data-panel="look">
         <section class="group">
           <header class="group__head">
@@ -475,9 +405,9 @@
     </section>
   </main>
 
-  <script src="../shared/datasync.js?v=1.4.1"></script>
-  <script src="config.js?v=1.4.1"></script>
-  <script src="config-merge.js?v=1.4.1"></script>
-  <script src="admin.js?v=1.6.2"></script>
+  <script src="../shared/datasync.js?v=1.6.7"></script>
+  <script src="config.js?v=1.6.7"></script>
+  <script src="config-merge.js?v=1.6.7"></script>
+  <script src="admin.js?v=1.6.7"></script>
 </body>
 </html>
