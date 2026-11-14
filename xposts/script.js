@@ -98,8 +98,9 @@
       }
       if (h.right) right.style.fontSize = (h.right.size || 22) + 'px';
     }
+    /* The pager is how an operator drives the board, so it is always on. */
     var nav = $('nav');
-    if (nav) nav.style.display = (cfg.nav && cfg.nav.visible === false) ? 'none' : '';
+    if (nav) nav.style.display = '';
   }
 
   /* ------------------------------------------------------------------ render */
@@ -148,12 +149,11 @@
         img.alt = '';
         img.title = 'Click to enlarge';
         img.addEventListener('error', function () { img.style.display = 'none'; });
-        if (cfg.imageZoom && cfg.imageZoom.clickToOpen !== false) {
-          img.addEventListener('click', function (ev) {
-            ev.stopPropagation();
-            openZoom(p, k);
-          });
-        }
+        /* every image on the board is enlargeable — no flag decides it */
+        img.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          openZoom(p, k);
+        });
       });
     }
 

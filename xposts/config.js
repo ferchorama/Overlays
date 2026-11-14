@@ -34,16 +34,12 @@ window.XP_DEFAULT_CONFIG = {
     mediaMaxHeight: 560
   },
 
-  /* Clicking an image opens it across the whole frame — the overlay is captured
-     at 1080p but streamed inside a smaller box, so an image needs to be able to
-     take the screen on demand. */
+  /* Clicking any image opens it across the whole frame — the overlay is captured
+     at 1080p but streamed inside a smaller box, so an image has to be able to
+     take the screen on demand. Always on, never a preference. */
   imageZoom: {
-    enabled: true,
-    clickToOpen: true,
     backdrop: 0.975
   },
-
-  nav: { visible: true },
 
   animation: {
     wipeMs: 480,
