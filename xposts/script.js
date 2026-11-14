@@ -152,7 +152,7 @@
         /* every image on the board is enlargeable — no flag decides it */
         img.addEventListener('click', function (ev) {
           ev.stopPropagation();
-          openZoom(p, k);
+          openZoom(p, k, img);
         });
       });
     }
@@ -308,21 +308,47 @@
 
   function zoomPhotos(p) { return (p && p.photos) ? p.photos.slice(0, 4) : []; }
 
+  /* Geometry of the enlarged picture: contain into the frame, then report both
+     the box and where the thumbnail it grows out of sits. */
+  function zoomBox(nat) {
+    var st = stage.getBoundingClientRect();
+    var r = (nat && nat[0] && nat[1]) ? nat[0] / nat[1] : 16 / 9;
+    var fw = st.width, fh = st.height;
+    var w = Math.min(fw, fh * r);
+    var h = w / r;
+    return { x: (fw - w) / 2, y: (fh - h) / 2, w: w, h: h, cw: fw, ch: fh };
+  }
+
+  function thumbRect(el) {
+    if (!el) return null;
+    var st = stage.getBoundingClientRect();
+    var b = el.getBoundingClientRect();
+    if (!b.width || !b.height) return null;
+    return { x: b.left - st.left, y: b.top - st.top, w: b.width, h: b.height };
+  }
+
   function closeZoom() {
     if (!zoomLayer) return;
     var layer = zoomLayer;
+    var frame = layer.querySelector('.zoom__frame');
     zoomLayer = null;
-    if (HAS_GSAP) {
-      window.gsap.to(layer, {
-        opacity: 0, duration: 0.22, ease: 'power2.in',
-        onComplete: function () { layer.remove(); }
+    var back = layer.__fromThumb;
+    if (HAS_GSAP && frame && back) {
+      window.gsap.to(frame, {
+        x: back.x, y: back.y, width: back.w, height: back.h, borderRadius: 18,
+        duration: 0.34, ease: 'power3.inOut'
       });
+      window.gsap.to(layer.querySelectorAll('.zoom__close, .zoom__nav, .zoom__cap, .zoom__hint'),
+        { opacity: 0, duration: 0.18 });
+      window.gsap.to(layer, { opacity: 0, duration: 0.3, delay: 0.06, onComplete: function () { layer.remove(); } });
+    } else if (HAS_GSAP) {
+      window.gsap.to(layer, { opacity: 0, duration: 0.22, onComplete: function () { layer.remove(); } });
     } else {
       layer.remove();
     }
   }
 
-  function openZoom(p, i) {
+  function openZoom(p, i, thumbEl) {
     var photos = zoomPhotos(p);
     if (!photos.length) return;
     if (zoomLayer) closeZoom();
@@ -330,24 +356,19 @@
 
     var layer = el('div', 'zoom', stage);
     layer.id = 'zoomLayer';
-    var shade = el('div', 'zoom__shade', layer);
-    if (cfg.imageZoom && cfg.imageZoom.backdrop) {
-      shade.style.background = 'rgba(6, 6, 7, ' + cfg.imageZoom.backdrop + ')';
-    }
+    el('div', 'zoom__shade', layer);
 
-    var fig = el('figure', 'zoom__fig', layer);
-    var img = el('img', 'zoom__img', fig);
+    var frame = el('div', 'zoom__frame', layer);
+    var img = el('img', null, frame);
     img.src = photos[zoomIndex].url;
     img.alt = '';
 
-    var cap = el('figcaption', 'zoom__cap', fig);
+    var cap = el('figcaption', 'zoom__cap', layer);
     function paintCap() {
       cap.textContent = '@' + (p.handle || '') + (photos.length > 1 ? '  ·  ' + (zoomIndex + 1) + ' / ' + photos.length : '');
     }
     paintCap();
 
-    /* a full-bleed image leaves nothing to click "outside", so the corner
-       control is the guaranteed way back to the post */
     var close = el('button', 'zoom__close', layer);
     close.type = 'button';
     close.innerHTML = '&#10005;';
@@ -366,7 +387,7 @@
       prevBtn.addEventListener('click', function (ev) {
         ev.stopPropagation();
         zoomIndex = (zoomIndex - 1 + photos.length) % photos.length;
-        img.src = photos[zoomIndex].url; paintCap();
+        swap();
       });
 
       var nextBtn = el('button', 'zoom__nav zoom__nav--next', layer);
@@ -376,18 +397,53 @@
       nextBtn.addEventListener('click', function (ev) {
         ev.stopPropagation();
         zoomIndex = (zoomIndex + 1) % photos.length;
-        img.src = photos[zoomIndex].url; paintCap();
+        swap();
       });
     }
 
-    /* clicking the picture or the backdrop closes it: the frame is the picture,
-       so that is the gesture people reach for */
+    /* stepping keeps the frame where it is and re-cuts the box to the new ratio */
+    function swap() {
+      img.src = photos[zoomIndex].url;
+      paintCap();
+      img.onload = function () {
+        var b = zoomBox([img.naturalWidth, img.naturalHeight]);
+        if (HAS_GSAP) window.gsap.to(frame, { x: b.x, y: b.y, width: b.w, height: b.h, duration: 0.3, ease: 'power3.out' });
+        else { frame.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px)'; frame.style.width = b.w + 'px'; frame.style.height = b.h + 'px'; }
+      };
+    }
+
     layer.addEventListener('click', function () { closeZoom(); });
 
-    if (HAS_GSAP) {
-      window.gsap.fromTo(layer, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: 'power2.out' });
-      window.gsap.fromTo(img, { scale: 0.98 }, { scale: 1, duration: 0.4, ease: 'power3.out' });
+    /* measure once the picture knows its own size, then grow it out of the
+       thumbnail: the zoom reads as the image lifting off the board */
+    function place() {
+      var b = zoomBox([img.naturalWidth, img.naturalHeight]);
+      var from = thumbRect(thumbEl);
+      layer.__fromThumb = from;
+
+      frame.style.width = b.w + 'px';
+      frame.style.height = b.h + 'px';
+
+      var g = window.gsap;
+      if (!HAS_GSAP) {
+        frame.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px)';
+        return;
+      }
+      if (from) {
+        g.set(frame, { x: from.x, y: from.y, width: from.w, height: from.h, borderRadius: 18, transformOrigin: '0 0' });
+        g.to(frame, { x: b.x, y: b.y, width: b.w, height: b.h, borderRadius: 0, duration: 0.46, ease: 'power3.inOut' });
+      } else {
+        g.fromTo(frame, { scale: 0.9, opacity: 0, transformOrigin: '50% 50%' },
+          { scale: 1, opacity: 1, duration: 0.4, ease: 'power3.out' });
+        g.set(frame, { x: b.x, y: b.y });
+      }
+      g.fromTo(layer.querySelectorAll('.zoom__close, .zoom__nav, .zoom__cap, .zoom__hint'),
+        { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, delay: 0.18, stagger: 0.03 });
     }
+
+    if (img.complete && img.naturalWidth) place();
+    else img.addEventListener('load', place);
+
     zoomLayer = layer;
     return layer;
   }

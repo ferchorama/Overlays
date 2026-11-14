@@ -196,28 +196,31 @@ body { font-family: var(--font-text); color: var(--ink); }
    multi-image post; clicking anywhere else closes it. */
 .zoom {
   position: absolute; inset: 0; z-index: 20;
-  display: flex; align-items: center; justify-content: center;
+  /* children are placed by transform from the top-left corner: centring them
+     here as well would double the offset */
+  display: block;
 }
 .zoom__shade {
   position: absolute; inset: 0;
-  background: rgba(6, 6, 7, 0.975);
-  backdrop-filter: blur(14px) saturate(0.75);
+  /* the post stays visible behind the enlarged image, blurred and dimmed just
+     enough that the picture reads first */
+  background: rgba(6, 6, 7, 0.42);
+  backdrop-filter: blur(13px) saturate(0.9);
 }
 .zoom__fig {
   position: absolute; inset: 0; margin: 0;
   display: flex; align-items: center; justify-content: center;
 }
-/* The picture is bounded by the frame on BOTH axes and nothing else, so its
-   longest side always lands on the edge of the frame: a wide shot runs the full
-   1920, a tall or square one runs the full 1080. The caption is overlaid rather
-   than stacked, so it never steals height from the image. */
-.zoom__img {
-  display: block;
-  /* the element fills the frame and the picture is contained inside it, so a
-     small source still scales up until its longest side touches the edge */
-  width: 100%; height: 100%;
-  object-fit: contain;
+/* The picture grows out of its own thumbnail into a box that is exactly its own
+   aspect ratio, so its longest side always lands on an edge of the frame: a wide
+   shot runs the full 1920, a tall or square one the full 1080. */
+.zoom__frame {
+  position: absolute; overflow: hidden;
   border-radius: 0;
+  will-change: transform, width, height;
+}
+.zoom__frame img {
+  display: block; width: 100%; height: 100%;
   cursor: zoom-out;
 }
 .zoom__cap {
