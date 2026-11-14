@@ -714,6 +714,10 @@
 
     this.rightTop.textContent = h.right.text || '';
     this.rightSub.textContent = h.right.sub || '';
+    /* pasted URLs are not a volume ranking — hide the kicker when it's empty */
+    if (this.headerRight) {
+      this.headerRight.style.display = (h.right.text || h.right.sub) ? '' : 'none';
+    }
     setVar(this.headerRight, '--right-size', h.right.size + 'px');
     setVar(this.headerRight, '--right-track', h.right.tracking + 'em');
     setVar(this.headerRight, '--right-color', h.right.color);
@@ -1301,6 +1305,13 @@
   Board.prototype.renderContracts = function (contracts) {
     var wrap = this.contracts;
     this._contractTotal = contracts.length;
+    this._fitGen = (this._fitGen || 0) + 1;
+    var fitGen = this._fitGen;
+    if (HAS_GSAP) {
+      try { gsap.set(wrap, { clearProps: 'opacity,transform,clipPath' }); } catch (e) {}
+    }
+    wrap.style.opacity = '';
+    wrap.style.transform = '';
     wrap.innerHTML = '';
     var head = el('div', 'contracts__head', wrap);
     var h1 = el('div', null, head);
@@ -1342,13 +1353,15 @@
     });
 
     this.fitContractRows();
-    /* the brand font swaps in after first paint and every row grows a little;
-       fit again once it is in, or the last row ends up under the frame edge */
     var self = this;
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () { self.fitContractRows(); });
-      setTimeout(function () { self.fitContractRows(); }, 1200);
+    function fitIfCurrent() {
+      if (self._fitGen !== fitGen) return;
+      self.fitContractRows();
     }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitIfCurrent);
+    }
+    setTimeout(fitIfCurrent, 1200);
   };
 
   /* fill the frame: as many outcome rows as fit, no counter, never a crop */
@@ -1424,7 +1437,14 @@
         var lead = leadingContract(m);
         if (lead && lead.name) {
           var lv = el('div', 'hero__lead', pw);
-          lv.textContent = lead.name;
+          if (lead.image) {
+            var limg = el('img', 'hero__lead-icon', lv);
+            limg.src = lead.image;
+            limg.alt = '';
+            limg.addEventListener('error', function () { limg.style.display = 'none'; });
+          }
+          var lname = el('span', 'hero__lead-name', lv);
+          lname.textContent = lead.name;
         }
         var big = el('div', 'num huge', pw);
         var shownProb = (lead && lead.yes != null) ? lead.yes : m.probability;
@@ -1925,8 +1945,9 @@
   /* Guarantee the hero is actually visible once the switch should be over. */
   Board.prototype._settleHero = function (bits, chart) {
     if (!HAS_GSAP) return;
-    gsap.set(bits || [], { clearProps: 'opacity,transform' });
+    gsap.set(bits || [], { clearProps: 'opacity,transform,clipPath' });
     if (chart) gsap.set(chart, { clearProps: 'opacity' });
+    if (this.contracts) gsap.set(this.contracts, { clearProps: 'opacity,transform,clipPath' });
     settleChartLine(this.chartPath);
   };
 
@@ -1991,6 +2012,10 @@
     if (this.hugeNum) {
       tl.from(this.hugeNum, { scale: 0.94, transformOrigin: 'left bottom', duration: 0.44, ease: 'power3.out' }, 0.08);
     }
+    if (this.contracts && this.contracts.style.display !== 'none') {
+      tl.fromTo(this.contracts, { opacity: 0, y: dir * 12 },
+        { opacity: 1, y: 0, duration: 0.36, ease: 'power2.out' }, 0.08);
+    }
     if (rows.length) {
       tl.from(rows, { opacity: 0, y: dir * 14, duration: 0.36, ease: 'power2.out', stagger: 0.045 }, 0.12);
     }
@@ -1998,6 +2023,7 @@
     var self = this;
     this._armSwitch(tl, function () {
       gsap.set([self.heroBody].concat(bits), { clearProps: 'opacity,transform,clipPath' });
+      if (self.contracts) gsap.set(self.contracts, { clearProps: 'opacity,transform' });
       if (rows.length) gsap.set(rows, { clearProps: 'opacity,transform' });
     });
     tl.play();

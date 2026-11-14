@@ -73,8 +73,8 @@ window.PM_DEFAULT_CONFIG = {
       uppercase: false
     },
     right: {
-      text: 'Top markets',
-      sub: 'by volume',
+      text: '',
+      sub: '',
       size: 19,
       color: '#c9ccd3',
       subColor: '#7d828c',

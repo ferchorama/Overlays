@@ -978,3 +978,17 @@ body, .board { font-family: var(--font-text); }
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
+
+/* winning outcome in the hero: name + a large plate for its logo */
+.hero__lead {
+  display: flex; align-items: center; gap: 18px;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 42px; line-height: 1.1;
+}
+.hero__lead-icon {
+  width: 88px; height: 88px; flex: none;
+  border-radius: 18px; object-fit: cover;
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--line);
+}
+.hero__lead-name { min-width: 0; }
