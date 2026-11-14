@@ -1477,6 +1477,11 @@
       }];
     }
     var listed = hadContracts ? m.contracts.slice() : [];
+    var leadC = leadingContract(m);
+    if (leadC && listed.length) {
+      var at = listed.indexOf(leadC);
+      if (at !== -1) listed.splice(at, 1);
+    }
     var hasContracts = listed.length > 0;
     m._listed = listed;
     if (this.chart) this.chart.style.height = '';
