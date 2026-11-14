@@ -888,3 +888,25 @@ body, .board { font-family: var(--font-text); }
 .board__main.is-solo .contract__delta { white-space: nowrap; }
 .board__main.is-solo .contract__pct { white-space: nowrap; }
 .board__main.is-solo .contract__pills { white-space: nowrap; }
+
+/* count reads as a continuation of the label, not a second column */
+.board__main.is-solo .contracts__head { justify-content: flex-start; gap: 12px; align-items: baseline; }
+.board__main.is-solo .contracts__count { font-size: 21px; letter-spacing: .1em; }
+
+/* the stat strip is the second thing a viewer reads after the number */
+.board__main.is-solo .figs { gap: 56px; align-items: flex-end; }
+.board__main.is-solo .figs .lbl { font-size: 24px; letter-spacing: .1em; }
+.board__main.is-solo .side--row { gap: 64px; }
+.board__main.is-solo .kv .v { font-size: 34px; }
+.board__main.is-solo .kv .v small { font-size: 22px; }
+
+/* one more notch on the reading order: eyebrow, PROBABILITY, stat strip */
+.board__main.is-solo .eyebrow { font-size: 24px; }
+.board__main.is-solo .eyebrow b { font-size: 26px; }
+.board__main.is-solo .figs .lbl { font-size: 27px; }
+.board__main.is-solo .kv .v { font-size: 38px; }
+.board__main.is-solo .side--row { gap: 70px; }
+
+/* beats the older .side .kv .v { 19px } rule, which was quietly winning */
+.board__main.is-solo .side .kv .v { font-size: 38px; }
+.board__main.is-solo .side .kv .v small { font-size: 22px; }

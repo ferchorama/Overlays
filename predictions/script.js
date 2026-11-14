@@ -1306,8 +1306,10 @@
     var head = el('div', 'contracts__head', wrap);
     var h1 = el('div', null, head);
     h1.textContent = 'Contracts';
+    /* the count sits beside the word Contracts: on the right it collided with
+       the first row's Yes/No pills once the type grew */
     var h2 = el('div', 'contracts__count', head);
-    h2.textContent = contracts.length + (contracts.length === 1 ? ' outcome' : ' outcomes');
+    h2.textContent = '\u00b7 ' + contracts.length + (contracts.length === 1 ? ' outcome' : ' outcomes');
 
     /* a 17-outcome price ladder cannot fit a 1080 frame; the board shows the
        top rows and says how many are behind them */
