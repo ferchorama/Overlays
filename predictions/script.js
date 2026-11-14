@@ -790,7 +790,13 @@
     /* choose the hero */
     var mode = (cfg.hero && cfg.hero.mode) || 'volume';
     if (mode === 'first') this.heroIdx = 0;
-    else if (mode === 'index') this.heroIdx = clamp(Math.round(num(cfg.hero.index, 0)), 0, Math.max(0, this.markets.length - 1));
+    else if (mode === 'index') {
+      var wantIdx = Math.round(num(cfg.hero.index, 0));
+      /* a remembered index from a longer board used to clamp to the LAST market,
+         so a fresh paste opened on its final link. An index that no longer exists
+         means "start at the top", not "jump to the end". */
+      this.heroIdx = (wantIdx >= 0 && wantIdx < this.markets.length) ? wantIdx : 0;
+    }
     /* 'volume' is already the sort order when markets.sort = 'volume'; for any
        other sort the top-volume market is still what the reference leads with */
     else {

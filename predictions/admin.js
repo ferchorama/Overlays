@@ -773,6 +773,11 @@
         p.lastError = '';
         if (pasteIn) pasteIn.value = '';
         refreshPasteHint();
+        /* a new list opens on its first outcome, whatever the old board's
+           remembered index said */
+        cfg.hero = cfg.hero || {};
+        cfg.hero.mode = 'first';
+        cfg.hero.index = 0;
         renderCategories();
         renderPastedList();
         pasteBtn.disabled = false;
