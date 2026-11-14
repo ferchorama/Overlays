@@ -145,6 +145,15 @@
       box.style.setProperty('--media-max', (cfg.hero.mediaMaxHeight || 430) + 'px');
       media.forEach(function (ph, k) {
         var img = el('img', null, box);
+        /* X reports the real pixel size with every photo. Setting it as the
+           intrinsic size means the browser reserves the exact box on the first
+           paint: nothing reflows when the file lands, which is what used to make
+           a switch settle a second late on air. */
+        if (ph.w && ph.h) {
+          img.width = ph.w;
+          img.height = ph.h;
+          img.style.aspectRatio = ph.w + ' / ' + ph.h;
+        }
         img.src = ph.url;
         img.alt = '';
         img.title = 'Click to enlarge';
@@ -240,6 +249,33 @@
     if (navEl) navEl.style.display = '';
     heroBody.appendChild(postNode(p, true));
     fitFrame();
+
+    var imgs = heroBody.querySelectorAll('.post__media img');
+    if (imgs.length && imgs[0].decode) {
+      Promise.all(Array.prototype.map.call(imgs, function (im) {
+        return im.decode().catch(function () { /* broken file */ });
+      })).then(function () {
+        if (posts[index] === p) fitFrame();
+      });
+    }
+  }
+
+  /* Keep the neighbour posts' pictures in the browser cache: the operator moves
+     forward and back constantly, and a cold image is a visible hitch. */
+  var warmed = {};
+  function warm() {
+    if (!posts.length) return;
+    [index + 1, index + 2, index - 1].forEach(function (k) {
+      var p = posts[((k % posts.length) + posts.length) % posts.length];
+      if (!p) return;
+      (p.photos || []).forEach(function (ph) {
+        if (!ph.url || warmed[ph.url]) return;
+        warmed[ph.url] = 1;
+        var im = new Image();
+        im.src = ph.url;
+        if (im.decode) im.decode().catch(function () { /* ignore */ });
+      });
+    });
   }
 
   function render() {
@@ -249,6 +285,7 @@
     renderQueue();
     renderNav();
     fitFrame();
+    warm();
   }
 
   /* --------------------------------------------------------------- animation */
