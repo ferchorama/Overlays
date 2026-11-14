@@ -329,27 +329,59 @@
     if (cfg.imageZoom && cfg.imageZoom.backdrop) {
       shade.style.background = 'rgba(6, 6, 7, ' + cfg.imageZoom.backdrop + ')';
     }
+
     var fig = el('figure', 'zoom__fig', layer);
     var img = el('img', 'zoom__img', fig);
     img.src = photos[zoomIndex].url;
     img.alt = '';
-    var cap = el('figcaption', 'zoom__cap', fig);
-    cap.textContent = '@' + (p.handle || '') + (photos.length > 1 ? '  ·  ' + (zoomIndex + 1) + ' / ' + photos.length : '');
 
-    layer.addEventListener('click', function (ev) {
-      /* clicking the picture again steps to the next image, anywhere else closes */
-      if (ev.target === img && photos.length > 1) {
+    var cap = el('figcaption', 'zoom__cap', fig);
+    function paintCap() {
+      cap.textContent = '@' + (p.handle || '') + (photos.length > 1 ? '  ·  ' + (zoomIndex + 1) + ' / ' + photos.length : '');
+    }
+    paintCap();
+
+    /* a full-bleed image leaves nothing to click "outside", so the corner
+       control is the guaranteed way back to the post */
+    var close = el('button', 'zoom__close', layer);
+    close.type = 'button';
+    close.innerHTML = '&#10005;';
+    close.title = 'Close (Esc)';
+    close.setAttribute('aria-label', 'Close image');
+    close.addEventListener('click', function (ev) { ev.stopPropagation(); closeZoom(); });
+
+    var hint = el('div', 'zoom__hint', layer);
+    hint.textContent = photos.length > 1 ? 'esc to close · click for next' : 'esc to close';
+
+    if (photos.length > 1) {
+      var prevBtn = el('button', 'zoom__nav zoom__nav--prev', layer);
+      prevBtn.type = 'button';
+      prevBtn.innerHTML = '&lsaquo;';
+      prevBtn.setAttribute('aria-label', 'Previous image');
+      prevBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        zoomIndex = (zoomIndex - 1 + photos.length) % photos.length;
+        img.src = photos[zoomIndex].url; paintCap();
+      });
+
+      var nextBtn = el('button', 'zoom__nav zoom__nav--next', layer);
+      nextBtn.type = 'button';
+      nextBtn.innerHTML = '&rsaquo;';
+      nextBtn.setAttribute('aria-label', 'Next image');
+      nextBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
         zoomIndex = (zoomIndex + 1) % photos.length;
-        img.src = photos[zoomIndex].url;
-        cap.textContent = '@' + (p.handle || '') + '  ·  ' + (zoomIndex + 1) + ' / ' + photos.length;
-        return;
-      }
-      closeZoom();
-    });
+        img.src = photos[zoomIndex].url; paintCap();
+      });
+    }
+
+    /* clicking the picture or the backdrop closes it: the frame is the picture,
+       so that is the gesture people reach for */
+    layer.addEventListener('click', function () { closeZoom(); });
 
     if (HAS_GSAP) {
-      window.gsap.fromTo(layer, { opacity: 0 }, { opacity: 1, duration: 0.28, ease: 'power2.out' });
-      window.gsap.fromTo(img, { scale: 0.96 }, { scale: 1, duration: 0.42, ease: 'power3.out' });
+      window.gsap.fromTo(layer, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: 'power2.out' });
+      window.gsap.fromTo(img, { scale: 0.98 }, { scale: 1, duration: 0.4, ease: 'power3.out' });
     }
     zoomLayer = layer;
     return layer;

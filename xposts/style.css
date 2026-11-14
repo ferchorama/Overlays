@@ -231,3 +231,32 @@ body { font-family: var(--font-text); color: var(--ink); }
 
 /* the copy may use the full frame now that the queue is gone */
 .board__main .post__text { max-width: 66ch; }
+
+/* A full-bleed picture leaves no "outside" to click, so closing needs a control
+   of its own, in the corner, plus a stepper when the post has several images. */
+.zoom__close {
+  position: absolute; top: 28px; right: 32px; z-index: 3;
+  width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(8, 8, 9, 0.72); color: var(--ink);
+  border: 1px solid var(--line); font-size: 24px; line-height: 1;
+  cursor: pointer; backdrop-filter: blur(6px);
+  transition: border-color .15s, background .15s;
+}
+.zoom__close:hover { border-color: var(--brass); background: rgba(216, 180, 95, .18); }
+.zoom__nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(8, 8, 9, 0.72); color: var(--ink);
+  border: 1px solid var(--line); font-size: 26px; line-height: 1;
+  cursor: pointer; backdrop-filter: blur(6px);
+}
+.zoom__nav:hover { border-color: var(--brass); }
+.zoom__nav--prev { left: 28px; }
+.zoom__nav--next { right: 28px; }
+.zoom__hint {
+  position: absolute; right: 32px; bottom: 34px;
+  font-family: var(--font-mono); font-size: 18px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--dimmer);
+}
