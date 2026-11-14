@@ -969,3 +969,12 @@ body, .board { font-family: var(--font-text); }
 .board__main.is-solo .hero__lead {
   font-size: 42px; line-height: 1.1; margin: 4px 0 10px;
 }
+
+/* pills sit in the same cut as the contract names, not Inter / the mono captions */
+.cpill,
+.board__main.is-solo .cpill {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
