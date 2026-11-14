@@ -1049,3 +1049,13 @@ body, .board { font-family: var(--font-text); }
   padding: 12px 22px; min-width: 190px; border-radius: 14px;
   letter-spacing: -0.01em;
 }
+
+/* Neue Haas Display needs more leading than 1.02 at hero size: at 88px the
+   glyphs overflowed the line box and the Yes/No row painted over the cuts */
+.board__main.is-solo .hero__lead-name {
+  line-height: 1.16;
+  overflow: visible;
+  max-width: 22ch;
+}
+.board__main.is-solo .hero__lead-body { gap: 20px; }
+.board__main.is-solo .hero__lead { align-items: flex-start; padding-top: 6px; }
