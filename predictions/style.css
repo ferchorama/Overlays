@@ -992,3 +992,42 @@ body, .board { font-family: var(--font-text); }
   border: 1px solid var(--line);
 }
 .hero__lead-name { min-width: 0; }
+
+/* winning outcome owns the open column beside the number */
+.board__main.is-solo .figs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: end;
+  column-gap: clamp(40px, 5vw, 96px);
+  row-gap: 18px;
+  width: 100%;
+  max-width: none;
+}
+.board__main.is-solo .figs__prob { grid-column: 1; grid-row: 1; }
+.board__main.is-solo .hero__lead {
+  grid-column: 2; grid-row: 1;
+  display: flex; align-items: center; gap: 28px;
+  min-width: 0; margin: 0; padding-bottom: 12px;
+  font-family: var(--font-display); font-weight: 700;
+}
+.board__main.is-solo .hero__lead-icon {
+  width: 168px; height: 168px; flex: none;
+  border-radius: 28px; object-fit: cover;
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 40px rgba(0,0,0,.45);
+}
+.board__main.is-solo .hero__lead-name {
+  font-size: clamp(52px, 4.6vw, 92px);
+  letter-spacing: -0.03em; line-height: 1.02;
+  color: var(--ink);
+}
+.board__main.is-solo .side,
+.board__main.is-solo .side--row {
+  grid-column: 1 / -1; grid-row: 2;
+  justify-content: flex-start;
+}
+.board__main.is-solo .figs__prob .num.huge {
+  font-size: clamp(160px, 13vw, 240px);
+}
+.board__main.is-solo .eyebrow { display: none; }

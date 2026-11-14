@@ -1401,17 +1401,9 @@
     this.heroBody.innerHTML = '';
     if (!m) return;
 
-    if (h.showEyebrow) {
-      var eb = el('div', 'eyebrow', this.heroBody);
-      var lab = el('div', null, eb);
-      lab.textContent = h.eyebrowLabel || '';
-      if (h.showEyebrowVolume) {
-        el('i', null, eb);
-        var vol = el('b', null, eb);
-        vol.textContent = money(m.volume) + ' volume';
-      }
-      this.eyebrow = eb;
-    }
+    /* no invented ranking (#1 by volume) — volume already sits in the stats if
+       the event actually has it */
+    this.eyebrow = null;
 
     var q = el('h2', 'hero__topic', this.heroBody);
     q.textContent = m.topic;
@@ -1433,19 +1425,6 @@
         var pw = el('div', 'figs__prob', figs);
         var pl = el('div', 'lbl', pw);
         pl.textContent = 'Probability';
-        /* the number alone says nothing about which outcome it describes */
-        var lead = leadingContract(m);
-        if (lead && lead.name) {
-          var lv = el('div', 'hero__lead', pw);
-          if (lead.image) {
-            var limg = el('img', 'hero__lead-icon', lv);
-            limg.src = lead.image;
-            limg.alt = '';
-            limg.addEventListener('error', function () { limg.style.display = 'none'; });
-          }
-          var lname = el('span', 'hero__lead-name', lv);
-          lname.textContent = lead.name;
-        }
         var big = el('div', 'num huge', pw);
         var shownProb = (lead && lead.yes != null) ? lead.yes : m.probability;
         big.appendChild(document.createTextNode(pctText(shownProb)));
@@ -1454,6 +1433,20 @@
           sm.textContent = '%';
         }
         this.hugeNum = big;
+      }
+      /* winning identity uses the open column to the right of the number */
+      var lead = leadingContract(m);
+      if (lead && lead.name) {
+        var lv = el('div', 'hero__lead', figs);
+        if (lead.image) {
+          var limg = el('img', 'hero__lead-icon', lv);
+          limg.src = lead.image;
+          limg.alt = '';
+          limg.addEventListener('error', function () { limg.style.display = 'none'; });
+        }
+        var lname = el('span', 'hero__lead-name', lv);
+        lname.textContent = lead.name;
+        this.heroLead = lv;
       }
       if (h.showStats) {
         /* Collect the figures first, then decide the layout from how many there
@@ -1464,7 +1457,10 @@
           stats.push(['24h change', moveText(m.change) + ' pts', [moveClass(m.change)]]);
         }
         if (h.showVolume && m.volume) stats.push(['Volume', money(m.volume), []]);
-        if (h.showCategory && m.category) stats.push(['Category', m.category, []]);
+        var cat = String(m.category || '').trim();
+        if (h.showCategory && cat && cat.toLowerCase() !== 'pasted') {
+          stats.push(['Category', cat, []]);
+        }
         if (h.showEnds && m.ends) stats.push(['Ends', formatEnds(m.ends), []]);
 
         var cols = stats.length >= 4 ? 2 : stats.length;
