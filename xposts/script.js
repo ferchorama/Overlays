@@ -225,14 +225,19 @@
     if (!heroBody) return;
     heroBody.innerHTML = '';
     var p = posts[index];
+
+    /* The empty state lives inside the hero body, which is cleared at the top of
+       every render. Appending it to the stage instead meant one copy per repaint
+       — the wall of "No posts yet" that appeared after the board was cleared. */
     if (!p) {
-      var e = el('div', 'empty', stage);
+      var e = el('div', 'empty', heroBody);
       e.innerHTML = 'No posts yet<small>paste X links in the control panel</small>';
-      e.id = 'emptyNote';
+      var nav = $('nav');
+      if (nav) nav.style.display = 'none';
       return;
     }
-    var note = $('emptyNote');
-    if (note) note.remove();
+    var navEl = $('nav');
+    if (navEl) navEl.style.display = '';
     heroBody.appendChild(postNode(p, true));
     fitFrame();
   }
