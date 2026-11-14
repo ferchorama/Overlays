@@ -1105,3 +1105,11 @@ body, .board { font-family: var(--font-text); }
   padding-top: calc(10px + var(--row-extra, 0px) / 2);
   padding-bottom: calc(10px + var(--row-extra, 0px) / 2);
 }
+
+/* the question gets the full width before it is allowed to wrap; the height fit
+   already shrinks the type if a genuinely long headline needs it */
+.board__main.is-solo .hero__topic,
+.hero.is-solo .hero__topic {
+  max-width: none;
+  width: 100%;
+}

@@ -113,10 +113,10 @@ window.PM_DEFAULT_CONFIG = {
     showEyebrow: true,
     eyebrowLabel: '#1 by volume',
     showEyebrowVolume: true,
-    topicSize: 52,
+    topicSize: 96,
     topicMaxLines: 2,
     showProbability: true,
-    probabilitySize: 176,
+    probabilitySize: 330,
     probabilitySuffix: '%',
     showStats: true,
     showHistory: true,         /* the probability line under the figures */

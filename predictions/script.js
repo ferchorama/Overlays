@@ -1352,16 +1352,24 @@
       no.textContent = 'No ' + (c.no === null || c.no === undefined ? '\u2014' : pctText(c.no) + '%');
     });
 
-    this.fitContractRows();
+    /* Fit now, in the same task that built the rows: anything deferred is a
+       visible re-layout when the operator pages through markets. Only the very
+       first render (webfont still loading) defers, and it hides the block until
+       the fit is final so the adjustment is never seen. */
     var self = this;
+    var fontsPending = !!(document.fonts && document.fonts.status !== 'loaded');
+    if (fontsPending) wrap.style.visibility = 'hidden';
+    this.fitContractRows();
     function fitIfCurrent() {
       if (self._fitGen !== fitGen) return;
       self.fitContractRows();
+      wrap.style.visibility = '';
     }
-    if (document.fonts && document.fonts.ready) {
+    if (fontsPending && document.fonts && document.fonts.ready) {
       document.fonts.ready.then(fitIfCurrent);
+    } else {
+      wrap.style.visibility = '';
     }
-    setTimeout(fitIfCurrent, 1200);
   };
 
   /* fill the frame: as many outcome rows as fit, no counter, never a crop */
@@ -1405,7 +1413,13 @@
       /* a lone row may take the whole band; several rows share it modestly */
       var cap = rows.length === 1 ? 96 : 30;
       var extra = Math.min(cap, Math.floor(spare / rows.length));
-      if (extra > 0) wrap.style.setProperty('--row-extra', extra + 'px');
+      /* adding padding can push the last row past the edge, so walk it back */
+      while (extra > 0) {
+        wrap.style.setProperty('--row-extra', extra + 'px');
+        if (rows[rows.length - 1].getBoundingClientRect().bottom <= limit) break;
+        extra -= 4;
+      }
+      if (extra <= 0) wrap.style.removeProperty('--row-extra');
     }
   };
 
@@ -1418,10 +1432,12 @@
     if (!rows.length) return;
     var spare = this.board.getBoundingClientRect().bottom - 16 -
       rows[rows.length - 1].getBoundingClientRect().bottom;
-    if (spare < 60) return;
+    /* Only a genuinely empty frame is worth growing into: below this the spare
+       height is better spent keeping another outcome row on screen. */
+    if (spare < 190) return;
     var num = parseFloat(this.hugeNum.style.fontSize || '0');
     if (num) {
-      var grown = Math.min(num * 1.35, num + spare * 0.95);
+      var grown = Math.min(num * 1.22, num + spare * 0.5);
       if (grown > num + 4) this.hugeNum.style.fontSize = Math.round(grown) + 'px';
     }
     if (this.heroTopic) {
@@ -1430,6 +1446,26 @@
         var tg = Math.min(t * 1.2, t + spare * 0.22);
         if (tg > t + 2) this.heroTopic.style.fontSize = Math.round(tg) + 'px';
       }
+    }
+    this.fitContractRows();
+  };
+
+  /* Last guard before paint: with a single outcome row the fit routine cannot
+     drop anything, so a long question used to push that row past the frame edge.
+     Give the number back a little until the row is inside. */
+  Board.prototype.enforceBottom = function () {
+    if (!this.contracts || !this.board) return;
+    var limit = this.board.getBoundingClientRect().bottom - 16;
+    var rows = [].slice.call(this.contracts.querySelectorAll('.contract'));
+    if (!rows.length) return;
+    var guard = 0;
+    while (rows[rows.length - 1].getBoundingClientRect().bottom > limit && guard++ < 14) {
+      var n = parseFloat((this.hugeNum && this.hugeNum.style.fontSize) || '0');
+      if (!n) break;
+      var next = Math.max(120, n - 8);
+      if (next >= n) break;
+      this.hugeNum.style.fontSize = next + 'px';
+      rows = [].slice.call(this.contracts.querySelectorAll('.contract'));
     }
     this.fitContractRows();
   };
@@ -1563,15 +1599,19 @@
        against a fallback font and the row overflows again after the webfont lands */
     var self2 = this;
     this.fitHeroContent();
-    /* At first paint the hero can still measure 0 tall, and the height fit needs a
-       real number. Re-run once the layout has settled, and again when the webfont
-       lands (measuring against a fallback font picks the wrong size). */
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(function () { self2.fitHeroContent(); });
+    this.fillFrame();
+    this.enforceBottom();
+    /* One re-measure on the next frame is enough, and only on the first render:
+       re-fitting after the webfont lands is what made paging stutter — the hero
+       visibly resized a moment after the new market was already on screen. */
+    if (typeof requestAnimationFrame === 'function' && !this._firstFitDone) {
+      requestAnimationFrame(function () {
+        self2.fitHeroContent();
+        self2.fillFrame();
+        self2._firstFitDone = true;
+      });
     }
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () { self2.fitHeroContent(); self2.fillFrame(); });
-    }
+    this._firstFitDone = true;
   };
 
   /* Fit the hero to the space it has.
