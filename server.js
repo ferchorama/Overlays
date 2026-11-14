@@ -278,7 +278,9 @@ function polyUsContracts(ev) {
       yes: y,
       no: Math.round((100 - y) * 10) / 10,
       change: null,
-      image: String(m.image || ''),
+      /* a headline photo usually lives on the event, not the market: the Altman
+         market has no image of its own, the event has the portrait */
+      image: String(m.image || (ev && ev.image) || ''),
       volume: 0
     };
   }).filter(Boolean);
