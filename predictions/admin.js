@@ -863,10 +863,22 @@
       idx.className = 'pasted__idx';
       idx.textContent = (i + 1 < 10 ? '0' : '') + (i + 1);
 
-      var title = document.createElement('div');
+      /* the row links to the market it came from, so an operator can check the
+         source before it goes on air; the move/remove buttons stay inert */
+      var src = String(it.url || '').trim();
+      if (!src && it.slug) {
+        src = 'https://polymarket.com/event/' + encodeURIComponent(it.slug);
+      }
+      var title = document.createElement(src ? 'a' : 'div');
       title.className = 'pasted__title';
       title.textContent = it.title || '(untitled)';
       title.title = (it.title || '') + (isPast ? ' \u2014 ended ' + (it.endDate || '').slice(0, 10) : '');
+      if (src) {
+        title.href = src;
+        title.target = '_blank';
+        title.rel = 'noopener noreferrer';
+        title.title += ' \u2014 opens ' + src;
+      }
 
       var pct = document.createElement('div');
       pct.className = 'pasted__pct';
