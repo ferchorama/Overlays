@@ -20,6 +20,11 @@
   /* If GSAP failed to load (fully offline machine, blocked CDN) the board must
      still appear — it just cuts between topics instead of animating. */
   var HAS_GSAP = !!window.gsap;
+
+  /* `?market=N` in the source URL is the only thing allowed to pin the hero on a
+     pasted board: a stale hero.mode/index in config.json (which older control
+     panels keep re-saving) must never decide what is on air. */
+  var explicitMarket = false;
   /* The travelling glow is decoration that never stops moving, so it is the one
      thing an operator with motion sensitivity gets to switch off at the OS level. */
   var REDUCE_MOTION = (function () {
@@ -789,6 +794,7 @@
 
     /* choose the hero */
     var mode = (cfg.hero && cfg.hero.mode) || 'volume';
+    if (cfg.source === 'polymarket' && !this._explicitMarket) mode = 'first';
     if (mode === 'first') this.heroIdx = 0;
     else if (mode === 'index') {
       var wantIdx = Math.round(num(cfg.hero.index, 0));
@@ -2398,6 +2404,7 @@
       fitStage(this.cfg);
       if (!this.board) this.board = new Board(this.cfg);
       this.board.cfg = this.cfg;
+      this.board._explicitMarket = explicitMarket;
       this.board.mount();
 
       /* restore the remembered topic on first mount */
@@ -2485,7 +2492,12 @@
       try { cfg = deepMerge(cfg, JSON.parse(atob(qs.get('config')))); } catch (e) { /* ignore */ }
     }
     if (qs.get('fit')) cfg.stage.fit = qs.get('fit');
-    if (qs.get('market') != null) { cfg.hero = cfg.hero || {}; cfg.hero.mode = 'index'; cfg.hero.index = parseInt(qs.get('market'), 10) || 0; }
+    if (qs.get('market') != null) {
+      cfg.hero = cfg.hero || {};
+      cfg.hero.mode = 'index';
+      cfg.hero.index = parseInt(qs.get('market'), 10) || 0;
+      explicitMarket = true;          /* the operator asked for this one market */
+    }
 
     var booted = false, lastCfgJson = '', lastSeq = -1;
 
