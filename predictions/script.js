@@ -1444,8 +1444,17 @@
           limg.alt = '';
           limg.addEventListener('error', function () { limg.style.display = 'none'; });
         }
-        var lname = el('span', 'hero__lead-name', lv);
+        var lbody = el('div', 'hero__lead-body', lv);
+        var lname = el('span', 'hero__lead-name', lbody);
         lname.textContent = lead.name;
+        /* the winning pair, at hero scale: the number above is the Yes side */
+        if (lead.yes != null) {
+          var hp = el('div', 'hero__pills', lbody);
+          var hpY = el('span', 'cpill cpill--yes', hp);
+          hpY.textContent = 'Yes ' + pctText(lead.yes) + '%';
+          var hpN = el('span', 'cpill cpill--no', hp);
+          hpN.textContent = 'No ' + pctText(lead.no == null ? (100 - lead.yes) : lead.no) + '%';
+        }
         this.heroLead = lv;
       }
       if (h.showStats) {

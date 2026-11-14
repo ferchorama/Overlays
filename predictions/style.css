@@ -1035,3 +1035,17 @@ body, .board { font-family: var(--font-text); }
 }
 .board__main.is-solo .figs__prob .num.huge small { font-size: .34em; }
 .board__main.is-solo .eyebrow { display: none; }
+
+/* winning Yes/No pair in the hero, at the same weight as the name */
+.board__main.is-solo .hero__lead-body {
+  display: flex; flex-direction: column; gap: 16px; min-width: 0;
+}
+.board__main.is-solo .hero__pills {
+  display: flex; gap: 14px; align-items: center;
+}
+.board__main.is-solo .hero__pills .cpill {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(26px, 1.9vw, 36px);
+  padding: 12px 22px; min-width: 190px; border-radius: 14px;
+  letter-spacing: -0.01em;
+}
