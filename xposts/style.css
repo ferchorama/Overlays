@@ -188,3 +188,33 @@ body { font-family: var(--font-text); color: var(--ink); }
   font-family: var(--font-display); font-size: 40px; color: var(--dimmer);
 }
 .empty small { display: block; margin-top: 12px; font-family: var(--font-mono); font-size: 20px; letter-spacing: .1em; }
+
+/* --------------------------------------------------------------- image zoom
+   The source is captured at 1920×1080 but sits in a smaller box on the stream,
+   so an embedded image can be promoted to the whole frame on click (or with Z /
+   the panel's Zoom button). Clicking the picture steps through the images of a
+   multi-image post; clicking anywhere else closes it. */
+.zoom {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+}
+.zoom__shade { position: absolute; inset: 0; background: rgba(6, 6, 7, 0.92); }
+.zoom__fig {
+  position: relative; margin: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  max-width: 94%; max-height: 94%;
+}
+.zoom__img {
+  width: auto; height: auto;
+  max-width: 1720px; max-height: 900px;
+  border-radius: 22px; border: 1px solid var(--line);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65);
+  cursor: zoom-out;
+}
+.zoom__cap {
+  font-family: var(--font-mono); font-size: 22px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--dim);
+}
+
+/* the copy may use the full frame now that the queue is gone */
+.board__main .post__text { max-width: 66ch; }

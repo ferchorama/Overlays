@@ -143,11 +143,18 @@
     if (hero && cfg.hero && cfg.hero.showMedia !== false && media.length) {
       var box = el('div', 'post__media ' + (media.length > 1 ? 'is-many' : 'is-one'), wrap);
       box.style.setProperty('--media-max', (cfg.hero.mediaMaxHeight || 430) + 'px');
-      media.forEach(function (ph) {
+      media.forEach(function (ph, k) {
         var img = el('img', null, box);
         img.src = ph.url;
         img.alt = '';
+        img.title = 'Click to enlarge';
         img.addEventListener('error', function () { img.style.display = 'none'; });
+        if (cfg.imageZoom && cfg.imageZoom.clickToOpen !== false) {
+          img.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            openZoom(p, k);
+          });
+        }
       });
     }
 
@@ -210,44 +217,33 @@
     var h = cfg.hero || {};
     var t = heroBody.querySelector('.post__text');
     var media = heroBody.querySelector('.post__media');
-    var author = heroBody.querySelector('.post__author');
-    var metrics = heroBody.querySelector('.post__metrics');
     var cs = getComputedStyle(board);
     var head = board.querySelector('.board__header');
     var avail = board.clientHeight
       - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
       - (head ? head.offsetHeight : 0)
-      - queueEl.offsetHeight
-      - 18;                                   /* queue margin */
+      - (queueEl && queueEl.offsetHeight ? queueEl.offsetHeight + 18 : 0);
 
-    var textSize = h.textSize || 52;
-    var minSize = h.minTextSize || 30;
-    var cap = h.mediaMaxHeight || 430;
-    var floor = Math.max(140, Math.round(avail * 0.22));
+    var minSize = h.minTextSize || 40;
+    var cap = h.mediaMaxHeight || 560;
+    var maxText = t ? (media ? 96 : 128) : 0;
 
-    if (t) t.style.fontSize = textSize + 'px';
-    if (!media) return;
-
-    function heroBase() {
-      media.style.display = 'none';
-      var base = heroBody.offsetHeight;       /* author + text + metrics + gaps */
-      media.style.display = '';
-      return base;
+    /* Images are the thing that can be enlarged on click, so they take a modest
+       plate and the copy gets the rest of the frame. Type then grows until it
+       fills what is left instead of being set to a guessed size. */
+    if (media) {
+      var plate = Math.max(320, Math.min(cap, Math.round(avail * 0.34)));
+      media.style.setProperty('--media-max', plate + 'px');
     }
 
-    /* images are the reason these posts get read: aim for ~45% of the frame and
-       let the copy step down to its floor before the plate gives ground */
-    var desired = Math.min(cap, Math.round(avail * 0.45));
+    if (!t) return;
+    var size = maxText;
+    t.style.fontSize = size + 'px';
     var guard = 0;
-    while (guard++ < 40) {
-      var room = avail - heroBase() - 18;
-      if (room >= desired) break;
-      if (t && textSize > minSize) { textSize -= 2; t.style.fontSize = textSize + 'px'; continue; }
-      desired = Math.max(floor, desired - 12);
-      if (desired <= floor) break;
+    while (overflowing() && size > minSize && guard++ < 60) {
+      size -= 2;
+      t.style.fontSize = size + 'px';
     }
-    var allowed = Math.max(120, Math.min(cap, desired, avail - heroBase() - 18));
-    media.style.setProperty('--media-max', Math.round(allowed) + 'px');
   }
 
   function renderNav() {
@@ -334,6 +330,69 @@
   function next() { return switchTo(index + 1, { dir: 1 }); }
   function prev() { return switchTo(index - 1, { dir: -1 }); }
 
+  /* ------------------------------------------------------------- image zoom */
+  var zoomLayer = null;
+  var zoomIndex = 0;
+
+  function zoomPhotos(p) { return (p && p.photos) ? p.photos.slice(0, 4) : []; }
+
+  function closeZoom() {
+    if (!zoomLayer) return;
+    var layer = zoomLayer;
+    zoomLayer = null;
+    if (HAS_GSAP) {
+      window.gsap.to(layer, {
+        opacity: 0, duration: 0.22, ease: 'power2.in',
+        onComplete: function () { layer.remove(); }
+      });
+    } else {
+      layer.remove();
+    }
+  }
+
+  function openZoom(p, i) {
+    var photos = zoomPhotos(p);
+    if (!photos.length) return;
+    if (zoomLayer) closeZoom();
+    zoomIndex = Math.max(0, Math.min(i || 0, photos.length - 1));
+
+    var layer = el('div', 'zoom', stage);
+    layer.id = 'zoomLayer';
+    var shade = el('div', 'zoom__shade', layer);
+    if (cfg.imageZoom && cfg.imageZoom.backdrop) {
+      shade.style.background = 'rgba(6, 6, 7, ' + cfg.imageZoom.backdrop + ')';
+    }
+    var fig = el('figure', 'zoom__fig', layer);
+    var img = el('img', 'zoom__img', fig);
+    img.src = photos[zoomIndex].url;
+    img.alt = '';
+    var cap = el('figcaption', 'zoom__cap', fig);
+    cap.textContent = '@' + (p.handle || '') + (photos.length > 1 ? '  ·  ' + (zoomIndex + 1) + ' / ' + photos.length : '');
+
+    layer.addEventListener('click', function (ev) {
+      /* clicking the picture again steps to the next image, anywhere else closes */
+      if (ev.target === img && photos.length > 1) {
+        zoomIndex = (zoomIndex + 1) % photos.length;
+        img.src = photos[zoomIndex].url;
+        cap.textContent = '@' + (p.handle || '') + '  ·  ' + (zoomIndex + 1) + ' / ' + photos.length;
+        return;
+      }
+      closeZoom();
+    });
+
+    if (HAS_GSAP) {
+      window.gsap.fromTo(layer, { opacity: 0 }, { opacity: 1, duration: 0.28, ease: 'power2.out' });
+      window.gsap.fromTo(img, { scale: 0.96 }, { scale: 1, duration: 0.42, ease: 'power3.out' });
+    }
+    zoomLayer = layer;
+    return layer;
+  }
+
+  function toggleZoom() {
+    if (zoomLayer) return closeZoom();
+    return openZoom(posts[index], 0);
+  }
+
   /* --------------------------------------------------------------------- io */
   function adopt(remote) {
     if (!remote || typeof remote !== 'object') return;
@@ -359,13 +418,16 @@
       if (a === 'next') next();
       else if (a === 'prev') prev();
       else if (a === 'out') hideBoard();
+      else if (a === 'zoom') toggleZoom();
       else if (a === 'in' || a === 'show' || a === 'replay') showBoard();
     }
   });
 
   document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { closeZoom(); return; }
     if (ev.key === 'ArrowRight') { next(); ev.preventDefault(); }
     if (ev.key === 'ArrowLeft') { prev(); ev.preventDefault(); }
+    if (ev.key === 'z' || ev.key === 'Z') { toggleZoom(); ev.preventDefault(); }
   });
 
   var nextBtn = $('next');
@@ -380,6 +442,9 @@
     switchTo: switchTo,
     next: next,
     prev: prev,
+    zoom: toggleZoom,
+    closeZoom: closeZoom,
+    get zoomed() { return !!zoomLayer; },
     render: render
   };
 

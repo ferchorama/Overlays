@@ -24,18 +24,27 @@ window.XP_DEFAULT_CONFIG = {
   },
 
   hero: {
-    /* the hero post's body copy is fitted to the space it has */
-    textSize: 52,
-    minTextSize: 30,
-    maxTextHeight: 520,
+    /* With the queue off the frame belongs to one post: the copy is set large
+       and only steps down when the images need the room. */
+    textSize: 66,
+    minTextSize: 40,
+    maxTextHeight: 760,
     showMetrics: true,
     showMedia: true,
-    /* a single image is capped so a tall screenshot cannot swallow the queue */
-    mediaMaxHeight: 430
+    mediaMaxHeight: 560
+  },
+
+  /* Clicking an image opens it across the whole frame — the overlay is captured
+     at 1080p but streamed inside a smaller box, so an image needs to be able to
+     take the screen on demand. */
+  imageZoom: {
+    enabled: true,
+    clickToOpen: true,
+    backdrop: 0.92
   },
 
   queue: {
-    visible: true,
+    visible: false,
     rows: 3,                 /* how many upcoming posts to list under the hero */
     showMetrics: true
   },
